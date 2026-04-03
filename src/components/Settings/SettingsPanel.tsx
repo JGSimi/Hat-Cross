@@ -386,6 +386,20 @@ function AppearanceTab({
   );
 }
 
+// Popular models per provider (shown when API hasn't been fetched yet)
+const POPULAR_MODELS: Record<string, string[]> = {
+  google: ['gemini-2.5-flash-preview-05-20', 'gemini-2.5-pro-preview-05-06', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+  openai: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'o3', 'o4-mini', 'gpt-4o', 'gpt-4o-mini'],
+  anthropic: ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001', 'claude-3-5-sonnet-20241022'],
+  inception: ['mercury-coder-small-beta'],
+  openrouter: ['google/gemini-2.5-flash-preview', 'anthropic/claude-sonnet-4-6', 'openai/gpt-4.1', 'deepseek/deepseek-r1', 'meta-llama/llama-4-maverick'],
+  custom: [],
+};
+
+const PROVIDER_ICONS: Record<string, string> = {
+  google: '🔷', openai: '🟢', anthropic: '🟠', inception: '⚡', openrouter: '🔀', custom: '⚙️',
+};
+
 function ModelsTab({
   settings,
   providerConfigs,
@@ -405,61 +419,84 @@ function ModelsTab({
   setEndpoint: ReturnType<typeof useSettingsStore.getState>['setEndpoint'];
   resetTokenStats: ReturnType<typeof useSettingsStore.getState>['resetTokenStats'];
 }) {
-  const [models, setModels] = useState<string[]>([]);
+  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [modelSearch, setModelSearch] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
 
   const currentProvider = settings.cloudProvider;
   const currentConfig = providerConfigs[currentProvider];
+  const hasApiKey = !!(currentConfig?.apiKey);
 
-  const handleFetchModels = async () => {
-    setLoadingModels(true);
-    const defaults = PROVIDER_DEFAULTS[currentProvider];
-    const endpoint = currentConfig?.endpoint || defaults.defaultEndpoint;
-    const result = await fetchModels(currentProvider, endpoint, currentConfig?.apiKey || '');
-    setModels(result);
-    setLoadingModels(false);
-  };
+  // Auto-fetch models when provider changes or API key is set
+  useEffect(() => {
+    if (settings.inferenceMode !== 'api') return;
+    if (!hasApiKey) {
+      setFetchedModels([]);
+      setApiKeyStatus('idle');
+      return;
+    }
+    let cancelled = false;
+    const doFetch = async () => {
+      setLoadingModels(true);
+      const defaults = PROVIDER_DEFAULTS[currentProvider];
+      const endpoint = currentConfig?.endpoint || defaults.defaultEndpoint;
+      const result = await fetchModels(currentProvider, endpoint, currentConfig?.apiKey || '');
+      if (!cancelled) {
+        setFetchedModels(result);
+        setLoadingModels(false);
+        setApiKeyStatus(result.length > 0 ? 'valid' : 'invalid');
+      }
+    };
+    // Debounce to avoid fetching on every keystroke of API key
+    const timer = setTimeout(doFetch, 800);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [currentProvider, hasApiKey, currentConfig?.apiKey, currentConfig?.endpoint, settings.inferenceMode]);
+
+  // Combine fetched models with popular defaults
+  const allModels = fetchedModels.length > 0
+    ? fetchedModels
+    : POPULAR_MODELS[currentProvider] || [];
 
   const filteredModels = modelSearch
-    ? models.filter((m) => m.toLowerCase().includes(modelSearch.toLowerCase()))
-    : models;
+    ? allModels.filter((m) => m.toLowerCase().includes(modelSearch.toLowerCase()))
+    : allModels;
 
   const inputStyle: React.CSSProperties = {
     background: 'var(--input-bg)',
     color: 'var(--text-primary)',
     borderRadius: 8,
-    padding: '6px 12px',
-    fontSize: 11,
+    padding: '7px 12px',
+    fontSize: 12,
     outline: 'none',
-    border: '0.5px solid var(--border-subtle)',
+    border: '1px solid var(--border-subtle)',
+    width: '100%',
+    transition: 'border-color 0.15s ease',
   };
 
   return (
     <>
-      <SectionTitle>Modo de Inferencia</SectionTitle>
+      {/* Inference mode toggle */}
+      <SectionTitle>Modo de Inferência</SectionTitle>
       <GlassCard>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-          {(['local', 'api'] as const).map((mode) => (
+        <div style={{ display: 'flex', gap: 6 }}>
+          {(['api', 'local'] as const).map((mode) => (
             <motion.button
               key={mode}
-              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => updateSettings({ inferenceMode: mode })}
               style={{
-                padding: '8px 16px',
-                borderRadius: 8,
-                fontSize: 11,
-                fontWeight: 500,
+                flex: 1, padding: '9px 0', borderRadius: 8,
+                fontSize: 12, fontWeight: 500,
                 background: settings.inferenceMode === mode ? 'var(--color-accent)' : 'var(--surface-secondary)',
-                color: settings.inferenceMode === mode ? 'white' : 'var(--text-secondary)',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'background 0.15s ease, color 0.15s ease',
+                color: settings.inferenceMode === mode ? 'white' : 'var(--text-muted)',
+                border: settings.inferenceMode === mode ? 'none' : '1px solid var(--border-subtle)',
+                cursor: 'pointer', transition: 'all 0.15s ease',
               }}
             >
-              {mode === 'local' ? 'Local (Ollama)' : 'API na Nuvem'}
+              {mode === 'local' ? '🖥 Local (Ollama)' : '☁️ API na Nuvem'}
             </motion.button>
           ))}
         </div>
@@ -469,173 +506,223 @@ function ModelsTab({
         <>
           <SectionTitle>Ollama</SectionTitle>
           <GlassCard>
-            <SettingRow label="Modelo">
-              <input
-                value={settings.localModel}
-                onChange={(e) => updateSettings({ localModel: e.target.value })}
-                placeholder="gemma3:4b"
-                style={{ ...inputStyle, width: 160 }}
-              />
-            </SettingRow>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
+              Certifique-se que o Ollama está rodando em localhost:11434
+            </p>
+            <input
+              value={settings.localModel}
+              onChange={(e) => updateSettings({ localModel: e.target.value })}
+              placeholder="gemma3:4b"
+              style={inputStyle}
+            />
           </GlassCard>
         </>
       ) : (
         <>
+          {/* Provider selector */}
           <SectionTitle>Provedor</SectionTitle>
           <GlassCard>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
               {(Object.keys(PROVIDER_DEFAULTS) as CloudProvider[]).map((p) => (
                 <motion.button
                   key={p}
-                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setProvider(p)}
                   style={{
-                    padding: '6px 12px',
-                    borderRadius: 8,
-                    fontSize: 11,
-                    background: currentProvider === p ? 'var(--color-accent)' : 'var(--surface-secondary)',
-                    color: currentProvider === p ? 'white' : 'var(--text-secondary)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'background 0.15s ease, color 0.15s ease',
+                    padding: '8px 4px', borderRadius: 8, fontSize: 11, fontWeight: 500,
+                    background: currentProvider === p ? 'color-mix(in srgb, var(--color-accent) 15%, transparent)' : 'transparent',
+                    color: currentProvider === p ? 'var(--color-accent)' : 'var(--text-secondary)',
+                    border: currentProvider === p ? '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' : '1px solid var(--border-subtle)',
+                    cursor: 'pointer', transition: 'all 0.15s ease',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
                   }}
                 >
-                  {PROVIDER_DEFAULTS[p].displayName}
+                  <span style={{ fontSize: 13 }}>{PROVIDER_ICONS[p]}</span>
+                  {PROVIDER_DEFAULTS[p].displayName.split(' ')[0]}
                 </motion.button>
               ))}
             </div>
           </GlassCard>
 
-          <SectionTitle>API Key</SectionTitle>
+          {/* API Key with status */}
+          <SectionTitle>
+            API Key
+            {apiKeyStatus === 'valid' && <span style={{ color: 'var(--success)', marginLeft: 6, fontSize: 9 }}>● conectado</span>}
+            {apiKeyStatus === 'invalid' && hasApiKey && <span style={{ color: 'var(--error)', marginLeft: 6, fontSize: 9 }}>● inválida</span>}
+          </SectionTitle>
           <GlassCard>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type={showApiKey ? 'text' : 'password'}
-                value={currentConfig?.apiKey || ''}
-                onChange={(e) => setApiKey(currentProvider, e.target.value)}
-                placeholder="sk-..."
-                style={{ ...inputStyle, flex: 1, fontFamily: "'SF Mono', monospace" }}
-              />
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowApiKey(!showApiKey)}
-                style={{
-                  padding: 6,
-                  color: 'var(--text-muted)',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
-              </motion.button>
-            </div>
-          </GlassCard>
-
-          <SectionTitle>Endpoint</SectionTitle>
-          <GlassCard>
-            <input
-              value={currentConfig?.endpoint || ''}
-              onChange={(e) => setEndpoint(currentProvider, e.target.value)}
-              style={{ ...inputStyle, width: '100%', fontFamily: "'SF Mono', monospace" }}
-            />
-          </GlassCard>
-
-          <SectionTitle>Modelo</SectionTitle>
-          <GlassCard>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <input
-                value={currentConfig?.model || ''}
-                onChange={(e) => setModel(currentProvider, e.target.value)}
-                placeholder="Modelo..."
-                style={{ ...inputStyle, flex: 1 }}
-              />
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleFetchModels}
-                disabled={loadingModels}
-                title="Buscar modelos"
-                style={{
-                  padding: 6,
-                  borderRadius: 6,
-                  color: 'var(--text-secondary)',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: loadingModels ? 'default' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                <RefreshCw size={14} className={loadingModels ? 'animate-spin' : ''} />
-              </motion.button>
-            </div>
-
-            {models.length > 0 && (
-              <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ flex: 1, position: 'relative' }}>
                 <input
-                  value={modelSearch}
-                  onChange={(e) => setModelSearch(e.target.value)}
-                  placeholder="Filtrar modelos..."
-                  style={{ ...inputStyle, width: '100%', marginBottom: 4 }}
+                  type={showApiKey ? 'text' : 'password'}
+                  value={currentConfig?.apiKey || ''}
+                  onChange={(e) => { setApiKey(currentProvider, e.target.value); setApiKeyStatus('idle'); }}
+                  placeholder={`Cole sua API key do ${PROVIDER_DEFAULTS[currentProvider].displayName}`}
+                  style={{ ...inputStyle, fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: 11, paddingRight: 36 }}
                 />
-                <div
+                <button
+                  onClick={() => setShowApiKey(!showApiKey)}
                   style={{
-                    maxHeight: 160,
-                    overflowY: 'auto',
-                    borderRadius: 8,
-                    border: '0.5px solid var(--border-subtle)',
+                    position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-muted)', display: 'flex', alignItems: 'center', padding: 2,
                   }}
                 >
-                  {filteredModels.map((m) => (
-                    <motion.button
-                      key={m}
-                      whileHover={{ backgroundColor: 'var(--surface-hover)' }}
-                      onClick={() => setModel(currentProvider, m)}
-                      style={{
-                        width: '100%',
-                        textAlign: 'left',
-                        padding: '6px 12px',
-                        fontSize: 11,
-                        color: currentConfig?.model === m ? 'var(--color-accent)' : 'var(--text-secondary)',
-                        background: currentConfig?.model === m ? 'color-mix(in srgb, var(--color-accent) 15%, transparent)' : 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {m}
-                    </motion.button>
-                  ))}
-                </div>
-              </>
+                  {showApiKey ? <EyeOff size={13} /> : <Eye size={13} />}
+                </button>
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* Model selector — the main focus */}
+          <SectionTitle>
+            Modelo
+            {loadingModels && <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 9 }}>carregando...</span>}
+          </SectionTitle>
+          <GlassCard>
+            {/* Search/filter input */}
+            <div style={{ position: 'relative', marginBottom: 8 }}>
+              <input
+                value={modelSearch || currentConfig?.model || ''}
+                onChange={(e) => {
+                  setModelSearch(e.target.value);
+                  setModel(currentProvider, e.target.value);
+                }}
+                onFocus={() => { if (!modelSearch) setModelSearch(''); }}
+                onBlur={() => setTimeout(() => setModelSearch(''), 200)}
+                placeholder="Buscar ou digitar modelo..."
+                style={{ ...inputStyle, fontSize: 12, fontWeight: currentConfig?.model ? 500 : 400 }}
+              />
+            </div>
+
+            {/* Model list */}
+            <div
+              style={{
+                maxHeight: 220, overflowY: 'auto', borderRadius: 8,
+                border: '1px solid var(--border-subtle)',
+              }}
+            >
+              {fetchedModels.length === 0 && !loadingModels && (
+                <p style={{ fontSize: 10, color: 'var(--text-muted)', padding: '8px 12px', margin: 0, textAlign: 'center' }}>
+                  {hasApiKey ? 'Modelos populares (conecte para ver todos)' : 'Adicione sua API key para buscar modelos'}
+                </p>
+              )}
+              {filteredModels.map((m) => {
+                const isSelected = currentConfig?.model === m;
+                return (
+                  <motion.button
+                    key={m}
+                    whileHover={{ backgroundColor: isSelected ? undefined : 'var(--surface-hover)' }}
+                    onClick={() => { setModel(currentProvider, m); setModelSearch(''); }}
+                    style={{
+                      width: '100%', textAlign: 'left',
+                      padding: '7px 12px', fontSize: 11.5,
+                      color: isSelected ? 'var(--color-accent)' : 'var(--text-primary)',
+                      fontWeight: isSelected ? 600 : 400,
+                      background: isSelected ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent',
+                      border: 'none', cursor: 'pointer',
+                      borderLeft: isSelected ? '2px solid var(--color-accent)' : '2px solid transparent',
+                      transition: 'all 0.1s ease',
+                    }}
+                  >
+                    {m}
+                  </motion.button>
+                );
+              })}
+              {filteredModels.length === 0 && modelSearch && (
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', padding: '12px', margin: 0, textAlign: 'center' }}>
+                  Nenhum modelo encontrado
+                </p>
+              )}
+            </div>
+
+            {/* Manual refresh */}
+            {hasApiKey && (
+              <motion.button
+                whileHover={{ color: 'var(--color-accent)' }}
+                whileTap={{ scale: 0.97 }}
+                onClick={async () => {
+                  setLoadingModels(true);
+                  const defaults = PROVIDER_DEFAULTS[currentProvider];
+                  const ep = currentConfig?.endpoint || defaults.defaultEndpoint;
+                  const result = await fetchModels(currentProvider, ep, currentConfig?.apiKey || '');
+                  setFetchedModels(result);
+                  setLoadingModels(false);
+                  setApiKeyStatus(result.length > 0 ? 'valid' : 'invalid');
+                }}
+                style={{
+                  fontSize: 10, color: 'var(--text-muted)', background: 'none',
+                  border: 'none', cursor: 'pointer', padding: '8px 0 0', display: 'flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                <RefreshCw size={10} className={loadingModels ? 'animate-spin' : ''} />
+                Atualizar lista de modelos
+              </motion.button>
             )}
           </GlassCard>
+
+          {/* Advanced: Endpoint (collapsed by default) */}
+          <motion.button
+            whileHover={{ color: 'var(--text-secondary)' }}
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            style={{
+              fontSize: 10, color: 'var(--text-muted)', background: 'none',
+              border: 'none', cursor: 'pointer', padding: '4px 0 8px', display: 'flex', alignItems: 'center', gap: 4,
+            }}
+          >
+            {showAdvanced ? '▾' : '▸'} Configuração avançada
+          </motion.button>
+          <AnimatePresence>
+            {showAdvanced && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                style={{ overflow: 'hidden' }}
+              >
+                <GlassCard>
+                  <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6 }}>Endpoint da API</p>
+                  <input
+                    value={currentConfig?.endpoint || ''}
+                    onChange={(e) => setEndpoint(currentProvider, e.target.value)}
+                    style={{ ...inputStyle, fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: 10.5 }}
+                  />
+                </GlassCard>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
 
-      <SectionTitle>Tokens</SectionTitle>
+      {/* Token stats */}
+      <SectionTitle>Uso de Tokens</SectionTitle>
       <GlassCard>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8 }}>
-          <span>Input: {settings.tokenStats.inputTokens.toLocaleString()}</span>
-          <span>Output: {settings.tokenStats.outputTokens.toLocaleString()}</span>
-          <span>Total: {settings.tokenStats.totalTokens.toLocaleString()}</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+          {[
+            { label: 'Input', value: settings.tokenStats.inputTokens },
+            { label: 'Output', value: settings.tokenStats.outputTokens },
+            { label: 'Total', value: settings.tokenStats.totalTokens },
+          ].map((stat) => (
+            <div key={stat.label} style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                {stat.value >= 1000 ? `${(stat.value / 1000).toFixed(1)}k` : stat.value}
+              </div>
+              <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>{stat.label}</div>
+            </div>
+          ))}
         </div>
         <motion.button
-          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
           onClick={resetTokenStats}
           style={{
-            fontSize: 11,
-            color: 'var(--color-accent)',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
+            width: '100%', fontSize: 10, color: 'var(--text-muted)',
+            background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)',
+            borderRadius: 6, padding: '5px 0', cursor: 'pointer',
+            transition: 'color 0.15s ease',
           }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--error)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
         >
           Resetar contagem
         </motion.button>
