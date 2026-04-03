@@ -385,23 +385,9 @@ function AppearanceTab({
 
       <SectionTitle>Popover</SectionTitle>
       <GlassCard>
-        <SettingRow label={`Largura: ${settings.popover.width}px`}>
-          <CustomSlider min={300} max={600} step={1} value={settings.popover.width}
-            onChange={(v) => updateSettings({ popover: { ...settings.popover, width: v } })} />
-        </SettingRow>
-        <SettingRow label={`Altura: ${settings.popover.height}px`}>
-          <CustomSlider min={350} max={800} step={1} value={settings.popover.height}
-            onChange={(v) => updateSettings({ popover: { ...settings.popover, height: v } })} />
-        </SettingRow>
         <SettingRow label={`Opacidade: ${Math.round(settings.popover.opacity * 100)}%`}>
           <CustomSlider min={0.3} max={1} step={0.05} value={settings.popover.opacity}
             onChange={(v) => updateSettings({ popover: { ...settings.popover, opacity: v } })} />
-        </SettingRow>
-        <SettingRow label="Vibrancy (Glassmorphism)">
-          <Toggle
-            checked={settings.popover.vibrancy}
-            onChange={(v) => updateSettings({ popover: { ...settings.popover, vibrancy: v } })}
-          />
         </SettingRow>
       </GlassCard>
 

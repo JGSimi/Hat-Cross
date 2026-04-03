@@ -22,6 +22,8 @@ pub fn show_window(app: &AppHandle, label: &str) {
             "popover" => builder
                 .title("Hat")
                 .inner_size(380.0, 480.0)
+                .min_inner_size(300.0, 350.0)
+                .max_inner_size(800.0, 900.0)
                 .resizable(true)
                 .decorations(false)
                 .skip_taskbar(true)

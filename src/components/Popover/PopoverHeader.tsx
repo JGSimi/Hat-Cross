@@ -23,10 +23,6 @@ export default function PopoverHeader() {
     ? settings.localModel
     : providerConfigs[settings.cloudProvider]?.model || 'Selecionar';
 
-  const handleExpand = () => invoke('open_main_window');
-  const handleClose = () => invoke('close_window', { label: 'popover' });
-  const handleClear = () => clearMessages();
-
   return (
     <div
       data-tauri-drag-region
@@ -39,28 +35,25 @@ export default function PopoverHeader() {
         cursor: 'grab',
         userSelect: 'none',
         WebkitUserSelect: 'none',
+        flexShrink: 0,
       }}
     >
-      {/* Left side - all draggable */}
+      {/* Left side — text elements don't block drag */}
       <div
         data-tauri-drag-region
-        style={{ display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none' }}
+        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
       >
         <span data-tauri-drag-region style={{ fontSize: 14 }}>🎩</span>
         <span
           data-tauri-drag-region
-          style={{
-            fontSize: 13,
-            fontWeight: 500,
-            color: 'var(--text-primary)',
-          }}
+          style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}
         >
           {greeting}
         </span>
         <div
           data-tauri-drag-region
           style={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
             gap: 4,
             padding: '2px 8px',
@@ -91,8 +84,8 @@ export default function PopoverHeader() {
         </div>
       </div>
 
-      {/* Right side - buttons (not draggable) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2, pointerEvents: 'auto' }}>
+      {/* Right side — interactive buttons */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <AnimatePresence>
           {hasMessages && (
             <motion.button
@@ -100,18 +93,12 @@ export default function PopoverHeader() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0, opacity: 0 }}
               {...btnMotion}
-              onClick={handleClear}
+              onClick={() => clearMessages()}
               title="Limpar conversa"
               style={{
-                padding: 6,
-                borderRadius: 6,
-                color: 'var(--text-muted)',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                padding: 6, borderRadius: 6, color: 'var(--text-muted)',
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
               <Trash2 size={14} />
@@ -120,36 +107,24 @@ export default function PopoverHeader() {
         </AnimatePresence>
         <motion.button
           {...btnMotion}
-          onClick={handleExpand}
+          onClick={() => invoke('open_main_window')}
           title="Abrir janela principal"
           style={{
-            padding: 6,
-            borderRadius: 6,
-            color: 'var(--text-muted)',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            padding: 6, borderRadius: 6, color: 'var(--text-muted)',
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
           <Maximize2 size={14} />
         </motion.button>
         <motion.button
           {...btnMotion}
-          onClick={handleClose}
+          onClick={() => invoke('close_window', { label: 'popover' })}
           title="Fechar"
           style={{
-            padding: 6,
-            borderRadius: 6,
-            color: 'var(--text-muted)',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            padding: 6, borderRadius: 6, color: 'var(--text-muted)',
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
           <X size={14} />
