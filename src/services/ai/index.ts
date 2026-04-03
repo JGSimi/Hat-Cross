@@ -7,7 +7,6 @@ export interface StreamOptions {
   systemPrompt: string;
   provider: CloudProvider | 'ollama';
   endpoint: string;
-  apiKey: string;
   model: string;
   temperature: number;
   maxTokens: number;
@@ -23,7 +22,6 @@ export async function startStream(options: StreamOptions): Promise<() => void> {
     systemPrompt,
     provider,
     endpoint,
-    apiKey,
     model,
     temperature,
     maxTokens,
@@ -52,7 +50,6 @@ export async function startStream(options: StreamOptions): Promise<() => void> {
       systemPrompt,
       provider,
       endpoint,
-      apiKey,
       model,
       temperature,
       maxTokens,
@@ -77,13 +74,11 @@ export async function cancelStream(): Promise<void> {
 export async function fetchModels(
   provider: CloudProvider,
   endpoint: string,
-  apiKey: string
 ): Promise<string[]> {
   try {
     const models = await invoke<string[]>('fetch_models', {
       provider,
       endpoint,
-      apiKey,
     });
     return models;
   } catch {

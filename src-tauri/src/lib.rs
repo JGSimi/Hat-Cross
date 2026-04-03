@@ -30,6 +30,7 @@ pub fn run() {
             commands::set_autostart,
             commands::open_analysis_window,
             commands::send_notification,
+            commands::set_provider_key,
             streaming::stream_chat,
             streaming::cancel_stream,
             streaming::fetch_models,

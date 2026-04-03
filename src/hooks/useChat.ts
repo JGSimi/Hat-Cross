@@ -67,7 +67,6 @@ export function useChat() {
       const endpoint = isLocal
         ? 'http://localhost:11434'
         : cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
-      const apiKey = isLocal ? '' : cfg?.apiKey || '';
       const model = isLocal ? settings.localModel : cfg?.model || '';
 
       setStreaming(true);
@@ -79,7 +78,6 @@ export function useChat() {
           systemPrompt: settings.systemPrompt,
           provider,
           endpoint,
-          apiKey,
           model,
           temperature: settings.temperature,
           maxTokens: settings.maxTokens,
@@ -123,8 +121,7 @@ export function useChat() {
                 } catch {}
               }
               if (currentSettings.notificationsEnabled && !document.hasFocus()) {
-                const preview = content.length > 200 ? content.slice(0, 200) + '...' : content;
-                invoke('send_notification', { title: 'Hat', body: preview }).catch(() => {});
+                invoke('send_notification', { title: 'Hat', body: 'Resposta recebida' }).catch(() => {});
               }
             } else {
               setStreaming(false);

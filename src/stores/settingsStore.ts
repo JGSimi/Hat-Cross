@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { LazyStore } from '@tauri-apps/plugin-store';
+import { invoke } from '@tauri-apps/api/core';
 import {
   type AppSettings,
   type AppTheme,
@@ -94,6 +95,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         [provider]: { ...state.providerConfigs[provider], apiKey: key },
       },
     }));
+    invoke('set_provider_key', { provider, key }).catch(console.error);
     get().saveSettings();
   },
 
@@ -154,14 +156,21 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       }>('hat-settings');
 
       if (stored) {
+        const mergedConfigs = {
+          ...defaultProviderConfigs(),
+          ...stored.providerConfigs,
+        };
         set({
           settings: { ...DEFAULT_SETTINGS, ...stored.settings },
-          providerConfigs: {
-            ...defaultProviderConfigs(),
-            ...stored.providerConfigs,
-          },
+          providerConfigs: mergedConfigs,
           _hydrated: true,
         });
+        // Sync all stored API keys to the Rust backend
+        for (const [provider, config] of Object.entries(mergedConfigs)) {
+          if (config.apiKey) {
+            invoke('set_provider_key', { provider, key: config.apiKey }).catch(console.error);
+          }
+        }
       } else {
         set({ _hydrated: true });
       }

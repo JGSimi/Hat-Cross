@@ -34,13 +34,19 @@ pub async fn stream_chat(
     system_prompt: String,
     provider: String,
     endpoint: String,
-    api_key: String,
     model: String,
     temperature: f64,
     max_tokens: u32,
     images: Vec<String>,
 ) -> Result<(), String> {
     CANCEL_STREAM.store(false, Ordering::SeqCst);
+
+    let api_key = crate::commands::get_provider_key(&provider);
+
+    // HTTPS enforcement: reject insecure endpoints for remote connections
+    if !endpoint.starts_with("https://") && !endpoint.starts_with("http://localhost") && !endpoint.starts_with("http://127.0.0.1") {
+        return Err("Endpoint inseguro. Use HTTPS para conexões remotas.".to_string());
+    }
 
     let result = match provider.as_str() {
         "anthropic" => {
@@ -559,7 +565,7 @@ async fn stream_ollama(
     let status = response.status();
     if !status.is_success() {
         let error_text = response.text().await.unwrap_or_default();
-        return Err(format!("Erro do Ollama ({}): {}", status.as_u16(), error_text));
+        return Err(map_http_error(status.as_u16(), &error_text));
     }
 
     let mut stream = response.bytes_stream();
@@ -644,8 +650,8 @@ async fn stream_ollama(
 pub async fn fetch_models(
     provider: String,
     endpoint: String,
-    api_key: String,
 ) -> Result<Vec<String>, String> {
+    let api_key = crate::commands::get_provider_key(&provider);
     let url = match provider.as_str() {
         "anthropic" => {
             // Anthropic doesn't have a public models endpoint; return hardcoded list
@@ -723,29 +729,14 @@ pub async fn fetch_models(
 
 // ----- Error mapping -----
 
-fn map_http_error(status: u16, body: &str) -> String {
+fn map_http_error(status: u16, _body: &str) -> String {
     match status {
-        401 => "Chave de API invalida. Verifique suas configuracoes.".to_string(),
-        403 => "Acesso negado. Verifique as permissoes da sua chave de API.".to_string(),
-        404 => format!(
-            "Modelo nao encontrado. Verifique o nome do modelo. Detalhes: {}",
-            truncate_error(body)
-        ),
-        429 => "Limite de requisicoes atingido. Aguarde um momento e tente novamente.".to_string(),
-        500 => "Erro interno do servidor. Tente novamente mais tarde.".to_string(),
-        502 | 503 => "Servico temporariamente indisponivel. Tente novamente em instantes.".to_string(),
-        _ => format!(
-            "Erro do servidor ({}): {}",
-            status,
-            truncate_error(body)
-        ),
-    }
-}
-
-fn truncate_error(body: &str) -> String {
-    if body.len() > 200 {
-        format!("{}...", &body[..200])
-    } else {
-        body.to_string()
+        401 => "Chave de API inválida ou expirada. Verifique suas configurações.".to_string(),
+        403 => "Acesso negado. Verifique as permissões da sua chave de API.".to_string(),
+        404 => "Modelo não encontrado. Verifique o nome do modelo nas configurações.".to_string(),
+        429 => "Limite de requisições atingido. Aguarde um momento e tente novamente.".to_string(),
+        500 => "Erro interno do servidor do provedor. Tente novamente.".to_string(),
+        502 | 503 => "Serviço temporariamente indisponível. Tente novamente em instantes.".to_string(),
+        _ => format!("Erro do servidor ({}).", status),
     }
 }

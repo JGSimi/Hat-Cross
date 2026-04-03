@@ -66,7 +66,6 @@ function App() {
         const provider = isLocal ? 'ollama' : settings.cloudProvider;
         const cfg = isLocal ? null : providerConfigs[settings.cloudProvider];
         const endpoint = isLocal ? 'http://localhost:11434' : cfg?.endpoint || '';
-        const apiKey = isLocal ? '' : cfg?.apiKey || '';
         const model = isLocal ? settings.localModel : cfg?.model || '';
 
         let response = '';
@@ -76,11 +75,9 @@ function App() {
             if (event.payload.text) response += event.payload.text;
             if (event.payload.isFinished && response) {
               writeText(response).catch(() => {});
-              // Notification with AI response text
-              const preview = response.length > 200 ? response.slice(0, 200) + '...' : response;
               invoke('send_notification', {
-                title: 'Hat — Clipboard',
-                body: preview,
+                title: 'Hat',
+                body: 'Resposta copiada para a area de transferencia',
               }).catch(() => {});
               chunkUnlisten();
             }
@@ -90,7 +87,7 @@ function App() {
         await invoke('stream_chat', {
           messages: [{ role: 'user', textContent: clipText }],
           systemPrompt: settings.systemPrompt,
-          provider, endpoint, apiKey, model,
+          provider, endpoint, model,
           temperature: settings.temperature,
           maxTokens: settings.maxTokens,
           images: [],

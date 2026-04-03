@@ -1,6 +1,26 @@
+use std::collections::HashMap;
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
 use tauri::AppHandle;
 
 use crate::windows;
+
+static API_KEYS: Lazy<Mutex<HashMap<String, String>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+
+#[tauri::command]
+pub fn set_provider_key(provider: String, key: String) {
+    let mut keys = API_KEYS.lock().unwrap();
+    if key.is_empty() {
+        keys.remove(&provider);
+    } else {
+        keys.insert(provider, key);
+    }
+}
+
+pub fn get_provider_key(provider: &str) -> String {
+    let keys = API_KEYS.lock().unwrap();
+    keys.get(provider).cloned().unwrap_or_default()
+}
 
 #[tauri::command]
 pub async fn set_autostart(app: AppHandle, enabled: bool) -> Result<(), String> {

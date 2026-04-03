@@ -52,9 +52,8 @@ export default function AnalysisLayout() {
     const endpoint = isLocal
       ? 'http://localhost:11434'
       : cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
-    const apiKey = isLocal ? '' : cfg?.apiKey || '';
     const model = isLocal ? settings.localModel : cfg?.model || '';
-    return { provider, endpoint, apiKey, model };
+    return { provider, endpoint, model };
   };
 
   const startAnalysis = async (imageBase64: string) => {
@@ -62,7 +61,7 @@ export default function AnalysisLayout() {
     setAnalysis('');
     analysisRef.current = '';
 
-    const { provider, endpoint, apiKey, model } = getProviderDetails();
+    const { provider, endpoint, model } = getProviderDetails();
 
     const unlisten = await listen<StreamChunk>('chat-stream', (event) => {
       const chunk = event.payload;
@@ -85,7 +84,6 @@ export default function AnalysisLayout() {
         systemPrompt: settings.systemPrompt,
         provider,
         endpoint,
-        apiKey,
         model,
         temperature: settings.temperature,
         maxTokens: settings.maxTokens,
@@ -108,7 +106,7 @@ export default function AnalysisLayout() {
     setAnalysis('');
     analysisRef.current = '';
 
-    const { provider, endpoint, apiKey, model } = getProviderDetails();
+    const { provider, endpoint, model } = getProviderDetails();
 
     const unlisten = await listen<StreamChunk>('chat-stream', (event) => {
       const chunk = event.payload;
@@ -132,7 +130,6 @@ export default function AnalysisLayout() {
         systemPrompt: settings.systemPrompt,
         provider,
         endpoint,
-        apiKey,
         model,
         temperature: settings.temperature,
         maxTokens: settings.maxTokens,

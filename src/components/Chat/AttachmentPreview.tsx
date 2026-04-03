@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, FileText } from 'lucide-react';
 import type { ChatAttachment } from '../../types';
 
 interface Props {
@@ -59,7 +59,7 @@ export default function AttachmentPreview({ attachments, onRemove }: Props) {
                   fontSize: 14,
                 }}
               >
-                📄
+                <FileText size={18} style={{ color: 'var(--text-muted)' }} />
               </div>
             )}
             <button

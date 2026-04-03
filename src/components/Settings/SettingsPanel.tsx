@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Eye, EyeOff, Bot, Brain, Zap, Shuffle, Globe, Monitor, Cloud, Gem } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import ThemePicker from './ThemePicker';
@@ -396,9 +396,19 @@ const POPULAR_MODELS: Record<string, string[]> = {
   custom: [],
 };
 
-const PROVIDER_ICONS: Record<string, string> = {
-  google: '🔷', openai: '🟢', anthropic: '🟠', inception: '⚡', openrouter: '🔀', custom: '⚙️',
-};
+// Provider icon component
+function ProviderIcon({ provider, size = 14 }: { provider: string; size?: number }) {
+  const style = { color: 'currentColor' };
+  switch (provider) {
+    case 'google': return <Gem size={size} style={style} />;
+    case 'openai': return <Bot size={size} style={style} />;
+    case 'anthropic': return <Brain size={size} style={style} />;
+    case 'inception': return <Zap size={size} style={style} />;
+    case 'openrouter': return <Shuffle size={size} style={style} />;
+    case 'custom': return <Globe size={size} style={style} />;
+    default: return <Globe size={size} style={style} />;
+  }
+}
 
 function ModelsTab({
   settings,
@@ -443,7 +453,7 @@ function ModelsTab({
       setLoadingModels(true);
       const defaults = PROVIDER_DEFAULTS[currentProvider];
       const endpoint = currentConfig?.endpoint || defaults.defaultEndpoint;
-      const result = await fetchModels(currentProvider, endpoint, currentConfig?.apiKey || '');
+      const result = await fetchModels(currentProvider, endpoint);
       if (!cancelled) {
         setFetchedModels(result);
         setLoadingModels(false);
@@ -494,9 +504,10 @@ function ModelsTab({
                 color: settings.inferenceMode === mode ? 'white' : 'var(--text-muted)',
                 border: settings.inferenceMode === mode ? 'none' : '1px solid var(--border-subtle)',
                 cursor: 'pointer', transition: 'all 0.15s ease',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}
             >
-              {mode === 'local' ? '🖥 Local (Ollama)' : '☁️ API na Nuvem'}
+              {mode === 'local' ? <><Monitor size={13} /> Local (Ollama)</> : <><Cloud size={13} /> API na Nuvem</>}
             </motion.button>
           ))}
         </div>
@@ -537,7 +548,7 @@ function ModelsTab({
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
                   }}
                 >
-                  <span style={{ fontSize: 13 }}>{PROVIDER_ICONS[p]}</span>
+                  <ProviderIcon provider={p} size={13} />
                   {PROVIDER_DEFAULTS[p].displayName.split(' ')[0]}
                 </motion.button>
               ))}
@@ -645,7 +656,7 @@ function ModelsTab({
                   setLoadingModels(true);
                   const defaults = PROVIDER_DEFAULTS[currentProvider];
                   const ep = currentConfig?.endpoint || defaults.defaultEndpoint;
-                  const result = await fetchModels(currentProvider, ep, currentConfig?.apiKey || '');
+                  const result = await fetchModels(currentProvider, ep);
                   setFetchedModels(result);
                   setLoadingModels(false);
                   setApiKeyStatus(result.length > 0 ? 'valid' : 'invalid');
