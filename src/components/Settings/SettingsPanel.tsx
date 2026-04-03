@@ -12,7 +12,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'general' | 'appearance' | 'models' | 'behavior' | 'shortcuts';
+type Tab = 'general' | 'clipboard' | 'appearance' | 'models' | 'behavior' | 'shortcuts';
 
 const tabContentVariants = {
   initial: { opacity: 0, y: 8 },
@@ -36,7 +36,8 @@ export default function SettingsPanel({ onClose }: Props) {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'general', label: 'Geral' },
-    { id: 'appearance', label: 'Aparencia' },
+    { id: 'clipboard', label: 'Clipboard' },
+    { id: 'appearance', label: 'Aparência' },
     { id: 'models', label: 'Modelos & IA' },
     { id: 'behavior', label: 'Comportamento' },
     { id: 'shortcuts', label: 'Atalhos' },
@@ -126,6 +127,9 @@ export default function SettingsPanel({ onClose }: Props) {
               transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
               {activeTab === 'general' && <GeneralTab />}
+              {activeTab === 'clipboard' && (
+                <ClipboardTab settings={settings} updateSettings={updateSettings} />
+              )}
               {activeTab === 'appearance' && (
                 <AppearanceTab
                   settings={settings}
@@ -361,6 +365,115 @@ function GeneralTab() {
         </div>
         <div style={{ paddingTop: 12, fontSize: 10, color: 'var(--text-muted)' }}>
           Hat v{version}
+        </div>
+      </GlassCard>
+    </>
+  );
+}
+
+function ClipboardTab({
+  settings,
+  updateSettings,
+}: {
+  settings: ReturnType<typeof useSettingsStore.getState>['settings'];
+  updateSettings: ReturnType<typeof useSettingsStore.getState>['updateSettings'];
+}) {
+  const clip = settings.clipboard;
+  const update = (partial: Partial<typeof clip>) => {
+    updateSettings({ clipboard: { ...clip, ...partial } });
+  };
+
+  return (
+    <>
+      <div style={{ marginBottom: 16 }}>
+        <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+          Copie qualquer texto e pressione <kbd style={{
+            fontFamily: "'SF Mono', monospace", fontSize: 10, padding: '2px 6px',
+            background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)',
+            borderRadius: 4, color: 'var(--text-primary)',
+          }}>
+            {settings.shortcuts.clipboard}
+          </kbd> para a IA processar automaticamente.
+        </p>
+      </div>
+
+      <SectionTitle>Geral</SectionTitle>
+      <GlassCard>
+        <SettingRow label="Clipboard Processing ativo">
+          <Toggle checked={clip.enabled} onChange={(v) => update({ enabled: v })} />
+        </SettingRow>
+        <SettingRow label="Som ao completar">
+          <Toggle checked={clip.soundOnComplete} onChange={(v) => update({ soundOnComplete: v })} />
+        </SettingRow>
+      </GlassCard>
+
+      <SectionTitle>Resposta</SectionTitle>
+      <GlassCard>
+        <SettingRow label="Copiar resposta para o clipboard">
+          <Toggle checked={clip.copyResponseToClipboard} onChange={(v) => update({ copyResponseToClipboard: v })} />
+        </SettingRow>
+        <SettingRow label="Mostrar resposta na notificação">
+          <Toggle checked={clip.showNotificationWithResponse} onChange={(v) => update({ showNotificationWithResponse: v })} />
+        </SettingRow>
+        <SettingRow label="Modo anexar (original + resposta)">
+          <Toggle checked={clip.appendMode} onChange={(v) => update({ appendMode: v })} />
+        </SettingRow>
+        {clip.appendMode && (
+          <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+            O texto original será mantido, com a resposta da IA adicionada abaixo separada por "---".
+          </p>
+        )}
+      </GlassCard>
+
+      <SectionTitle>Limites</SectionTitle>
+      <GlassCard>
+        <SettingRow label={`Tamanho máximo: ${clip.maxResponseLength} chars`}>
+          <CustomSlider
+            min={256} max={16384} step={256}
+            value={clip.maxResponseLength}
+            onChange={(v) => update({ maxResponseLength: v })}
+          />
+        </SettingRow>
+      </GlassCard>
+
+      <SectionTitle>Prompt Customizado</SectionTitle>
+      <GlassCard>
+        <SettingRow label="Usar prompt customizado para clipboard">
+          <Toggle checked={clip.useCustomPrompt} onChange={(v) => update({ useCustomPrompt: v })} />
+        </SettingRow>
+        {clip.useCustomPrompt && (
+          <div style={{ marginTop: 8 }}>
+            <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6 }}>
+              Este prompt será usado ao invés do system prompt padrão quando processar o clipboard.
+            </p>
+            <textarea
+              value={clip.customPrompt}
+              onChange={(e) => update({ customPrompt: e.target.value })}
+              placeholder="Ex: Traduza para inglês. Responda apenas com a tradução, sem explicações."
+              rows={4}
+              style={{
+                width: '100%', background: 'var(--input-bg)', color: 'var(--text-primary)',
+                borderRadius: 8, padding: '8px 12px', fontSize: 12, outline: 'none',
+                border: '1px solid var(--border-subtle)', resize: 'vertical',
+                fontFamily: 'inherit', lineHeight: 1.5,
+              }}
+            />
+          </div>
+        )}
+        {!clip.useCustomPrompt && (
+          <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+            Quando desativado, usa o System Prompt da aba Comportamento.
+          </p>
+        )}
+      </GlassCard>
+
+      <SectionTitle>Exemplos de uso</SectionTitle>
+      <GlassCard>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+          <p><strong style={{ color: 'var(--text-secondary)' }}>Tradução:</strong> Copie texto em qualquer idioma, pressione o atalho, receba a tradução no clipboard.</p>
+          <p style={{ marginTop: 6 }}><strong style={{ color: 'var(--text-secondary)' }}>Resumo:</strong> Copie um artigo longo, pressione o atalho com prompt "Resuma em 3 bullets".</p>
+          <p style={{ marginTop: 6 }}><strong style={{ color: 'var(--text-secondary)' }}>Código:</strong> Copie código com bug, pressione o atalho com prompt "Corrija este código".</p>
+          <p style={{ marginTop: 6 }}><strong style={{ color: 'var(--text-secondary)' }}>Resposta rápida:</strong> Copie uma pergunta, pressione o atalho, cole a resposta onde quiser.</p>
         </div>
       </GlassCard>
     </>

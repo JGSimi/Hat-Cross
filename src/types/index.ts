@@ -153,6 +153,17 @@ export interface ShortcutSettings {
   quickInput: string;
 }
 
+export interface ClipboardSettings {
+  enabled: boolean;
+  copyResponseToClipboard: boolean;
+  showNotificationWithResponse: boolean;
+  customPrompt: string;
+  useCustomPrompt: boolean;
+  maxResponseLength: number;
+  appendMode: boolean; // append response below original text
+  soundOnComplete: boolean;
+}
+
 export interface AppSettings {
   autoLaunch: boolean;
   soundEnabled: boolean;
@@ -167,6 +178,7 @@ export interface AppSettings {
   maxTokens: number;
   shortcuts: ShortcutSettings;
   tokenStats: TokenUsage;
+  clipboard: ClipboardSettings;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -197,5 +209,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
     inputTokens: 0,
     outputTokens: 0,
     totalTokens: 0,
+  },
+  clipboard: {
+    enabled: true,
+    copyResponseToClipboard: true,
+    showNotificationWithResponse: true,
+    customPrompt: '',
+    useCustomPrompt: false,
+    maxResponseLength: 4096,
+    appendMode: false,
+    soundOnComplete: true,
   },
 };

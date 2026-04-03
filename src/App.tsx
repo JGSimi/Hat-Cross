@@ -26,9 +26,7 @@ function App() {
       useChatStore.getState().clearMessages();
       useConversationStore.getState().createConversation();
     });
-    const unlistenSettings = listen('open-settings', () => {
-      // MainLayout handles this
-    });
+    const unlistenSettings = listen('open-settings', () => {});
     const unlistenUpdates = listen('check-updates', async () => {
       try {
         const { check } = await import('@tauri-apps/plugin-updater');
@@ -38,10 +36,7 @@ function App() {
           const { relaunch } = await import('@tauri-apps/plugin-process');
           await relaunch();
         } else {
-          invoke('send_notification', {
-            title: 'Hat',
-            body: 'Você já está na versão mais recente!',
-          }).catch(() => {});
+          invoke('send_notification', { title: 'Hat', body: 'Você já está na versão mais recente!' }).catch(() => {});
         }
       } catch (e) {
         console.error('Update check failed:', e);
@@ -54,19 +49,35 @@ function App() {
     };
   }, []);
 
-  // Clipboard processing
+  // Clipboard processing — core feature
+  // Flow: user copies text → presses shortcut → AI processes → notification with response
   useEffect(() => {
     const unlisten = listen('process-clipboard', async () => {
       try {
-        const clipText = await readText();
-        if (!clipText) return;
-
         const { settings, providerConfigs } = useSettingsStore.getState();
+        const clip = settings.clipboard;
+
+        if (!clip.enabled) return;
+
+        const clipText = await readText();
+        if (!clipText) {
+          invoke('send_notification', { title: 'Hat', body: 'Clipboard vazio.' }).catch(() => {});
+          return;
+        }
+
+        // Notify processing started
+        const preview = clipText.length > 80 ? clipText.slice(0, 80) + '...' : clipText;
+        invoke('send_notification', { title: 'Hat — Processando', body: preview }).catch(() => {});
+
         const isLocal = settings.inferenceMode === 'local';
         const provider = isLocal ? 'ollama' : settings.cloudProvider;
         const cfg = isLocal ? null : providerConfigs[settings.cloudProvider];
         const endpoint = isLocal ? 'http://localhost:11434' : cfg?.endpoint || '';
         const model = isLocal ? settings.localModel : cfg?.model || '';
+
+        const systemPrompt = clip.useCustomPrompt && clip.customPrompt
+          ? clip.customPrompt
+          : settings.systemPrompt;
 
         let response = '';
         const chunkUnlisten = await listen<{ text: string; isFinished: boolean }>(
@@ -74,11 +85,41 @@ function App() {
           (event) => {
             if (event.payload.text) response += event.payload.text;
             if (event.payload.isFinished && response) {
-              writeText(response).catch(() => {});
-              invoke('send_notification', {
-                title: 'Hat',
-                body: 'Resposta copiada para a area de transferencia',
-              }).catch(() => {});
+              // Truncate if configured
+              const maxLen = clip.maxResponseLength || 4096;
+              const finalResponse = response.length > maxLen ? response.slice(0, maxLen) + '...' : response;
+
+              // Copy to clipboard
+              if (clip.copyResponseToClipboard) {
+                const textToWrite = clip.appendMode
+                  ? `${clipText}\n\n---\n\n${finalResponse}`
+                  : finalResponse;
+                writeText(textToWrite).catch(() => {});
+              }
+
+              // Notification with full response text
+              if (clip.showNotificationWithResponse) {
+                const notifBody = finalResponse.length > 500
+                  ? finalResponse.slice(0, 500) + '...'
+                  : finalResponse;
+                invoke('send_notification', {
+                  title: clip.copyResponseToClipboard ? 'Hat — Copiado para clipboard' : 'Hat — Resposta',
+                  body: notifBody,
+                }).catch(() => {});
+              }
+
+              // Sound
+              if (clip.soundOnComplete) {
+                try {
+                  const ctx = new AudioContext();
+                  const osc = ctx.createOscillator();
+                  const g = ctx.createGain();
+                  osc.connect(g); g.connect(ctx.destination);
+                  osc.frequency.value = 880; g.gain.value = 0.08;
+                  osc.start(); osc.stop(ctx.currentTime + 0.12);
+                } catch {}
+              }
+
               chunkUnlisten();
             }
           },
@@ -86,14 +127,15 @@ function App() {
 
         await invoke('stream_chat', {
           messages: [{ role: 'user', textContent: clipText }],
-          systemPrompt: settings.systemPrompt,
+          systemPrompt,
           provider, endpoint, model,
           temperature: settings.temperature,
-          maxTokens: settings.maxTokens,
+          maxTokens: clip.maxResponseLength || settings.maxTokens,
           images: [],
         });
       } catch (e) {
         console.error('Clipboard processing failed:', e);
+        invoke('send_notification', { title: 'Hat — Erro', body: 'Falha ao processar clipboard.' }).catch(() => {});
       }
     });
     return () => { unlisten.then(fn => fn()); };
