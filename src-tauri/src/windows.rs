@@ -33,8 +33,8 @@ pub fn show_window(app: &AppHandle, label: &str) {
                 .decorations(true),
             "quickinput" => builder
                 .title("Hat Quick Input")
-                .inner_size(680.0, 120.0)
-                .resizable(false)
+                .inner_size(680.0, 72.0)
+                .resizable(true)
                 .decorations(false)
                 .shadow(false)
                 .skip_taskbar(true)
