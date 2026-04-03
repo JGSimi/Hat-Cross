@@ -32,15 +32,19 @@ export async function startStream(options: StreamOptions): Promise<() => void> {
   } = options;
 
   // Listen for stream events
+  let unlistenError: (() => void) | null = null;
+
   const unlisten = await listen<StreamChunk>('chat-stream', (event) => {
     const chunk = event.payload;
     onChunk(chunk);
     if (chunk.isFinished) {
       onDone();
+      unlisten();
+      unlistenError?.();
     }
   });
 
-  const unlistenError = await listen<string>('chat-stream-error', (event) => {
+  unlistenError = await listen<string>('chat-stream-error', (event) => {
     onError(event.payload);
   });
 
@@ -63,7 +67,7 @@ export async function startStream(options: StreamOptions): Promise<() => void> {
   return () => {
     invoke('cancel_stream').catch(() => {});
     unlisten();
-    unlistenError();
+    unlistenError?.();
   };
 }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Search, Settings } from 'lucide-react';
 import ConversationItem from './ConversationItem';
@@ -20,13 +20,15 @@ export default function Sidebar({ onOpenSettings }: Props) {
   } = useConversations();
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filtered = searchQuery
-    ? conversations.filter(
-        (c) =>
-          c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.messages.some((m) => m.content.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
-    : conversations;
+  const filtered = useMemo(() => {
+    if (!searchQuery) return conversations;
+    const q = searchQuery.toLowerCase();
+    return conversations.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        c.messages.some((m) => m.content.toLowerCase().includes(q))
+    );
+  }, [searchQuery, conversations]);
 
   const pinned = filtered.filter((c) => c.isPinned);
   const recent = filtered.filter((c) => !c.isPinned);

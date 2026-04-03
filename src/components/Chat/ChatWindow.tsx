@@ -13,7 +13,7 @@ interface Props {
 
 export default function ChatWindow({ showScreenCapture = true }: Props) {
   const { messages, isStreaming, streamingContent, sendMessage, cancel } = useChat();
-  const { pendingAttachments, removeAttachment, addAttachment } = useChatStore();
+  const { pendingAttachments, removeAttachment, addAttachment, error } = useChatStore();
   const { captureScreen } = useScreenCapture();
 
   const handleScreenCapture = async () => {
@@ -72,6 +72,24 @@ export default function ChatWindow({ showScreenCapture = true }: Props) {
         onRemoveAttachment={removeAttachment}
         onAddAttachment={addAttachment}
       />
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            padding: '8px 12px',
+            margin: '0 12px 8px',
+            background: 'color-mix(in srgb, var(--error) 10%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--error) 20%, transparent)',
+            borderRadius: 8,
+            fontSize: 12,
+            color: 'var(--error)',
+          }}
+        >
+          {error}
+        </motion.div>
+      )}
     </div>
   );
 }

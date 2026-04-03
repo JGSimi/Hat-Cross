@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, Check, GraduationCap } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -13,7 +13,7 @@ interface Props {
   isFirst: boolean;
 }
 
-export default function MessageBubble({ message, isGrouped, isFirst }: Props) {
+function MessageBubble({ message, isGrouped, isFirst }: Props) {
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -114,3 +114,10 @@ export default function MessageBubble({ message, isGrouped, isFirst }: Props) {
     </motion.div>
   );
 }
+
+export default memo(MessageBubble, (prev, next) => {
+  return prev.message.id === next.message.id &&
+         prev.message.content === next.message.content &&
+         prev.isGrouped === next.isGrouped &&
+         prev.isFirst === next.isFirst;
+});

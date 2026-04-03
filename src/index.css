@@ -524,3 +524,8 @@ code {
 .typing-dot {
   animation: bounce 1.4s infinite ease-in-out both;
 }
+
+/* Streaming cursor blink */
+@keyframes blink {
+  50% { opacity: 0; }
+}

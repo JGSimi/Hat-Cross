@@ -169,7 +169,6 @@ export default function ConversationItem({
                     boxShadow: 'var(--shadow-elevated)',
                     zIndex: 50,
                     padding: '4px 0',
-                    backdropFilter: 'blur(20px)',
                   }}
                 >
                   <motion.button

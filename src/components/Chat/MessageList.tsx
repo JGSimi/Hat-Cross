@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { GraduationCap } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import type { Message } from '../../types';
 
@@ -14,9 +15,19 @@ const STAGGER_WINDOW = 6;
 export default function MessageList({ messages, streamingContent, isStreaming }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Scroll on new messages only
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingContent]);
+  }, [messages.length]);
+
+  // Separate throttled scroll for streaming (max 3 times/sec)
+  useEffect(() => {
+    if (!isStreaming) return;
+    const interval = setInterval(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 300);
+    return () => clearInterval(interval);
+  }, [isStreaming]);
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
@@ -50,24 +61,31 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
           );
         })}
 
-        {/* Streaming message */}
+        {/* Streaming message - render as plain text, not markdown */}
         {isStreaming && streamingContent && (
-          <motion.div
-            key="streaming"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <MessageBubble
-              message={{
-                id: 'streaming',
-                content: streamingContent,
-                isUser: false,
-                timestamp: Date.now(),
-                source: 'chat',
-              }}
-              isGrouped={messages.length > 0 && !messages[messages.length - 1].isUser}
-              isFirst={messages.length === 0 || messages[messages.length - 1].isUser}
-            />
+          <motion.div key="streaming" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <div className="flex justify-start" style={{ marginTop: 12 }}>
+              <div style={{ width: 28, flexShrink: 0, marginRight: 8 }}>
+                {(messages.length === 0 || messages[messages.length - 1].isUser) && (
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 50%, #000))',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: 'var(--accent-shadow)',
+                  }}>
+                    <GraduationCap size={14} color="white" strokeWidth={2.5} />
+                  </div>
+                )}
+              </div>
+              <div style={{
+                fontSize: 13, lineHeight: 1.6, color: 'var(--text-normal)',
+                whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxWidth: '82%',
+              }}>
+                {streamingContent}
+                <span style={{ display: 'inline-block', width: 6, height: 14, background: 'var(--color-accent)', borderRadius: 1, marginLeft: 2, animation: 'blink 1s step-end infinite' }} />
+              </div>
+            </div>
           </motion.div>
         )}
 
