@@ -1,21 +1,25 @@
 import type { ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import { useStealth } from '../../hooks/useStealth';
 
-interface StealthWrapperProps {
+interface Props {
   children: ReactNode;
 }
 
-export default function StealthWrapper({ children }: StealthWrapperProps) {
+export default function StealthWrapper({ children }: Props) {
   const { isHovered, stealthHoverOpacity, handlers } = useStealth();
 
   return (
-    <div
-      className={isHovered ? 'stealth-hover' : 'stealth-idle'}
-      style={{ '--stealth-hover-opacity': stealthHoverOpacity } as React.CSSProperties}
+    <motion.div
+      animate={{
+        opacity: isHovered ? stealthHoverOpacity : 0.02,
+        filter: isHovered ? 'saturate(0.3)' : 'saturate(0)',
+      }}
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
       onMouseEnter={handlers.onMouseEnter}
       onMouseLeave={handlers.onMouseLeave}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }

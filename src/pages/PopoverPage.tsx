@@ -15,7 +15,7 @@ export default function PopoverPage() {
   }, [popoverSettings.width, popoverSettings.height]);
 
   const content = (
-    <div className="w-screen h-screen overflow-hidden">
+    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'transparent' }}>
       <PopoverLayout />
     </div>
   );

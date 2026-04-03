@@ -1,5 +1,6 @@
 import { Pin, MoreHorizontal, Trash2, PenLine } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Conversation } from '../../types';
 import { truncate, formatTimestamp } from '../../utils/markdown';
 
@@ -23,6 +24,8 @@ export default function ConversationItem({
   const [showMenu, setShowMenu] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newTitle, setNewTitle] = useState(conversation.title);
+  const [isHovered, setIsHovered] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const lastMessage = conversation.messages[conversation.messages.length - 1];
   const preview = lastMessage ? truncate(lastMessage.content, 60) : '';
@@ -34,17 +37,37 @@ export default function ConversationItem({
     setIsRenaming(false);
   };
 
+  useEffect(() => {
+    if (!showMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showMenu]);
+
   return (
-    <div
+    <motion.div
       onClick={onSelect}
-      className={`group px-3 py-2.5 cursor-pointer rounded-lg mx-1.5 mb-0.5 transition-colors ${
-        isActive
-          ? 'bg-[var(--color-accent)]/15 border border-[var(--color-accent)]/30'
-          : 'hover:bg-[var(--color-bg-tertiary)] border border-transparent'
-      }`}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+      whileHover={!isActive ? { backgroundColor: 'var(--surface-hover)' } : undefined}
+      whileTap={{ scale: 0.98 }}
+      style={{
+        padding: '8px 12px',
+        cursor: 'pointer',
+        borderRadius: 6,
+        margin: '0 6px 2px',
+        background: isActive ? 'rgba(var(--color-accent), 0.12)' : 'transparent',
+        border: isActive
+          ? '0.5px solid color-mix(in srgb, var(--color-accent) 25%, transparent)'
+          : '0.5px solid transparent',
+      }}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           {isRenaming ? (
             <input
               autoFocus
@@ -53,75 +76,180 @@ export default function ConversationItem({
               onBlur={handleRename}
               onKeyDown={(e) => e.key === 'Enter' && handleRename()}
               onClick={(e) => e.stopPropagation()}
-              className="w-full bg-[var(--color-bg-input)] text-sm text-[var(--color-text-primary)] rounded px-1.5 py-0.5 outline-none border border-[var(--color-border-focus)]"
+              style={{
+                width: '100%',
+                background: 'var(--input-bg)',
+                fontSize: 12,
+                color: 'var(--text-primary)',
+                borderRadius: 4,
+                padding: '2px 6px',
+                outline: 'none',
+                border: '0.5px solid var(--border-focused)',
+              }}
             />
           ) : (
-            <div className="flex items-center gap-1.5">
-              {conversation.isPinned && <Pin size={10} className="text-[var(--color-accent)] flex-shrink-0" />}
-              <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {conversation.isPinned && (
+                <Pin size={8} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
+              )}
+              <p
+                style={{
+                  fontSize: isActive ? 11 : 12.5,
+                  fontWeight: isActive ? 700 : 400,
+                  color: 'var(--text-primary)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  margin: 0,
+                }}
+              >
                 {conversation.title}
               </p>
             </div>
           )}
           {preview && (
-            <p className="text-xs text-[var(--color-text-muted)] truncate mt-0.5">{preview}</p>
+            <p
+              style={{
+                fontSize: 11,
+                color: 'var(--text-muted)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                marginTop: 2,
+              }}
+            >
+              {preview}
+            </p>
           )}
         </div>
 
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <span className="text-[10px] text-[var(--color-text-muted)]">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          <span style={{ fontSize: 9, color: 'var(--text-muted)', opacity: 0.8 }}>
             {formatTimestamp(conversation.updatedAt)}
           </span>
-          <div className="relative">
-            <button
+          <div style={{ position: 'relative' }} ref={menuRef}>
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: isHovered || showMenu ? 1 : 0 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
-              className="p-1 rounded opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-all"
+              style={{
+                padding: 4,
+                borderRadius: 4,
+                color: 'var(--text-muted)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+              }}
             >
               <MoreHorizontal size={14} />
-            </button>
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-36 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg shadow-xl z-50 py-1">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPin();
-                    setShowMenu(false);
+            </motion.button>
+            <AnimatePresence>
+              {showMenu && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '100%',
+                    marginTop: 4,
+                    width: 140,
+                    background: 'var(--bg-secondary)',
+                    border: '0.5px solid var(--glass-border-subtle)',
+                    borderRadius: 8,
+                    boxShadow: 'var(--shadow-elevated)',
+                    zIndex: 50,
+                    padding: '4px 0',
+                    backdropFilter: 'blur(20px)',
                   }}
-                  className="w-full text-left px-3 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
                 >
-                  <Pin size={12} />
-                  {conversation.isPinned ? 'Desafixar' : 'Fixar'}
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsRenaming(true);
-                    setShowMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
-                >
-                  <PenLine size={12} />
-                  Renomear
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                    setShowMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2"
-                >
-                  <Trash2 size={12} />
-                  Excluir
-                </button>
-              </div>
-            )}
+                  <motion.button
+                    whileHover={{ backgroundColor: 'var(--surface-hover)' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPin();
+                      setShowMenu(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '6px 12px',
+                      fontSize: 11,
+                      color: 'var(--text-secondary)',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <Pin size={11} />
+                    {conversation.isPinned ? 'Desafixar' : 'Fixar'}
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ backgroundColor: 'var(--surface-hover)' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsRenaming(true);
+                      setShowMenu(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '6px 12px',
+                      fontSize: 11,
+                      color: 'var(--text-secondary)',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <PenLine size={11} />
+                    Renomear
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ backgroundColor: 'rgba(239, 99, 99, 0.1)' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete();
+                      setShowMenu(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '6px 12px',
+                      fontSize: 11,
+                      color: 'var(--error)',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <Trash2 size={11} />
+                    Excluir
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

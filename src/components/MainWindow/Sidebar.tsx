@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Plus, Search, Settings } from 'lucide-react';
 import ConversationItem from './ConversationItem';
 import { useConversations } from '../../hooks/useConversations';
@@ -31,37 +32,94 @@ export default function Sidebar({ onOpenSettings }: Props) {
   const recent = filtered.filter((c) => !c.isPinned);
 
   return (
-    <div className="w-60 h-full flex flex-col bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)]">
+    <div
+      style={{
+        width: 220,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--bg-secondary)',
+        borderRight: '0.5px solid var(--border-subtle)',
+      }}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-3 border-b border-[var(--color-border)]">
-        <span className="text-sm font-semibold text-[var(--color-text-primary)]">Hat</span>
-        <button
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 14px',
+          borderBottom: '0.5px solid var(--border-subtle)',
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+          Hat
+        </span>
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
           onClick={() => createConversation()}
-          className="p-1.5 rounded-md text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 transition-colors"
           title="Nova conversa"
+          style={{
+            padding: 6,
+            borderRadius: 8,
+            background: 'var(--glass-secondary)',
+            border: '0.5px solid var(--glass-border-subtle)',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          <Plus size={16} />
-        </button>
+          <Plus size={14} />
+        </motion.button>
       </div>
 
       {/* Search */}
-      <div className="px-2 py-2">
-        <div className="flex items-center gap-2 px-2.5 py-1.5 bg-[var(--color-bg-input)] rounded-lg border border-[var(--color-border)]">
-          <Search size={14} className="text-[var(--color-text-muted)] flex-shrink-0" />
+      <div style={{ padding: '8px 10px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 10px',
+            background: 'var(--glass-secondary)',
+            borderRadius: 6,
+            border: '0.5px solid var(--glass-border-subtle)',
+          }}
+        >
+          <Search size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar..."
-            className="flex-1 bg-transparent text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none"
+            style={{
+              flex: 1,
+              background: 'transparent',
+              fontSize: 11,
+              color: 'var(--text-primary)',
+              outline: 'none',
+              border: 'none',
+            }}
           />
         </div>
       </div>
 
       {/* Conversations */}
-      <div className="flex-1 overflow-y-auto">
+      <div style={{ flex: 1, overflowY: 'auto' }}>
         {pinned.length > 0 && (
           <>
-            <p className="px-4 py-1.5 text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+            <p
+              style={{
+                padding: '6px 14px',
+                fontSize: 10,
+                fontWeight: 600,
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
               Fixadas
             </p>
             {pinned.map((conv) => (
@@ -80,7 +138,16 @@ export default function Sidebar({ onOpenSettings }: Props) {
 
         {recent.length > 0 && (
           <>
-            <p className="px-4 py-1.5 text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+            <p
+              style={{
+                padding: '6px 14px',
+                fontSize: 10,
+                fontWeight: 600,
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
               Recentes
             </p>
             {recent.map((conv) => (
@@ -98,21 +165,53 @@ export default function Sidebar({ onOpenSettings }: Props) {
         )}
 
         {filtered.length === 0 && (
-          <p className="px-4 py-8 text-xs text-[var(--color-text-muted)] text-center">
+          <p
+            style={{
+              padding: '32px 14px',
+              fontSize: 11,
+              color: 'var(--text-muted)',
+              textAlign: 'center',
+            }}
+          >
             Nenhuma conversa
           </p>
         )}
       </div>
 
       {/* Footer */}
-      <div className="border-t border-[var(--color-border)] px-3 py-2">
-        <button
+      <div
+        style={{
+          borderTop: '0.5px solid var(--border-subtle)',
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <motion.button
+          whileHover={{ scale: 1.05, backgroundColor: 'var(--surface-hover)' }}
+          whileTap={{ scale: 0.97 }}
           onClick={onOpenSettings}
-          className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            width: '100%',
+            padding: '6px 8px',
+            borderRadius: 8,
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            fontSize: 11,
+          }}
         >
-          <Settings size={14} />
-          <span className="text-xs">Configurações</span>
-        </button>
+          <Settings size={12} />
+          <span>Configurações</span>
+        </motion.button>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)', opacity: 0.7, flexShrink: 0 }}>
+          v2
+        </span>
       </div>
     </div>
   );

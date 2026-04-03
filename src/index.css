@@ -1,96 +1,326 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Hat Design System — CSS Tokens
+   Ported from Swift DesignSystem.swift for Hat-Cross (Tauri v2)
+   Dark-only, glassmorphism-first, accent-themed
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Tailwind v4 @theme — registers colors/tokens for utility classes
+   Usage: bg-accent, text-text-primary, border-border-subtle, etc.
+   -------------------------------------------------------------------------- */
 @theme {
+  /* Accent (overridden per data-theme) */
   --color-accent: #6366F1;
   --color-accent-hover: #818CF8;
-  --color-bg-primary: rgba(20, 20, 28, 0.92);
-  --color-bg-secondary: rgba(30, 30, 40, 0.85);
-  --color-bg-tertiary: rgba(40, 40, 55, 0.8);
-  --color-bg-input: rgba(45, 45, 60, 0.9);
-  --color-text-primary: #F1F1F3;
-  --color-text-secondary: #A0A0B0;
-  --color-text-muted: #6B6B80;
-  --color-border: rgba(255, 255, 255, 0.08);
+
+  /* Backgrounds */
+  --color-bg-primary: #0C0C0E;
+  --color-bg-secondary: #111114;
+
+  /* Surfaces */
+  --color-surface-primary: #1C1C1E;
+  --color-surface-secondary: rgba(255, 255, 255, 0.055);
+  --color-surface-tertiary: rgba(255, 255, 255, 0.035);
+  --color-surface-elevated: rgba(255, 255, 255, 0.08);
+  --color-surface-hover: rgba(255, 255, 255, 0.06);
+
+  /* Text */
+  --color-text-primary: #EEEEF0;
+  --color-text-secondary: #C7C7CC;
+  --color-text-muted: #9E9EA5;
+
+  /* Borders */
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-subtle: rgba(255, 255, 255, 0.07);
+  --color-border-highlight: rgba(255, 255, 255, 0.10);
   --color-border-focus: rgba(99, 102, 241, 0.5);
-  --color-user-bubble: rgba(99, 102, 241, 0.2);
-  --color-ai-bubble: rgba(40, 40, 55, 0.6);
+
+  /* Glass */
+  --color-glass-primary: rgba(255, 255, 255, 0.15);
+  --color-glass-secondary: rgba(255, 255, 255, 0.10);
+  --color-glass-elevated: rgba(255, 255, 255, 0.18);
+  --color-glass-border: rgba(255, 255, 255, 0.25);
+  --color-glass-border-subtle: rgba(255, 255, 255, 0.15);
+
+  /* Input */
+  --color-input-bg: rgba(255, 255, 255, 0.055);
+
+  /* Semantic */
+  --color-success: #34C78C;
+  --color-error: #EF6363;
+  --color-warning: #F2B140;
+
+  /* Bubbles */
+  --color-user-bubble: rgba(99, 102, 241, 0.18);
+  --color-ai-bubble: rgba(255, 255, 255, 0.035);
+
+  /* Shadows */
+  --shadow-soft: 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-medium: 0 3px 8px rgba(0, 0, 0, 0.10);
+  --shadow-elevated: 0 6px 16px rgba(0, 0, 0, 0.14);
+  --shadow-glass: 0 8px 20px rgba(0, 0, 0, 0.20);
+
+  /* Font families */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
 }
 
-/* Theme overrides via data attribute */
+/* --------------------------------------------------------------------------
+   CSS Custom Properties — full set on :root for var() usage in components
+   -------------------------------------------------------------------------- */
+:root {
+  /* Accent */
+  --color-accent: #6366F1;
+  --color-accent-hover: #818CF8;
+  --user-bubble-bg: rgba(99, 102, 241, 0.18);
+  --accent-border: rgba(99, 102, 241, 0.15);
+  --accent-glow: rgba(99, 102, 241, 0.30);
+  --border-focused: rgba(99, 102, 241, 0.50);
+
+  /* Backgrounds */
+  --bg-primary: #0C0C0E;
+  --bg-secondary: #111114;
+
+  /* Surfaces */
+  --surface-primary: #1C1C1E;
+  --surface-secondary: rgba(255, 255, 255, 0.055);
+  --surface-tertiary: rgba(255, 255, 255, 0.035);
+  --surface-elevated: rgba(255, 255, 255, 0.08);
+  --surface-hover: rgba(255, 255, 255, 0.06);
+
+  /* Text */
+  --text-primary: #EEEEF0;
+  --text-secondary: #C7C7CC;
+  --text-muted: #9E9EA5;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-highlight: rgba(255, 255, 255, 0.10);
+
+  /* Glass */
+  --glass-primary: rgba(255, 255, 255, 0.15);
+  --glass-secondary: rgba(255, 255, 255, 0.10);
+  --glass-elevated: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(255, 255, 255, 0.25);
+  --glass-border-subtle: rgba(255, 255, 255, 0.15);
+
+  /* Input */
+  --input-bg: rgba(255, 255, 255, 0.055);
+
+  /* Semantic */
+  --success: #34C78C;
+  --error: #EF6363;
+  --warning: #F2B140;
+
+  /* Shadows */
+  --shadow-soft: 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-medium: 0 3px 8px rgba(0, 0, 0, 0.10);
+  --shadow-elevated: 0 6px 16px rgba(0, 0, 0, 0.14);
+  --shadow-glass: 0 8px 20px rgba(0, 0, 0, 0.20);
+
+  /* Backward-compat aliases for existing component var() references */
+  --color-bg-primary: #0C0C0E;
+  --color-bg-secondary: #111114;
+  --color-bg-tertiary: rgba(255, 255, 255, 0.035);
+  --color-bg-input: rgba(255, 255, 255, 0.055);
+  --color-text-primary: #EEEEF0;
+  --color-text-secondary: #C7C7CC;
+  --color-text-muted: #9E9EA5;
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-focus: rgba(99, 102, 241, 0.50);
+  --color-user-bubble: rgba(99, 102, 241, 0.18);
+  --color-ai-bubble: rgba(255, 255, 255, 0.035);
+  --color-accent: #6366F1;
+  --color-accent-hover: #818CF8;
+}
+
+/* ==========================================================================
+   Accent Themes — data-theme attribute on <html> or <body>
+   Each theme sets accent color + derived opacity variants
+   ========================================================================== */
+
+/* Indigo (default) */
+[data-theme="indigo"] {
+  --color-accent: #6366F1;
+  --color-accent-hover: #818CF8;
+  --user-bubble-bg: rgba(99, 102, 241, 0.18);
+  --color-user-bubble: rgba(99, 102, 241, 0.18);
+  --accent-border: rgba(99, 102, 241, 0.15);
+  --accent-glow: rgba(99, 102, 241, 0.30);
+  --border-focused: rgba(99, 102, 241, 0.50);
+  --color-border-focus: rgba(99, 102, 241, 0.50);
+}
+
+/* Blue */
 [data-theme="blue"] {
   --color-accent: #3B82F6;
   --color-accent-hover: #60A5FA;
-  --color-user-bubble: rgba(59, 130, 246, 0.2);
-  --color-border-focus: rgba(59, 130, 246, 0.5);
+  --user-bubble-bg: rgba(59, 130, 246, 0.18);
+  --color-user-bubble: rgba(59, 130, 246, 0.18);
+  --accent-border: rgba(59, 130, 246, 0.15);
+  --accent-glow: rgba(59, 130, 246, 0.30);
+  --border-focused: rgba(59, 130, 246, 0.50);
+  --color-border-focus: rgba(59, 130, 246, 0.50);
 }
 
+/* Purple */
 [data-theme="purple"] {
   --color-accent: #935EEE;
   --color-accent-hover: #A78BFA;
-  --color-user-bubble: rgba(147, 94, 238, 0.2);
-  --color-border-focus: rgba(147, 94, 238, 0.5);
+  --user-bubble-bg: rgba(147, 94, 238, 0.18);
+  --color-user-bubble: rgba(147, 94, 238, 0.18);
+  --accent-border: rgba(147, 94, 238, 0.15);
+  --accent-glow: rgba(147, 94, 238, 0.30);
+  --border-focused: rgba(147, 94, 238, 0.50);
+  --color-border-focus: rgba(147, 94, 238, 0.50);
 }
 
+/* Pink */
 [data-theme="pink"] {
   --color-accent: #EC4899;
   --color-accent-hover: #F472B6;
-  --color-user-bubble: rgba(236, 72, 153, 0.2);
-  --color-border-focus: rgba(236, 72, 153, 0.5);
+  --user-bubble-bg: rgba(236, 72, 153, 0.18);
+  --color-user-bubble: rgba(236, 72, 153, 0.18);
+  --accent-border: rgba(236, 72, 153, 0.15);
+  --accent-glow: rgba(236, 72, 153, 0.30);
+  --border-focused: rgba(236, 72, 153, 0.50);
+  --color-border-focus: rgba(236, 72, 153, 0.50);
 }
 
+/* Red */
 [data-theme="red"] {
   --color-accent: #EF4444;
   --color-accent-hover: #F87171;
-  --color-user-bubble: rgba(239, 68, 68, 0.2);
-  --color-border-focus: rgba(239, 68, 68, 0.5);
+  --user-bubble-bg: rgba(239, 68, 68, 0.18);
+  --color-user-bubble: rgba(239, 68, 68, 0.18);
+  --accent-border: rgba(239, 68, 68, 0.15);
+  --accent-glow: rgba(239, 68, 68, 0.30);
+  --border-focused: rgba(239, 68, 68, 0.50);
+  --color-border-focus: rgba(239, 68, 68, 0.50);
 }
 
+/* Orange */
 [data-theme="orange"] {
   --color-accent: #F58522;
   --color-accent-hover: #FB923C;
-  --color-user-bubble: rgba(245, 133, 34, 0.2);
-  --color-border-focus: rgba(245, 133, 34, 0.5);
+  --user-bubble-bg: rgba(245, 133, 34, 0.18);
+  --color-user-bubble: rgba(245, 133, 34, 0.18);
+  --accent-border: rgba(245, 133, 34, 0.15);
+  --accent-glow: rgba(245, 133, 34, 0.30);
+  --border-focused: rgba(245, 133, 34, 0.50);
+  --color-border-focus: rgba(245, 133, 34, 0.50);
 }
 
+/* Green */
 [data-theme="green"] {
   --color-accent: #22C55E;
   --color-accent-hover: #4ADE80;
-  --color-user-bubble: rgba(34, 197, 94, 0.2);
-  --color-border-focus: rgba(34, 197, 94, 0.5);
+  --user-bubble-bg: rgba(34, 197, 94, 0.18);
+  --color-user-bubble: rgba(34, 197, 94, 0.18);
+  --accent-border: rgba(34, 197, 94, 0.15);
+  --accent-glow: rgba(34, 197, 94, 0.30);
+  --border-focused: rgba(34, 197, 94, 0.50);
+  --color-border-focus: rgba(34, 197, 94, 0.50);
 }
 
+/* Teal */
 [data-theme="teal"] {
   --color-accent: #14B8A6;
   --color-accent-hover: #2DD4BF;
-  --color-user-bubble: rgba(20, 184, 166, 0.2);
-  --color-border-focus: rgba(20, 184, 166, 0.5);
+  --user-bubble-bg: rgba(20, 184, 166, 0.18);
+  --color-user-bubble: rgba(20, 184, 166, 0.18);
+  --accent-border: rgba(20, 184, 166, 0.15);
+  --accent-glow: rgba(20, 184, 166, 0.30);
+  --border-focused: rgba(20, 184, 166, 0.50);
+  --color-border-focus: rgba(20, 184, 166, 0.50);
 }
 
+/* Mono */
 [data-theme="mono"] {
   --color-accent: #99999F;
   --color-accent-hover: #B0B0B8;
-  --color-user-bubble: rgba(153, 153, 159, 0.2);
-  --color-border-focus: rgba(153, 153, 159, 0.5);
+  --user-bubble-bg: rgba(153, 153, 159, 0.18);
+  --color-user-bubble: rgba(153, 153, 159, 0.18);
+  --accent-border: rgba(153, 153, 159, 0.15);
+  --accent-glow: rgba(153, 153, 159, 0.30);
+  --border-focused: rgba(153, 153, 159, 0.50);
+  --color-border-focus: rgba(153, 153, 159, 0.50);
 }
 
-* {
+/* ==========================================================================
+   Global Reset
+   ========================================================================== */
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  color: var(--color-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  color: var(--text-primary);
   background: transparent;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar */
+/* ==========================================================================
+   Typography Utility Classes
+   ========================================================================== */
+.text-title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.text-heading {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.text-subheading {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.text-body {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.text-body-small {
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.text-caption {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.text-micro {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+/* ==========================================================================
+   Scrollbar
+   ========================================================================== */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -98,62 +328,95 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
 }
 
-/* Markdown code blocks */
+/* ==========================================================================
+   Glassmorphism Classes
+   ========================================================================== */
+.glass {
+  background: var(--glass-primary);
+  backdrop-filter: blur(40px) saturate(1.8);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  border: 0.5px solid var(--glass-border);
+  box-shadow: var(--shadow-glass), inset 0 0.5px 0 rgba(255, 255, 255, 0.1);
+}
+
+.glass-card {
+  background: var(--glass-secondary);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 0.5px solid var(--glass-border-subtle);
+  box-shadow: var(--shadow-soft);
+}
+
+.glass-subtle {
+  background: var(--glass-secondary);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 0.5px solid var(--glass-border-subtle);
+  box-shadow: var(--shadow-soft);
+}
+
+.glass-input {
+  background: var(--input-bg);
+  border: 0.5px solid var(--border-subtle);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.glass-input:focus-within {
+  border-color: var(--border-focused);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ==========================================================================
+   Markdown / Code Block Styling
+   ========================================================================== */
 pre {
-  background: rgba(0, 0, 0, 0.3) !important;
+  background: rgba(0, 0, 0, 0.25) !important;
   border-radius: 8px;
-  padding: 12px !important;
+  padding: 14px !important;
   overflow-x: auto;
   margin: 8px 0;
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 code {
   font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 :not(pre) > code {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
   padding: 2px 6px;
   border-radius: 4px;
+  font-size: 12px;
 }
 
-/* Glassmorphism base */
-.glass {
-  background: var(--color-bg-primary);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
-}
-
-.glass-subtle {
-  background: var(--color-bg-secondary);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-
-/* Stealth mode */
+/* ==========================================================================
+   Stealth Mode
+   ========================================================================== */
 .stealth-idle {
   opacity: 0.02;
   filter: saturate(0);
-  transition: opacity 0.3s ease, filter 0.3s ease;
+  transition: opacity 0.3s ease-in-out, filter 0.3s ease-in-out;
 }
 
 .stealth-hover {
   opacity: var(--stealth-hover-opacity, 0.4);
   filter: saturate(0.3);
-  transition: opacity 0.3s ease, filter 0.3s ease;
+  transition: opacity 0.3s ease-in-out, filter 0.3s ease-in-out;
 }
 
-/* Animations */
+/* ==========================================================================
+   Animations — CSS Keyframes
+   ========================================================================== */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -164,6 +427,28 @@ code {
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* Animation utility classes */
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out;
 }
@@ -172,12 +457,20 @@ code {
   animation: scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Typing indicator */
-@keyframes bounce {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }
 
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradientShift 4s ease infinite;
+}
+
+/* Typing indicator dots */
 .typing-dot {
   animation: bounce 1.4s infinite ease-in-out both;
 }

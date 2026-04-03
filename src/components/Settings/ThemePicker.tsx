@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { THEME_PRESETS, type AppTheme } from '../../types';
 
 interface Props {
@@ -7,17 +8,25 @@ interface Props {
 
 export default function ThemePicker({ current, onChange }: Props) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
       {THEME_PRESETS.map((theme) => (
-        <button
+        <motion.button
           key={theme.name}
           onClick={() => onChange(theme.name)}
-          className={`w-9 h-9 rounded-xl border-2 transition-all ${
-            current === theme.name
-              ? 'border-white scale-110 shadow-lg'
-              : 'border-transparent hover:scale-105'
-          }`}
-          style={{ background: theme.primary }}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 12,
+            background: theme.primary,
+            border: 'none',
+            cursor: 'pointer',
+            outline: current === theme.name ? '2px solid white' : '2px solid transparent',
+            outlineOffset: 2,
+            boxShadow: current === theme.name ? 'var(--shadow-medium)' : 'none',
+          }}
           title={theme.label}
         />
       ))}

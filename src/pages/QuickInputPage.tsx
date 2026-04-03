@@ -17,7 +17,17 @@ export default function QuickInputPage() {
   }, []);
 
   return (
-    <div className="w-screen h-screen overflow-hidden rounded-2xl glass">
+    <div
+      style={{
+        width: '100vw',
+        height: '100vh',
+        overflow: 'hidden',
+        background: 'transparent',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
       <QuickInputPanel />
     </div>
   );

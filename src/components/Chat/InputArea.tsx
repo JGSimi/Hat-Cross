@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, type KeyboardEvent } from 'react';
+import { motion } from 'framer-motion';
 import { Camera, Send, Square } from 'lucide-react';
 import AttachmentPreview from './AttachmentPreview';
 import type { ChatAttachment } from '../../types';
@@ -24,7 +25,10 @@ export default function InputArea({
 }: Props) {
   const [text, setText] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const hasContent = text.trim().length > 0 || attachments.length > 0;
 
   const handleSend = useCallback(() => {
     if (isStreaming) {
@@ -50,7 +54,7 @@ export default function InputArea({
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    const maxHeight = 4 * 24; // 4 lines
+    const maxHeight = 4 * 24;
     el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
   };
 
@@ -92,41 +96,119 @@ export default function InputArea({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`border-t border-[var(--color-border)] ${isDragOver ? 'bg-[var(--color-accent)]/10 border-[var(--color-accent)]/30' : ''}`}
+      style={{
+        padding: '0 10px 8px 10px',
+      }}
     >
       <AttachmentPreview attachments={attachments} onRemove={onRemoveAttachment} />
-      <div className="flex items-end gap-2 px-3 py-2.5">
+
+      <div
+        style={{
+          background: isDragOver ? 'var(--glass-elevated)' : 'var(--glass-secondary)',
+          border: isFocused
+            ? '0.5px solid var(--border-focused)'
+            : '0.5px solid var(--border-subtle)',
+          borderRadius: 12,
+          padding: '8px 12px',
+          boxShadow: isFocused
+            ? '0 0 0 3px var(--accent-glow)'
+            : 'var(--shadow-soft)',
+          transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: 8,
+        }}
+      >
+        {/* Action buttons group */}
         {onScreenCapture && (
-          <button
-            onClick={onScreenCapture}
-            className="flex-shrink-0 p-2 rounded-lg text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-            title="Capturar tela"
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'var(--glass-secondary)',
+              border: '0.5px solid var(--border-subtle)',
+              borderRadius: 7,
+              padding: 4,
+              flexShrink: 0,
+            }}
           >
-            <Camera size={18} />
-          </button>
+            <button
+              onClick={onScreenCapture}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-muted)',
+                transition: 'color 0.15s ease',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
+              title="Capturar tela"
+            >
+              <Camera size={16} />
+            </button>
+          </div>
         )}
+
+        {/* Textarea */}
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           placeholder="Mensagem..."
           rows={1}
-          className="flex-1 bg-[var(--color-bg-input)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] rounded-xl px-3.5 py-2 text-sm resize-none outline-none border border-[var(--color-border)] focus:border-[var(--color-border-focus)] transition-colors"
-          style={{ maxHeight: '96px' }}
+          style={{
+            flex: 1,
+            background: 'none',
+            border: 'none',
+            outline: 'none',
+            color: 'var(--text-primary)',
+            fontSize: 12.5,
+            lineHeight: 1.5,
+            resize: 'none',
+            padding: '2px 0',
+            maxHeight: 96,
+            fontFamily: 'inherit',
+          }}
         />
-        <button
+
+        {/* Send / Stop button */}
+        <motion.button
           onClick={handleSend}
-          className={`flex-shrink-0 p-2 rounded-lg transition-colors ${
-            isStreaming
-              ? 'text-red-400 hover:bg-red-500/20'
-              : 'text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20'
-          }`}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.96 }}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            color: isStreaming
+              ? '#f87171'
+              : hasContent
+                ? 'var(--color-accent)'
+                : 'var(--text-muted)',
+            boxShadow: hasContent && !isStreaming
+              ? '0 0 8px var(--accent-glow)'
+              : 'none',
+            borderRadius: 6,
+            transition: 'color 0.15s ease, box-shadow 0.15s ease',
+          }}
           title={isStreaming ? 'Parar' : 'Enviar'}
         >
-          {isStreaming ? <Square size={18} /> : <Send size={18} />}
-        </button>
+          {isStreaming ? <Square size={22} /> : <Send size={22} />}
+        </motion.button>
       </div>
     </div>
   );

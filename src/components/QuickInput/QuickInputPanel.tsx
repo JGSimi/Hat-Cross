@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, type KeyboardEvent } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Send, Square } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -54,59 +55,183 @@ export default function QuickInputPanel() {
   };
 
   return (
-    <div className="flex flex-col w-full glass rounded-2xl overflow-hidden border border-[var(--color-border)] animate-scale-in">
+    <motion.div
+      initial={{ scale: 0.95, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        width: 680,
+        maxWidth: '100%',
+        background: 'var(--glass-elevated)',
+        backdropFilter: 'blur(40px) saturate(1.8)',
+        WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
+        borderRadius: 16,
+        border: '0.5px solid var(--glass-border)',
+        boxShadow: 'var(--shadow-elevated)',
+        overflow: 'hidden',
+      }}
+    >
       <AttachmentPreview attachments={pendingAttachments} onRemove={removeAttachment} />
 
       {/* Input */}
-      <div className="flex items-center gap-2 px-3 py-2.5">
-        <button
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 16px' }}>
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
           onClick={handleScreenCapture}
-          className="flex-shrink-0 p-2 rounded-lg text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+          style={{
+            flexShrink: 0,
+            padding: 8,
+            borderRadius: 8,
+            color: 'var(--text-secondary)',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+          }}
         >
           <Camera size={18} />
-        </button>
+        </motion.button>
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Mensagem rápida..."
+          placeholder="Mensagem rapida..."
           rows={1}
           autoFocus
-          className="flex-1 bg-transparent text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] text-sm resize-none outline-none"
+          style={{
+            flex: 1,
+            background: 'transparent',
+            color: 'var(--text-primary)',
+            fontSize: 14,
+            fontWeight: 500,
+            resize: 'none',
+            outline: 'none',
+            border: 'none',
+          }}
         />
-        <button
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
           onClick={handleSend}
-          className={`flex-shrink-0 p-2 rounded-lg transition-colors ${
-            isStreaming
-              ? 'text-red-400 hover:bg-red-500/20'
-              : 'text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20'
-          }`}
+          style={{
+            flexShrink: 0,
+            padding: 8,
+            borderRadius: 8,
+            color: isStreaming ? 'var(--error)' : 'var(--color-accent)',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+          }}
         >
           {isStreaming ? <Square size={18} /> : <Send size={18} />}
-        </button>
+        </motion.button>
       </div>
 
       {/* Response area */}
-      {(lastAiMessage || (isStreaming && streamingContent)) && (
-        <div className="border-t border-[var(--color-border)] px-4 py-3 max-h-80 overflow-y-auto">
-          <div className="prose prose-invert prose-sm max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-              {isStreaming && streamingContent ? streamingContent : lastAiMessage?.content || ''}
-            </ReactMarkdown>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {(lastAiMessage || (isStreaming && streamingContent)) && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            layout
+            style={{
+              borderTop: '0.5px solid var(--border-subtle)',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                padding: '12px 16px',
+                maxHeight: 320,
+                overflowY: 'auto',
+              }}
+            >
+              <div className="prose prose-invert prose-sm max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                  {isStreaming && streamingContent ? streamingContent : lastAiMessage?.content || ''}
+                </ReactMarkdown>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {isStreaming && !streamingContent && (
-        <div className="border-t border-[var(--color-border)] px-4 py-3">
-          <div className="flex space-x-1.5">
-            <div className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full typing-dot" style={{ animationDelay: '0s' }} />
-            <div className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full typing-dot" style={{ animationDelay: '0.2s' }} />
-            <div className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full typing-dot" style={{ animationDelay: '0.4s' }} />
-          </div>
-        </div>
-      )}
-    </div>
+      <AnimatePresence>
+        {isStreaming && !streamingContent && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            style={{
+              borderTop: '0.5px solid var(--border-subtle)',
+              padding: '12px 16px',
+            }}
+          >
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[0, 0.2, 0.4].map((delay) => (
+                <div
+                  key={delay}
+                  className="typing-dot"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: 'var(--text-muted)',
+                    animationDelay: `${delay}s`,
+                  }}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Keyboard hints */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          gap: 6,
+          padding: '6px 16px 8px',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 9,
+            fontFamily: "'SF Mono', 'Fira Code', monospace",
+            color: 'var(--text-muted)',
+            background: 'var(--glass-secondary)',
+            padding: '2px 6px',
+            borderRadius: 4,
+            border: '0.5px solid var(--glass-border-subtle)',
+          }}
+        >
+          Return
+        </span>
+        <span
+          style={{
+            fontSize: 9,
+            fontFamily: "'SF Mono', 'Fira Code', monospace",
+            color: 'var(--text-muted)',
+            background: 'var(--glass-secondary)',
+            padding: '2px 6px',
+            borderRadius: 4,
+            border: '0.5px solid var(--glass-border-subtle)',
+          }}
+        >
+          Esc
+        </span>
+      </div>
+    </motion.div>
   );
 }

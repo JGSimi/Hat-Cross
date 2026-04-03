@@ -1,8 +1,15 @@
+import { motion, AnimatePresence } from 'framer-motion';
 import { Maximize2, X, Trash2, Monitor, Cloud } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { getGreeting } from '../../utils/markdown';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useChatStore } from '../../stores/chatStore';
+
+const btnMotion = {
+  whileHover: { scale: 1.1 },
+  whileTap: { scale: 0.96, opacity: 0.8 },
+  transition: { type: 'spring' as const, stiffness: 400, damping: 20 },
+};
 
 export default function PopoverHeader() {
   const settings = useSettingsStore((s) => s.settings);
@@ -30,50 +37,129 @@ export default function PopoverHeader() {
 
   return (
     <div
-      className="flex items-center justify-between px-3.5 py-2.5 border-b border-[var(--color-border)]"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '10px 14px',
+        borderBottom: '0.5px solid var(--border-subtle)',
+      }}
       data-tauri-drag-region
     >
-      <div className="flex items-center gap-2" data-tauri-drag-region>
-        <span className="text-base" data-tauri-drag-region>🎩</span>
-        <span className="text-sm font-medium text-[var(--color-text-primary)]" data-tauri-drag-region>
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+        data-tauri-drag-region
+      >
+        <span
+          style={{ fontSize: 14, opacity: 0.6, color: 'var(--color-accent)' }}
+          data-tauri-drag-region
+        >
+          🎩
+        </span>
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 500,
+            color: 'var(--text-primary)',
+          }}
+          data-tauri-drag-region
+        >
           {greeting}
         </span>
-        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)]">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '2px 8px',
+            borderRadius: 9999,
+            background: 'var(--glass-secondary)',
+            border: '0.5px solid var(--glass-border-subtle)',
+          }}
+        >
           {isLocal ? (
-            <Monitor size={10} className="text-[var(--color-text-muted)]" />
+            <Monitor size={10} style={{ color: 'var(--text-muted)' }} />
           ) : (
-            <Cloud size={10} className="text-[var(--color-text-muted)]" />
+            <Cloud size={10} style={{ color: 'var(--text-muted)' }} />
           )}
-          <span className="text-[10px] text-[var(--color-text-secondary)] max-w-[80px] truncate">
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 500,
+              color: 'var(--text-secondary)',
+              maxWidth: 80,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
             {modelName}
           </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-0.5">
-        {hasMessages && (
-          <button
-            onClick={handleClear}
-            className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-            title="Limpar conversa"
-          >
-            <Trash2 size={14} />
-          </button>
-        )}
-        <button
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <AnimatePresence>
+          {hasMessages && (
+            <motion.button
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              {...btnMotion}
+              onClick={handleClear}
+              title="Limpar conversa"
+              style={{
+                padding: 6,
+                borderRadius: 6,
+                color: 'var(--text-muted)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Trash2 size={14} />
+            </motion.button>
+          )}
+        </AnimatePresence>
+        <motion.button
+          {...btnMotion}
           onClick={handleExpand}
-          className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
           title="Abrir janela principal"
+          style={{
+            padding: 6,
+            borderRadius: 6,
+            color: 'var(--text-muted)',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <Maximize2 size={14} />
-        </button>
-        <button
+        </motion.button>
+        <motion.button
+          {...btnMotion}
           onClick={handleClose}
-          className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors"
           title="Fechar"
+          style={{
+            padding: 6,
+            borderRadius: 6,
+            color: 'var(--text-muted)',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <X size={14} />
-        </button>
+        </motion.button>
       </div>
     </div>
   );
