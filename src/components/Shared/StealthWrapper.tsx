@@ -7,28 +7,26 @@ interface Props {
 }
 
 export default function StealthWrapper({ children }: Props) {
-  const stealthHoverOpacity = useSettingsStore((s) => s.settings.popover.stealthHoverOpacity);
-  const [isHovered, setIsHovered] = useState(false);
+  const hoverOpacity = useSettingsStore((s) => s.settings.popover.stealthHoverOpacity);
+  const [hovered, setHovered] = useState(false);
 
-  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
-  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
+  const onEnter = useCallback(() => setHovered(true), []);
+  const onLeave = useCallback(() => setHovered(false), []);
 
-  // Make window click-through when in stealth idle
   useEffect(() => {
-    const win = getCurrentWindow();
-    win.setIgnoreCursorEvents(!isHovered).catch(() => {});
-  }, [isHovered]);
+    getCurrentWindow().setIgnoreCursorEvents(!hovered).catch(() => {});
+  }, [hovered]);
 
   return (
     <div
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
       style={{
         width: '100%',
         height: '100%',
-        opacity: isHovered ? stealthHoverOpacity : 0.08,
-        filter: isHovered ? 'saturate(0.3)' : 'saturate(0)',
-        transition: 'opacity 0.3s ease-in-out, filter 0.3s ease-in-out',
+        opacity: hovered ? hoverOpacity : 0.06,
+        filter: hovered ? 'none' : 'saturate(0) brightness(0.7)',
+        transition: 'opacity 0.25s ease, filter 0.25s ease',
       }}
     >
       {children}

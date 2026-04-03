@@ -1,13 +1,10 @@
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
-/// Show a window by label. If it exists, show and focus it.
-/// If it doesn't exist, create it with sensible defaults.
 pub fn show_window(app: &AppHandle, label: &str) {
     if let Some(window) = app.get_webview_window(label) {
         let _ = window.show();
         let _ = window.set_focus();
     } else {
-        // Create the window if it doesn't exist
         let url = match label {
             "popover" => "/popover",
             "main" => "/main",
@@ -26,6 +23,7 @@ pub fn show_window(app: &AppHandle, label: &str) {
                 .max_inner_size(800.0, 900.0)
                 .resizable(true)
                 .decorations(false)
+                .shadow(false)
                 .skip_taskbar(true)
                 .always_on_top(true),
             "main" => builder
@@ -38,6 +36,7 @@ pub fn show_window(app: &AppHandle, label: &str) {
                 .inner_size(680.0, 120.0)
                 .resizable(false)
                 .decorations(false)
+                .shadow(false)
                 .skip_taskbar(true)
                 .always_on_top(true)
                 .center(),
@@ -63,14 +62,12 @@ pub fn show_window(app: &AppHandle, label: &str) {
     }
 }
 
-/// Hide a window by label.
 pub fn hide_window(app: &AppHandle, label: &str) {
     if let Some(window) = app.get_webview_window(label) {
         let _ = window.hide();
     }
 }
 
-/// Check if a window is visible by label.
 pub fn is_window_visible(app: &AppHandle, label: &str) -> bool {
     if let Some(window) = app.get_webview_window(label) {
         window.is_visible().unwrap_or(false)
