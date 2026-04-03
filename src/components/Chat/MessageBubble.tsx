@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, GraduationCap } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -23,56 +23,52 @@ export default function MessageBubble({ message, isGrouped, isFirst }: Props) {
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const spacing = isGrouped ? '3px' : '8px';
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-      style={{ marginTop: spacing }}
+      style={{ marginTop: isGrouped ? 2 : 10 }}
       className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* AI avatar - only on first of group */}
+      {/* AI avatar */}
       {!message.isUser && (
-        <div className="flex-shrink-0 mr-2" style={{ width: 30 }}>
+        <div style={{ width: 28, flexShrink: 0, marginRight: 8 }}>
           {isFirst && (
             <div
               style={{
-                width: 30,
-                height: 30,
-                borderRadius: '50%',
-                background: 'var(--glass-secondary)',
-                border: '0.5px solid var(--glass-border-subtle)',
-                boxShadow: '0 0 5px var(--accent-glow)',
+                width: 28,
+                height: 28,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 50%, #000))',
+                border: '1px solid rgba(255,255,255,0.1)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 16,
+                boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)',
               }}
             >
-              🎩
+              <GraduationCap size={14} color="white" strokeWidth={2.5} />
             </div>
           )}
         </div>
       )}
 
-      <div className="relative" style={{ maxWidth: '85%' }}>
+      <div style={{ position: 'relative', maxWidth: '82%' }}>
         {message.isUser ? (
+          /* User bubble — accent tinted glass */
           <div
             style={{
-              background: 'var(--user-bubble-bg)',
-              border: '0.5px solid var(--accent-border)',
+              background: 'rgba(99, 102, 241, 0.12)',
+              border: '1px solid rgba(99, 102, 241, 0.18)',
               borderRadius: 14,
-              paddingLeft: 14,
-              paddingRight: 14,
-              paddingTop: 10,
-              paddingBottom: 10,
-              fontSize: 12.5,
-              lineHeight: 1.5,
-              color: 'var(--text-primary)',
+              borderBottomRightRadius: 4,
+              padding: '9px 14px',
+              fontSize: 13,
+              lineHeight: 1.55,
+              color: 'rgba(255,255,255,0.92)',
             }}
           >
             <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
@@ -80,12 +76,13 @@ export default function MessageBubble({ message, isGrouped, isFirst }: Props) {
             </p>
           </div>
         ) : (
+          /* AI response — no bubble, just markdown */
           <div
             className="prose prose-invert prose-sm max-w-none"
             style={{
-              fontSize: 12.5,
+              fontSize: 13,
               lineHeight: 1.6,
-              color: 'var(--text-primary)',
+              color: 'rgba(255,255,255,0.85)',
               wordBreak: 'break-word',
             }}
           >
@@ -95,11 +92,11 @@ export default function MessageBubble({ message, isGrouped, isFirst }: Props) {
           </div>
         )}
 
-        {/* Hover actions: copy + timestamp */}
+        {/* Hover: copy + timestamp */}
         <div
           style={{
             position: 'absolute',
-            bottom: -18,
+            bottom: -16,
             right: message.isUser ? 0 : undefined,
             left: message.isUser ? undefined : 0,
             display: 'flex',
@@ -113,24 +110,23 @@ export default function MessageBubble({ message, isGrouped, isFirst }: Props) {
           <button
             onClick={handleCopy}
             style={{
-              background: 'none',
-              border: 'none',
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 4,
               cursor: 'pointer',
-              padding: 2,
-              color: 'var(--text-muted)',
+              padding: '2px 5px',
+              color: copied ? 'var(--success)' : 'rgba(255,255,255,0.35)',
               display: 'flex',
               alignItems: 'center',
+              gap: 3,
+              fontSize: 9,
+              transition: 'color 0.15s ease',
             }}
-            title="Copiar"
           >
-            {copied ? <Check size={11} /> : <Copy size={11} />}
+            {copied ? <Check size={9} /> : <Copy size={9} />}
+            {copied ? 'Copiado' : 'Copiar'}
           </button>
-          <span
-            style={{
-              fontSize: 10,
-              color: 'var(--text-muted)',
-            }}
-          >
+          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>
             {formatTimestamp(message.timestamp)}
           </span>
         </div>

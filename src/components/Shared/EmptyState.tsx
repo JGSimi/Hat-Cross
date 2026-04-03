@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { GraduationCap, Sparkles } from 'lucide-react';
 import { getGreeting } from '../../utils/markdown';
 
 const shortcuts = [
@@ -17,55 +18,66 @@ export default function EmptyState() {
         alignItems: 'center',
         justifyContent: 'center',
         textAlign: 'center',
-        padding: '0 24px',
+        padding: '0 32px',
       }}
     >
-      {/* Floating hat container */}
+      {/* Floating hat icon */}
       <motion.div
-        animate={{ y: [0, -4, 0] }}
-        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-        style={{ position: 'relative', marginBottom: 16 }}
+        animate={{ y: [0, -5, 0] }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+        style={{ position: 'relative', marginBottom: 20 }}
       >
         {/* Glow ring */}
         <motion.div
-          animate={{ opacity: [0.2, 0.4, 0.2] }}
+          animate={{ opacity: [0.15, 0.35, 0.15] }}
           transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           style={{
             position: 'absolute',
-            inset: -4,
+            inset: -8,
             borderRadius: '50%',
             background: 'var(--color-accent)',
-            filter: 'blur(12px)',
+            filter: 'blur(16px)',
           }}
         />
-        {/* Hat icon circle */}
+        {/* Icon circle */}
         <div
           style={{
             position: 'relative',
-            width: 48,
-            height: 48,
-            borderRadius: '50%',
-            background: 'var(--glass-secondary)',
-            border: '0.5px solid var(--glass-border-subtle)',
+            width: 52,
+            height: 52,
+            borderRadius: 16,
+            background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 50%, #000))',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 22,
-            // accent overlay
-            backgroundImage: 'linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 15%, transparent), transparent)',
+            boxShadow: '0 4px 20px rgba(99, 102, 241, 0.4)',
           }}
         >
-          🎩
+          <GraduationCap size={26} color="white" strokeWidth={2} />
         </div>
+        {/* Sparkle accent */}
+        <motion.div
+          animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+          style={{
+            position: 'absolute',
+            top: -4,
+            right: -6,
+          }}
+        >
+          <Sparkles size={14} color="var(--color-accent)" strokeWidth={2.5} />
+        </motion.div>
       </motion.div>
 
       {/* Title */}
       <h2
         style={{
-          fontSize: 20,
+          fontSize: 22,
           fontWeight: 700,
-          color: 'var(--text-primary)',
+          color: 'rgba(255,255,255,0.95)',
           margin: '0 0 4px 0',
+          letterSpacing: -0.5,
         }}
       >
         {greeting}
@@ -74,47 +86,43 @@ export default function EmptyState() {
       {/* Subtitle */}
       <p
         style={{
-          fontSize: 12.5,
-          color: 'var(--text-muted)',
-          margin: '0 0 20px 0',
+          fontSize: 13,
+          color: 'rgba(255,255,255,0.4)',
+          margin: '0 0 24px 0',
         }}
       >
         Como posso ajudar?
       </p>
 
       {/* Shortcut badges */}
-      <div style={{ display: 'flex', gap: 12 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
         {shortcuts.map((sc, i) => (
           <motion.div
             key={sc.keys}
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1, type: 'spring', stiffness: 400, damping: 25 }}
+            transition={{ delay: 0.3 + i * 0.1, type: 'spring', stiffness: 400, damping: 25 }}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              background: 'var(--glass-secondary)',
-              border: '0.5px solid var(--border-subtle)',
-              borderRadius: 7,
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: 8,
               padding: '5px 10px',
             }}
           >
             <kbd
               style={{
-                fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
-                fontSize: 9,
-                color: 'var(--text-muted)',
+                fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+                fontSize: 10,
+                color: 'rgba(255,255,255,0.35)',
+                fontWeight: 500,
               }}
             >
               {sc.keys}
             </kbd>
-            <span
-              style={{
-                fontSize: 11,
-                color: 'var(--text-muted)',
-              }}
-            >
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
               {sc.label}
             </span>
           </motion.div>

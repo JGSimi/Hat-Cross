@@ -13,12 +13,12 @@ export default function PopoverLayout() {
         flexDirection: 'column',
         height: '100vh',
         width: '100%',
-        background: 'rgba(12, 12, 14, 0.82)',
-        backdropFilter: 'blur(40px) saturate(1.8)',
-        WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
-        border: '0.5px solid rgba(255, 255, 255, 0.2)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0.5px 0 rgba(255, 255, 255, 0.08)',
-        borderRadius: 16,
+        background: 'rgba(18, 18, 24, 0.88)',
+        backdropFilter: 'blur(50px) saturate(1.6)',
+        WebkitBackdropFilter: 'blur(50px) saturate(1.6)',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
+        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+        borderRadius: 14,
         overflow: 'hidden',
       }}
     >
