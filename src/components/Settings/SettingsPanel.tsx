@@ -83,7 +83,7 @@ export default function SettingsPanel({ onClose }: Props) {
           <ArrowLeft size={16} />
         </motion.button>
         <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-          Configuracoes
+          Configurações
         </h2>
       </div>
 

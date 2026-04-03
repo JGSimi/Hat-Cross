@@ -76,7 +76,7 @@ export default function EmptyState() {
           fontSize: 22,
           fontWeight: 700,
           color: 'rgba(255,255,255,0.95)',
-          margin: '0 0 4px 0',
+          margin: '0 0 6px 0',
           letterSpacing: -0.5,
         }}
       >
@@ -87,7 +87,7 @@ export default function EmptyState() {
       <p
         style={{
           fontSize: 13,
-          color: 'rgba(255,255,255,0.4)',
+          color: 'var(--text-muted)',
           margin: '0 0 24px 0',
         }}
       >
@@ -107,7 +107,7 @@ export default function EmptyState() {
               alignItems: 'center',
               gap: 6,
               background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              border: '1px solid var(--border-subtle)',
               borderRadius: 8,
               padding: '5px 10px',
             }}
@@ -116,13 +116,13 @@ export default function EmptyState() {
               style={{
                 fontFamily: 'ui-monospace, SFMono-Regular, monospace',
                 fontSize: 10,
-                color: 'rgba(255,255,255,0.35)',
+                color: 'var(--text-muted)',
                 fontWeight: 500,
               }}
             >
               {sc.keys}
             </kbd>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
               {sc.label}
             </span>
           </motion.div>

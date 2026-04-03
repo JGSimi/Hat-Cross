@@ -15,7 +15,7 @@ export default function AttachmentPreview({ attachments, onRemove }: Props) {
       style={{
         display: 'flex',
         gap: 8,
-        padding: '8px 4px',
+        padding: '8px 12px',
         overflowX: 'auto',
       }}
     >
@@ -72,7 +72,7 @@ export default function AttachmentPreview({ attachments, onRemove }: Props) {
                 width: 16,
                 height: 16,
                 borderRadius: '50%',
-                background: '#ef4444',
+                background: 'var(--error)',
                 border: 'none',
                 cursor: 'pointer',
                 display: 'flex',

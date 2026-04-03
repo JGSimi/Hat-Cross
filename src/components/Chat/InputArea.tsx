@@ -74,7 +74,7 @@ export default function InputArea({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      style={{ padding: '4px 10px 10px', flexShrink: 0 }}
+      style={{ padding: '8px 12px 12px', flexShrink: 0 }}
     >
       <AttachmentPreview attachments={attachments} onRemove={onRemoveAttachment} />
 
@@ -84,14 +84,14 @@ export default function InputArea({
             ? 'rgba(255, 255, 255, 0.08)'
             : 'rgba(255, 255, 255, 0.04)',
           border: isFocused
-            ? '1px solid rgba(var(--color-accent-rgb, 99, 102, 241), 0.4)'
+            ? '1px solid var(--border-focused)'
             : '1px solid rgba(255, 255, 255, 0.08)',
           borderRadius: 12,
-          padding: '8px 10px',
+          padding: '8px 12px',
           boxShadow: isFocused
-            ? '0 0 0 3px rgba(99, 102, 241, 0.12), inset 0 1px 0 rgba(255,255,255,0.04)'
+            ? '0 0 0 3px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.04)'
             : 'inset 0 1px 0 rgba(255,255,255,0.03)',
-          transition: 'all 0.2s ease',
+          transition: 'border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease',
           display: 'flex',
           alignItems: 'flex-end',
           gap: 6,
@@ -110,6 +110,7 @@ export default function InputArea({
               borderRadius: 6,
             }}
             title="Capturar tela"
+            aria-label="Capturar tela"
           >
             <Camera size={16} />
           </motion.button>
@@ -125,6 +126,7 @@ export default function InputArea({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder="Mensagem..."
+          aria-label="Mensagem"
           rows={1}
           style={{
             flex: 1,
@@ -148,7 +150,7 @@ export default function InputArea({
           whileTap={{ scale: 0.92 }}
           style={{
             background: isStreaming
-              ? 'rgba(248, 113, 113, 0.15)'
+              ? 'color-mix(in srgb, var(--error) 15%, transparent)'
               : hasContent
                 ? 'var(--color-accent)'
                 : 'transparent',
@@ -160,7 +162,7 @@ export default function InputArea({
             justifyContent: 'center',
             flexShrink: 0,
             color: isStreaming
-              ? '#f87171'
+              ? 'var(--error)'
               : hasContent
                 ? 'white'
                 : 'rgba(255,255,255,0.25)',
@@ -168,6 +170,7 @@ export default function InputArea({
             transition: 'all 0.15s ease',
           }}
           title={isStreaming ? 'Parar' : 'Enviar'}
+          aria-label="Enviar"
         >
           {isStreaming ? <Square size={16} /> : <Send size={16} />}
         </motion.button>

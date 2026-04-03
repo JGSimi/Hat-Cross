@@ -48,7 +48,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '12px 14px',
+          padding: '12px',
           borderBottom: '0.5px solid var(--border-subtle)',
         }}
       >
@@ -77,7 +77,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
       </div>
 
       {/* Search */}
-      <div style={{ padding: '8px 10px' }}>
+      <div style={{ padding: '8px 12px' }}>
         <div
           style={{
             display: 'flex',
@@ -113,11 +113,11 @@ export default function Sidebar({ onOpenSettings }: Props) {
             <p
               style={{
                 padding: '6px 14px',
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: 600,
                 color: 'var(--text-muted)',
                 textTransform: 'uppercase',
-                letterSpacing: 0.5,
+                letterSpacing: 0.3,
               }}
             >
               Fixadas
@@ -141,11 +141,11 @@ export default function Sidebar({ onOpenSettings }: Props) {
             <p
               style={{
                 padding: '6px 14px',
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: 600,
                 color: 'var(--text-muted)',
                 textTransform: 'uppercase',
-                letterSpacing: 0.5,
+                letterSpacing: 0.3,
               }}
             >
               Recentes
@@ -182,7 +182,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
       <div
         style={{
           borderTop: '0.5px solid var(--border-subtle)',
-          padding: '10px 14px',
+          padding: '10px 12px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -209,7 +209,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
           <Settings size={12} />
           <span>Configurações</span>
         </motion.button>
-        <span style={{ fontSize: 10, color: 'var(--text-muted)', opacity: 0.7, flexShrink: 0 }}>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>
           v2
         </span>
       </div>

@@ -90,12 +90,12 @@ export default function ConversationItem({
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               {conversation.isPinned && (
-                <Pin size={8} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
+                <Pin size={10} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
               )}
               <p
                 style={{
-                  fontSize: isActive ? 11 : 12.5,
-                  fontWeight: isActive ? 700 : 400,
+                  fontSize: 12,
+                  fontWeight: isActive ? 600 : 400,
                   color: 'var(--text-primary)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -115,7 +115,7 @@ export default function ConversationItem({
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
-                marginTop: 2,
+                marginTop: 4,
               }}
             >
               {preview}
@@ -124,7 +124,7 @@ export default function ConversationItem({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <span style={{ fontSize: 9, color: 'var(--text-muted)', opacity: 0.8 }}>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', opacity: 0.8 }}>
             {formatTimestamp(conversation.updatedAt)}
           </span>
           <div style={{ position: 'relative' }} ref={menuRef}>
@@ -183,7 +183,7 @@ export default function ConversationItem({
                       width: '100%',
                       textAlign: 'left',
                       padding: '6px 12px',
-                      fontSize: 11,
+                      fontSize: 12,
                       color: 'var(--text-secondary)',
                       background: 'transparent',
                       border: 'none',
@@ -207,7 +207,7 @@ export default function ConversationItem({
                       width: '100%',
                       textAlign: 'left',
                       padding: '6px 12px',
-                      fontSize: 11,
+                      fontSize: 12,
                       color: 'var(--text-secondary)',
                       background: 'transparent',
                       border: 'none',
@@ -221,7 +221,7 @@ export default function ConversationItem({
                     Renomear
                   </motion.button>
                   <motion.button
-                    whileHover={{ backgroundColor: 'rgba(239, 99, 99, 0.1)' }}
+                    whileHover={{ backgroundColor: 'color-mix(in srgb, var(--error) 10%, transparent)' }}
                     onClick={(e) => {
                       e.stopPropagation();
                       onDelete();
@@ -231,7 +231,7 @@ export default function ConversationItem({
                       width: '100%',
                       textAlign: 'left',
                       padding: '6px 12px',
-                      fontSize: 11,
+                      fontSize: 12,
                       color: 'var(--error)',
                       background: 'transparent',
                       border: 'none',

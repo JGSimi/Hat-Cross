@@ -134,6 +134,27 @@
   --color-ai-bubble: rgba(255, 255, 255, 0.035);
   --color-accent: #6366F1;
   --color-accent-hover: #818CF8;
+
+  /* Spacing scale */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Transitions */
+  --transition-fast: 0.1s ease;
+  --transition-normal: 0.15s ease;
+  --transition-slow: 0.25s ease;
+
+  /* Focus */
+  --focus-ring: 0 0 0 2px var(--color-accent);
 }
 
 /* ==========================================================================
@@ -273,6 +294,12 @@ body {
   -webkit-user-select: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
 }
 
 /* ==========================================================================
