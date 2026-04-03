@@ -107,7 +107,9 @@ fn capture_screen_impl(_app: &AppHandle) -> Result<String, String> {
     use std::io::Cursor;
 
     let monitors = xcap::Monitor::all().map_err(|e| format!("Erro ao listar monitores: {}", e))?;
-    let primary = monitors.into_iter().find(|m| m.is_primary())
+    let primary = monitors
+        .into_iter()
+        .find(|m| m.is_primary().unwrap_or(false))
         .ok_or_else(|| "Nenhum monitor principal encontrado.".to_string())?;
 
     let image = primary.capture_image().map_err(|e| format!("Erro ao capturar tela: {}", e))?;
