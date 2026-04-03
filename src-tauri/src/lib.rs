@@ -42,22 +42,6 @@ pub fn run() {
         .setup(|app| {
             tray::setup_tray(app)?;
             shortcuts::register_default_shortcuts(app.handle())?;
-
-            // Fix: macOS transparent window needs NSWindow backgroundColor = clearColor
-            #[cfg(target_os = "macos")]
-            {
-                use tauri::Manager;
-                for label in ["popover", "quickinput"] {
-                    if let Some(win) = app.get_webview_window(label) {
-                        let ns_win = win.ns_window().unwrap() as cocoa::base::id;
-                        unsafe {
-                            use cocoa::appkit::NSWindow;
-                            NSWindow::setBackgroundColor_(ns_win, cocoa::appkit::NSColor::clearColor(cocoa::base::nil));
-                        }
-                    }
-                }
-            }
-
             Ok(())
         })
         .run(tauri::generate_context!())
