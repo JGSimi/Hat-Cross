@@ -12,7 +12,7 @@ interface Props {
   compact?: boolean;
 }
 
-export default function ChatWindow({ showScreenCapture = true, compact = false }: Props) {
+export default function ChatWindow({ showScreenCapture = true }: Props) {
   const { messages, isStreaming, streamingContent, sendMessage, cancel } = useChat();
   const { pendingAttachments, removeAttachment, addAttachment } = useChatStore();
   const { captureForPopover } = useScreenCapture();
@@ -33,7 +33,7 @@ export default function ChatWindow({ showScreenCapture = true, compact = false }
   const showEmpty = messages.length === 0 && !isStreaming;
 
   return (
-    <div className={`flex flex-col h-full ${compact ? '' : ''}`}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <AnimatePresence mode="wait">
         {showEmpty ? (
           <motion.div
@@ -42,7 +42,7 @@ export default function ChatWindow({ showScreenCapture = true, compact = false }
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex-1 flex items-center justify-center"
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <EmptyState />
           </motion.div>
@@ -53,7 +53,7 @@ export default function ChatWindow({ showScreenCapture = true, compact = false }
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex-1 flex flex-col overflow-hidden"
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
           >
             <MessageList
               messages={messages}

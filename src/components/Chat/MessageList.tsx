@@ -19,7 +19,7 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
   }, [messages, streamingContent]);
 
   return (
-    <div className="flex-1 overflow-y-auto px-3 py-2">
+    <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
       <AnimatePresence initial={false}>
         {messages.map((msg, i) => {
           const prev = i > 0 ? messages[i - 1] : null;

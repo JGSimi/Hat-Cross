@@ -13,17 +13,19 @@ export default function PopoverLayout() {
         flexDirection: 'column',
         height: '100vh',
         width: '100%',
-        background: `linear-gradient(135deg, var(--bg-primary) 35%, transparent)`,
+        background: 'rgba(12, 12, 14, 0.82)',
         backdropFilter: 'blur(40px) saturate(1.8)',
         WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
-        border: '0.5px solid var(--glass-border)',
-        boxShadow: 'var(--shadow-glass)',
+        border: '0.5px solid rgba(255, 255, 255, 0.2)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0.5px 0 rgba(255, 255, 255, 0.08)',
         borderRadius: 16,
         overflow: 'hidden',
       }}
     >
       <PopoverHeader />
-      <ChatWindow showScreenCapture compact />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <ChatWindow showScreenCapture compact />
+      </div>
     </motion.div>
   );
 }

@@ -23,58 +23,50 @@ export default function PopoverHeader() {
     ? settings.localModel
     : providerConfigs[settings.cloudProvider]?.model || 'Selecionar';
 
-  const handleExpand = () => {
-    invoke('open_main_window');
-  };
-
-  const handleClose = () => {
-    invoke('close_window', { label: 'popover' });
-  };
-
-  const handleClear = () => {
-    clearMessages();
-  };
+  const handleExpand = () => invoke('open_main_window');
+  const handleClose = () => invoke('close_window', { label: 'popover' });
+  const handleClear = () => clearMessages();
 
   return (
     <div
+      data-tauri-drag-region
       style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '10px 14px',
-        borderBottom: '0.5px solid var(--border-subtle)',
+        borderBottom: '0.5px solid rgba(255, 255, 255, 0.07)',
+        cursor: 'grab',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
       }}
-      data-tauri-drag-region
     >
+      {/* Left side - all draggable */}
       <div
-        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
         data-tauri-drag-region
+        style={{ display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none' }}
       >
+        <span data-tauri-drag-region style={{ fontSize: 14 }}>🎩</span>
         <span
-          style={{ fontSize: 14, opacity: 0.6, color: 'var(--color-accent)' }}
           data-tauri-drag-region
-        >
-          🎩
-        </span>
-        <span
           style={{
             fontSize: 13,
             fontWeight: 500,
             color: 'var(--text-primary)',
           }}
-          data-tauri-drag-region
         >
           {greeting}
         </span>
         <div
+          data-tauri-drag-region
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 4,
             padding: '2px 8px',
             borderRadius: 9999,
-            background: 'var(--glass-secondary)',
-            border: '0.5px solid var(--glass-border-subtle)',
+            background: 'rgba(255, 255, 255, 0.08)',
+            border: '0.5px solid rgba(255, 255, 255, 0.12)',
           }}
         >
           {isLocal ? (
@@ -83,6 +75,7 @@ export default function PopoverHeader() {
             <Cloud size={10} style={{ color: 'var(--text-muted)' }} />
           )}
           <span
+            data-tauri-drag-region
             style={{
               fontSize: 10,
               fontWeight: 500,
@@ -98,7 +91,8 @@ export default function PopoverHeader() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      {/* Right side - buttons (not draggable) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, pointerEvents: 'auto' }}>
         <AnimatePresence>
           {hasMessages && (
             <motion.button
