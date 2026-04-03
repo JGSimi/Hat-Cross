@@ -1,0 +1,78 @@
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+
+/// Show a window by label. If it exists, show and focus it.
+/// If it doesn't exist, create it with sensible defaults.
+pub fn show_window(app: &AppHandle, label: &str) {
+    if let Some(window) = app.get_webview_window(label) {
+        let _ = window.show();
+        let _ = window.set_focus();
+    } else {
+        // Create the window if it doesn't exist
+        let url = match label {
+            "popover" => "/popover",
+            "main" => "/main",
+            "quickinput" => "/quickinput",
+            "analysis" => "/analysis",
+            _ => "/main",
+        };
+
+        let builder = WebviewWindowBuilder::new(app, label, WebviewUrl::App(url.into()));
+
+        let builder = match label {
+            "popover" => builder
+                .title("Hat")
+                .inner_size(380.0, 480.0)
+                .resizable(true)
+                .decorations(false)
+                .skip_taskbar(true)
+                .always_on_top(true),
+            "main" => builder
+                .title("Hat")
+                .inner_size(820.0, 650.0)
+                .min_inner_size(600.0, 500.0)
+                .decorations(true),
+            "quickinput" => builder
+                .title("Hat Quick Input")
+                .inner_size(680.0, 120.0)
+                .resizable(false)
+                .decorations(false)
+                .skip_taskbar(true)
+                .always_on_top(true)
+                .center(),
+            "analysis" => builder
+                .title("Hat - Analise de Tela")
+                .inner_size(1000.0, 700.0)
+                .decorations(true),
+            _ => builder
+                .title("Hat")
+                .inner_size(820.0, 650.0)
+                .decorations(true),
+        };
+
+        match builder.build() {
+            Ok(window) => {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+            Err(e) => {
+                eprintln!("Failed to create window {}: {}", label, e);
+            }
+        }
+    }
+}
+
+/// Hide a window by label.
+pub fn hide_window(app: &AppHandle, label: &str) {
+    if let Some(window) = app.get_webview_window(label) {
+        let _ = window.hide();
+    }
+}
+
+/// Check if a window is visible by label.
+pub fn is_window_visible(app: &AppHandle, label: &str) -> bool {
+    if let Some(window) = app.get_webview_window(label) {
+        window.is_visible().unwrap_or(false)
+    } else {
+        false
+    }
+}
