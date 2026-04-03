@@ -12,24 +12,6 @@
   "app": {
     "windows": [
       {
-        "label": "popover",
-        "title": "Hat",
-        "width": 380,
-        "height": 480,
-        "minWidth": 300,
-        "minHeight": 350,
-        "maxWidth": 800,
-        "maxHeight": 900,
-        "resizable": true,
-        "decorations": false,
-        "transparent": false,
-        "shadow": false,
-        "visible": false,
-        "skipTaskbar": true,
-        "alwaysOnTop": true,
-        "url": "/popover"
-      },
-      {
         "label": "main",
         "title": "Hat",
         "width": 820,
@@ -38,7 +20,7 @@
         "minHeight": 500,
         "decorations": true,
         "transparent": false,
-        "visible": false,
+        "visible": true,
         "url": "/main"
       },
       {

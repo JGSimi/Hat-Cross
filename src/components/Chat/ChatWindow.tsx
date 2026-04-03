@@ -9,16 +9,15 @@ import EmptyState from '../Shared/EmptyState';
 
 interface Props {
   showScreenCapture?: boolean;
-  compact?: boolean;
 }
 
 export default function ChatWindow({ showScreenCapture = true }: Props) {
   const { messages, isStreaming, streamingContent, sendMessage, cancel } = useChat();
   const { pendingAttachments, removeAttachment, addAttachment } = useChatStore();
-  const { captureForPopover } = useScreenCapture();
+  const { captureScreen } = useScreenCapture();
 
   const handleScreenCapture = async () => {
-    const base64 = await captureForPopover();
+    const base64 = await captureScreen();
     if (base64) {
       addAttachment({
         id: generateId(),

@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { listen } from '@tauri-apps/api/event';
 import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { invoke } from '@tauri-apps/api/core';
-import PopoverPage from './pages/PopoverPage';
 import MainPage from './pages/MainPage';
 import QuickInputPage from './pages/QuickInputPage';
 import AnalysisPage from './pages/AnalysisPage';
@@ -15,22 +14,20 @@ function App() {
   const theme = useSettingsStore((s) => s.settings.theme);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
 
-  useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+  useEffect(() => { loadSettings(); }, [loadSettings]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Listen for tray menu events
+  // Tray menu events
   useEffect(() => {
     const unlistenNew = listen('new-conversation', () => {
       useChatStore.getState().clearMessages();
       useConversationStore.getState().createConversation();
     });
     const unlistenSettings = listen('open-settings', () => {
-      // Handled by MainLayout component
+      // MainLayout handles this
     });
     const unlistenUpdates = listen('check-updates', async () => {
       try {
@@ -57,6 +54,7 @@ function App() {
     };
   }, []);
 
+  // Clipboard processing
   useEffect(() => {
     const unlisten = listen('process-clipboard', async () => {
       try {
@@ -78,9 +76,11 @@ function App() {
             if (event.payload.text) response += event.payload.text;
             if (event.payload.isFinished && response) {
               writeText(response).catch(() => {});
+              // Notification with AI response text
+              const preview = response.length > 200 ? response.slice(0, 200) + '...' : response;
               invoke('send_notification', {
-                title: 'Hat',
-                body: 'Resposta copiada para a área de transferência',
+                title: 'Hat — Clipboard',
+                body: preview,
               }).catch(() => {});
               chunkUnlisten();
             }
@@ -90,10 +90,7 @@ function App() {
         await invoke('stream_chat', {
           messages: [{ role: 'user', textContent: clipText }],
           systemPrompt: settings.systemPrompt,
-          provider,
-          endpoint,
-          apiKey,
-          model,
+          provider, endpoint, apiKey, model,
           temperature: settings.temperature,
           maxTokens: settings.maxTokens,
           images: [],
@@ -102,19 +99,15 @@ function App() {
         console.error('Clipboard processing failed:', e);
       }
     });
-
-    return () => {
-      unlisten.then((fn) => fn());
-    };
+    return () => { unlisten.then(fn => fn()); };
   }, []);
 
   return (
     <Routes>
-      <Route path="/popover" element={<PopoverPage />} />
       <Route path="/main" element={<MainPage />} />
       <Route path="/quickinput" element={<QuickInputPage />} />
       <Route path="/analysis" element={<AnalysisPage />} />
-      <Route path="/" element={<Navigate to="/popover" replace />} />
+      <Route path="*" element={<Navigate to="/main" replace />} />
     </Routes>
   );
 }

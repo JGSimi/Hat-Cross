@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useChatStore } from '../stores/chatStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useConversationStore } from '../stores/conversationStore';
@@ -109,20 +110,21 @@ export function useChat() {
               if (lastMsg && !lastMsg.isUser && convId) {
                 addMessageToConversation(convId, lastMsg);
               }
-              // Play notification sound if enabled
+              // Sound + notification with AI response text
               const currentSettings = useSettingsStore.getState().settings;
               if (currentSettings.soundEnabled) {
                 try {
                   const ctx = new AudioContext();
-                  const oscillator = ctx.createOscillator();
-                  const gain = ctx.createGain();
-                  oscillator.connect(gain);
-                  gain.connect(ctx.destination);
-                  oscillator.frequency.value = 800;
-                  gain.gain.value = 0.1;
-                  oscillator.start();
-                  oscillator.stop(ctx.currentTime + 0.15);
+                  const osc = ctx.createOscillator();
+                  const g = ctx.createGain();
+                  osc.connect(g); g.connect(ctx.destination);
+                  osc.frequency.value = 800; g.gain.value = 0.1;
+                  osc.start(); osc.stop(ctx.currentTime + 0.15);
                 } catch {}
+              }
+              if (currentSettings.notificationsEnabled && !document.hasFocus()) {
+                const preview = content.length > 200 ? content.slice(0, 200) + '...' : content;
+                invoke('send_notification', { title: 'Hat', body: preview }).catch(() => {});
               }
             } else {
               setStreaming(false);

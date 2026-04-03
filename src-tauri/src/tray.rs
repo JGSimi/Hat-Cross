@@ -9,7 +9,7 @@ use crate::windows;
 pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let nova_conversa = MenuItem::with_id(app, "nova_conversa", "Nova Conversa", true, None::<&str>)?;
     let janela_principal = MenuItem::with_id(app, "janela_principal", "Janela Principal", true, None::<&str>)?;
-    let configuracoes = MenuItem::with_id(app, "configuracoes", "Configuracoes", true, None::<&str>)?;
+    let configuracoes = MenuItem::with_id(app, "configuracoes", "Configurações", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let verificar_updates = MenuItem::with_id(app, "verificar_updates", "Verificar Updates", true, None::<&str>)?;
     let sair = MenuItem::with_id(app, "sair", "Sair", true, None::<&str>)?;
@@ -37,7 +37,7 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     tray.set_menu(Some(menu))?;
 
-    // Handle left click: toggle popover
+    // Left click: toggle main window
     let app_handle = app.handle().clone();
     tray.on_tray_icon_event(move |_tray, event| {
         if let TrayIconEvent::Click {
@@ -45,23 +45,21 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             ..
         } = event
         {
-            let app = &app_handle;
-            if windows::is_window_visible(app, "popover") {
-                windows::hide_window(app, "popover");
+            if windows::is_window_visible(&app_handle, "main") {
+                windows::hide_window(&app_handle, "main");
             } else {
-                windows::show_window(app, "popover");
+                windows::show_window(&app_handle, "main");
             }
         }
     });
 
-    // Handle menu item clicks
+    // Menu item clicks
     let app_handle = app.handle().clone();
     tray.on_menu_event(move |_app, event| {
         let id = event.id().as_ref();
         match id {
             "nova_conversa" => {
-                // Show popover and emit event for new conversation
-                windows::show_window(&app_handle, "popover");
+                windows::show_window(&app_handle, "main");
                 let _ = app_handle.emit("new-conversation", ());
             }
             "janela_principal" => {

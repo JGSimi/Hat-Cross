@@ -369,7 +369,6 @@ function GeneralTab() {
 
 function AppearanceTab({
   settings,
-  updateSettings,
   setTheme,
 }: {
   settings: ReturnType<typeof useSettingsStore.getState>['settings'];
@@ -383,29 +382,6 @@ function AppearanceTab({
         <ThemePicker current={settings.theme} onChange={setTheme} />
       </GlassCard>
 
-      <SectionTitle>Popover</SectionTitle>
-      <GlassCard>
-        <SettingRow label={`Opacidade: ${Math.round(settings.popover.opacity * 100)}%`}>
-          <CustomSlider min={0.3} max={1} step={0.05} value={settings.popover.opacity}
-            onChange={(v) => updateSettings({ popover: { ...settings.popover, opacity: v } })} />
-        </SettingRow>
-      </GlassCard>
-
-      <SectionTitle>Modo Discreto (Stealth)</SectionTitle>
-      <GlassCard>
-        <SettingRow label="Stealth Mode">
-          <Toggle
-            checked={settings.popover.stealthMode}
-            onChange={(v) => updateSettings({ popover: { ...settings.popover, stealthMode: v } })}
-          />
-        </SettingRow>
-        {settings.popover.stealthMode && (
-          <SettingRow label={`Opacidade Hover: ${Math.round(settings.popover.stealthHoverOpacity * 100)}%`}>
-            <CustomSlider min={0.1} max={0.8} step={0.05} value={settings.popover.stealthHoverOpacity}
-              onChange={(v) => updateSettings({ popover: { ...settings.popover, stealthHoverOpacity: v } })} />
-          </SettingRow>
-        )}
-      </GlassCard>
     </>
   );
 }
