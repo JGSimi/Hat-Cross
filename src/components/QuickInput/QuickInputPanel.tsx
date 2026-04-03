@@ -111,13 +111,13 @@ export default function QuickInputPanel() {
     <div style={{
       display: 'flex', flexDirection: 'column',
       width: '100%', height: '100%',
-      background: '#0e0e12', overflow: 'hidden',
+      background: 'var(--bg-primary)', overflow: 'hidden',
     }}>
       {/* Input bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '16px 20px', flexShrink: 0,
-        borderBottom: response || isStreaming ? '1px solid #1a1a22' : 'none',
+        borderBottom: response || isStreaming ? '1px solid var(--border-subtle)' : 'none',
       }}>
         <GraduationCap
           size={20}
@@ -133,7 +133,7 @@ export default function QuickInputPanel() {
           disabled={isStreaming}
           style={{
             flex: 1, background: 'none', border: 'none', outline: 'none',
-            color: '#e8e8ec', fontSize: 15, fontWeight: 400,
+            color: 'var(--text-primary)', fontSize: 15, fontWeight: 400,
             fontFamily: 'inherit',
             opacity: isStreaming ? 0.5 : 1,
           }}
@@ -150,7 +150,7 @@ export default function QuickInputPanel() {
               style={{
                 padding: 6, borderRadius: 6, background: 'none',
                 border: 'none', cursor: 'pointer', display: 'flex',
-                alignItems: 'center', color: '#555',
+                alignItems: 'center', color: 'var(--text-dim)',
               }}
             >
               <RotateCcw size={15} />
@@ -208,7 +208,7 @@ export default function QuickInputPanel() {
                 maxHeight: MAX_RESPONSE_HEIGHT - 40,
               }}>
                 <div className="prose prose-invert prose-sm max-w-none" style={{
-                  fontSize: 13, lineHeight: 1.6, color: '#c8c8d0',
+                  fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)',
                 }}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
                     {response}
@@ -225,7 +225,7 @@ export default function QuickInputPanel() {
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '6px 20px 10px', flexShrink: 0,
-                  borderTop: '1px solid #1a1a22',
+                  borderTop: '1px solid var(--border-subtle)',
                 }}
               >
                 <motion.button
@@ -248,13 +248,13 @@ export default function QuickInputPanel() {
                     { key: '⏎', label: 'nova pergunta' },
                   ].map((h) => (
                     <span key={h.key} style={{
-                      fontSize: 9, color: '#444',
+                      fontSize: 9, color: 'var(--text-dim)',
                       fontFamily: "'SF Mono', monospace",
                     }}>
                       <span style={{
-                        background: '#1a1a22', padding: '1px 4px',
+                        background: 'var(--surface-secondary)', padding: '1px 4px',
                         borderRadius: 3, marginRight: 3,
-                        border: '1px solid #222',
+                        border: '1px solid var(--border-subtle)',
                       }}>{h.key}</span>
                       {h.label}
                     </span>

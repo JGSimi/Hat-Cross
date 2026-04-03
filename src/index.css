@@ -135,6 +135,25 @@
   --color-accent: #6366F1;
   --color-accent-hover: #818CF8;
 
+  /* Text opacity variants */
+  --text-bright: rgba(255, 255, 255, 0.95);
+  --text-strong: rgba(255, 255, 255, 0.92);
+  --text-normal: rgba(255, 255, 255, 0.85);
+  --text-soft: rgba(255, 255, 255, 0.7);
+  --text-dim: rgba(255, 255, 255, 0.4);
+  --text-faint: rgba(255, 255, 255, 0.25);
+
+  /* Surface variants with opacity */
+  --surface-input: rgba(255, 255, 255, 0.04);
+  --surface-input-hover: rgba(255, 255, 255, 0.08);
+  --border-input: rgba(255, 255, 255, 0.08);
+  --border-glass: rgba(255, 255, 255, 0.15);
+  --inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+  /* Accent shadows */
+  --accent-shadow: 0 2px 8px var(--accent-glow);
+  --accent-shadow-lg: 0 4px 20px var(--accent-glow);
+
   /* Spacing scale */
   --sp-1: 4px;
   --sp-2: 8px;

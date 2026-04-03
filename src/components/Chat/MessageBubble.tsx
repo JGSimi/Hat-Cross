@@ -33,21 +33,16 @@ export default function MessageBubble({ message, isGrouped, isFirst }: Props) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* AI avatar */}
       {!message.isUser && (
         <div style={{ width: 28, flexShrink: 0, marginRight: 8 }}>
           {isFirst && (
             <div
               style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
+                width: 28, height: 28, borderRadius: 8,
                 background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 50%, #000))',
                 border: '1px solid var(--border-subtle)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: 'var(--accent-shadow)',
               }}
             >
               <GraduationCap size={14} color="white" strokeWidth={2.5} />
@@ -58,17 +53,13 @@ export default function MessageBubble({ message, isGrouped, isFirst }: Props) {
 
       <div style={{ position: 'relative', maxWidth: '82%' }}>
         {message.isUser ? (
-          /* User bubble — accent tinted glass */
           <div
             style={{
               background: 'var(--user-bubble-bg)',
               border: '1px solid var(--accent-border)',
-              borderRadius: 14,
-              borderBottomRightRadius: 4,
-              padding: '9px 14px',
-              fontSize: 13,
-              lineHeight: 1.55,
-              color: 'rgba(255,255,255,0.92)',
+              borderRadius: 14, borderBottomRightRadius: 4,
+              padding: '9px 14px', fontSize: 13, lineHeight: 1.55,
+              color: 'var(--text-strong)',
             }}
           >
             <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
@@ -76,13 +67,11 @@ export default function MessageBubble({ message, isGrouped, isFirst }: Props) {
             </p>
           </div>
         ) : (
-          /* AI response — no bubble, just markdown */
           <div
             className="prose prose-invert prose-sm max-w-none"
             style={{
-              fontSize: 13,
-              lineHeight: 1.6,
-              color: 'rgba(255,255,255,0.85)',
+              fontSize: 13, lineHeight: 1.6,
+              color: 'var(--text-normal)',
               wordBreak: 'break-word',
             }}
           >
@@ -92,18 +81,14 @@ export default function MessageBubble({ message, isGrouped, isFirst }: Props) {
           </div>
         )}
 
-        {/* Hover: copy + timestamp */}
         <div
           style={{
-            position: 'absolute',
-            bottom: -18,
+            position: 'absolute', bottom: -18,
             right: message.isUser ? 0 : undefined,
             left: message.isUser ? undefined : 0,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
+            display: 'flex', alignItems: 'center', gap: 6,
             opacity: hovered ? 1 : 0,
-            transition: 'opacity 0.15s ease',
+            transition: 'opacity var(--transition-normal)',
             pointerEvents: hovered ? 'auto' : 'none',
           }}
         >
@@ -112,21 +97,16 @@ export default function MessageBubble({ message, isGrouped, isFirst }: Props) {
             style={{
               background: 'var(--surface-secondary)',
               border: '1px solid var(--border-subtle)',
-              borderRadius: 4,
-              cursor: 'pointer',
-              padding: '2px 5px',
-              color: copied ? 'var(--success)' : 'rgba(255,255,255,0.35)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 3,
-              fontSize: 10,
-              transition: 'color 0.15s ease',
+              borderRadius: 4, cursor: 'pointer', padding: '2px 5px',
+              color: copied ? 'var(--success)' : 'var(--text-faint)',
+              display: 'flex', alignItems: 'center', gap: 3, fontSize: 10,
+              transition: 'color var(--transition-normal)',
             }}
           >
             {copied ? <Check size={9} /> : <Copy size={9} />}
             {copied ? 'Copiado' : 'Copiar'}
           </button>
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>
+          <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>
             {formatTimestamp(message.timestamp)}
           </span>
         </div>
