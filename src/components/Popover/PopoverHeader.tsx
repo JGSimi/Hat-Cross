@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Maximize2, X, Trash2, Monitor, Cloud, GraduationCap } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getGreeting } from '../../utils/markdown';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useChatStore } from '../../stores/chatStore';
@@ -29,9 +30,17 @@ export default function PopoverHeader() {
     ? settings.localModel
     : providerConfigs[settings.cloudProvider]?.model || 'Selecionar';
 
+  const handleDragStart = (e: React.MouseEvent) => {
+    // Only start drag if clicking on the header area itself, not on buttons
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) return;
+    e.preventDefault();
+    getCurrentWindow().startDragging().catch(() => {});
+  };
+
   return (
     <div
-      data-tauri-drag-region
+      onMouseDown={handleDragStart}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -46,9 +55,8 @@ export default function PopoverHeader() {
       }}
     >
       {/* Left — hat icon + greeting + model */}
-      <div data-tauri-drag-region style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
         <div
-          data-tauri-drag-region
           style={{
             width: 22,
             height: 22,
@@ -62,14 +70,10 @@ export default function PopoverHeader() {
         >
           <GraduationCap size={13} color="white" strokeWidth={2.5} />
         </div>
-        <span
-          data-tauri-drag-region
-          style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: -0.2 }}
-        >
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: -0.2 }}>
           {greeting}
         </span>
         <div
-          data-tauri-drag-region
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -82,7 +86,6 @@ export default function PopoverHeader() {
         >
           {isLocal ? <Monitor size={9} color="rgba(255,255,255,0.4)" /> : <Cloud size={9} color="rgba(255,255,255,0.4)" />}
           <span
-            data-tauri-drag-region
             style={{
               fontSize: 10,
               fontWeight: 500,
