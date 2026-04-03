@@ -112,6 +112,8 @@ export default function QuickInputPanel() {
       display: 'flex', flexDirection: 'column',
       width: '100%', height: '100%',
       background: 'var(--bg-primary)', overflow: 'hidden',
+      borderRadius: 12,
+      boxShadow: '0 0 0 0.5px var(--border-subtle), 0 8px 32px rgba(0,0,0,0.4)',
     }}>
       {/* Input bar */}
       <div style={{
@@ -119,10 +121,15 @@ export default function QuickInputPanel() {
         padding: '16px 20px', flexShrink: 0,
         borderBottom: response || isStreaming ? '1px solid var(--border-subtle)' : 'none',
       }}>
-        <GraduationCap
-          size={20}
-          style={{ color: 'var(--color-accent)', flexShrink: 0, opacity: 0.8 }}
-        />
+        <motion.div
+          animate={isStreaming ? { opacity: [0.6, 1, 0.6] } : { opacity: 0.8 }}
+          transition={isStreaming ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } : {}}
+        >
+          <GraduationCap
+            size={20}
+            style={{ color: 'var(--color-accent)', flexShrink: 0 }}
+          />
+        </motion.div>
         <input
           ref={inputRef}
           value={query}
@@ -135,6 +142,7 @@ export default function QuickInputPanel() {
             flex: 1, background: 'none', border: 'none', outline: 'none',
             color: 'var(--text-primary)', fontSize: 15, fontWeight: 400,
             fontFamily: 'inherit',
+            letterSpacing: '-0.01em',
             opacity: isStreaming ? 0.5 : 1,
           }}
         />
@@ -249,12 +257,12 @@ export default function QuickInputPanel() {
                   ].map((h) => (
                     <span key={h.key} style={{
                       fontSize: 9, color: 'var(--text-dim)',
-                      fontFamily: "'SF Mono', monospace",
+                      fontFamily: "'JetBrains Mono', monospace",
                     }}>
                       <span style={{
-                        background: 'var(--surface-secondary)', padding: '1px 4px',
+                        background: 'var(--surface-elevated)', padding: '1px 4px',
                         borderRadius: 3, marginRight: 3,
-                        border: '1px solid var(--border-subtle)',
+                        border: '1px solid var(--border-highlight)',
                       }}>{h.key}</span>
                       {h.label}
                     </span>

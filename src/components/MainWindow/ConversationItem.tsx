@@ -60,10 +60,10 @@ export default function ConversationItem({
         cursor: 'pointer',
         borderRadius: 6,
         margin: '0 6px 2px',
-        background: isActive ? 'rgba(var(--color-accent), 0.12)' : 'transparent',
-        border: isActive
-          ? '0.5px solid color-mix(in srgb, var(--color-accent) 25%, transparent)'
-          : '0.5px solid transparent',
+        background: isActive ? 'color-mix(in srgb, var(--color-accent) 8%, transparent)' : 'transparent',
+        borderLeft: isActive
+          ? '2px solid var(--color-accent)'
+          : '2px solid transparent',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>

@@ -38,11 +38,11 @@ function MessageBubble({ message, isGrouped, isFirst }: Props) {
           {isFirst && (
             <div
               style={{
-                width: 28, height: 28, borderRadius: 8,
+                width: 28, height: 28, borderRadius: 10,
                 background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 50%, #000))',
                 border: '1px solid var(--border-subtle)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: 'var(--accent-shadow)',
+                boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-accent) 20%, transparent), var(--accent-shadow)',
               }}
             >
               <GraduationCap size={14} color="white" strokeWidth={2.5} />
@@ -57,9 +57,10 @@ function MessageBubble({ message, isGrouped, isFirst }: Props) {
             style={{
               background: 'var(--user-bubble-bg)',
               border: '1px solid var(--accent-border)',
-              borderRadius: 14, borderBottomRightRadius: 4,
-              padding: '9px 14px', fontSize: 13, lineHeight: 1.55,
+              borderRadius: 16, borderBottomRightRadius: 4,
+              padding: '10px 15px', fontSize: 13.5, lineHeight: 1.55,
               color: 'var(--text-strong)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 3px rgba(0,0,0,0.1)',
             }}
           >
             <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
@@ -70,9 +71,11 @@ function MessageBubble({ message, isGrouped, isFirst }: Props) {
           <div
             className="prose prose-invert prose-sm max-w-none"
             style={{
-              fontSize: 13, lineHeight: 1.6,
+              fontSize: 13.5, lineHeight: 1.6,
               color: 'var(--text-normal)',
               wordBreak: 'break-word',
+              borderLeft: '2px solid color-mix(in srgb, var(--color-accent) 20%, transparent)',
+              paddingLeft: 14,
             }}
           >
             <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
@@ -83,7 +86,7 @@ function MessageBubble({ message, isGrouped, isFirst }: Props) {
 
         <div
           style={{
-            position: 'absolute', bottom: -18,
+            position: 'absolute', bottom: -20,
             right: message.isUser ? 0 : undefined,
             left: message.isUser ? undefined : 0,
             display: 'flex', alignItems: 'center', gap: 6,
@@ -95,9 +98,10 @@ function MessageBubble({ message, isGrouped, isFirst }: Props) {
           <button
             onClick={handleCopy}
             style={{
-              background: 'var(--surface-secondary)',
+              background: 'color-mix(in srgb, var(--bg-secondary) 90%, transparent)',
+              backdropFilter: 'blur(8px)',
               border: '1px solid var(--border-subtle)',
-              borderRadius: 4, cursor: 'pointer', padding: '2px 5px',
+              borderRadius: 6, cursor: 'pointer', padding: '3px 7px',
               color: copied ? 'var(--success)' : 'var(--text-faint)',
               display: 'flex', alignItems: 'center', gap: 3, fontSize: 10,
               transition: 'color var(--transition-normal)',
