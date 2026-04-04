@@ -30,7 +30,7 @@ pub fn show_window(app: &AppHandle, label: &str) {
                 .title("Hat")
                 .inner_size(820.0, 650.0)
                 .min_inner_size(600.0, 500.0)
-                .decorations(true),
+                .decorations(false),
             "quickinput" => builder
                 .title("Hat Quick Input")
                 .inner_size(680.0, 72.0)
@@ -43,11 +43,11 @@ pub fn show_window(app: &AppHandle, label: &str) {
             "analysis" => builder
                 .title("Hat - Analise de Tela")
                 .inner_size(1000.0, 700.0)
-                .decorations(true),
+                .decorations(false),
             _ => builder
                 .title("Hat")
                 .inner_size(820.0, 650.0)
-                .decorations(true),
+                .decorations(false),
         };
 
         match builder.build() {
