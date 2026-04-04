@@ -7,6 +7,8 @@ import rehypeHighlight from 'rehype-highlight';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { usePlatform } from '../../hooks/usePlatform';
+import WindowControls from '../Shared/WindowControls';
 import { PROVIDER_DEFAULTS } from '../../types';
 import type { StreamChunk } from '../../types';
 
@@ -42,6 +44,7 @@ export default function AnalysisLayout() {
   const [followUp, setFollowUp] = useState('');
   const [inputFocused, setInputFocused] = useState(false);
   const analysisRef = useRef('');
+  const platform = usePlatform();
   const settings = useSettingsStore((s) => s.settings);
   const providerConfigs = useSettingsStore((s) => s.providerConfigs);
 
@@ -194,6 +197,7 @@ export default function AnalysisLayout() {
         }}
       >
         <div
+          data-tauri-drag-region
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -202,9 +206,12 @@ export default function AnalysisLayout() {
             borderBottom: '0.5px solid var(--border-subtle)',
           }}
         >
-          <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-            Analise de Tela
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {platform === 'macos' && <WindowControls variant="sidebar" />}
+            <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+              Analise de Tela
+            </h2>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <motion.button
               whileHover={{ scale: 1.1 }}
@@ -242,6 +249,7 @@ export default function AnalysisLayout() {
             >
               <MessageSquare size={14} />
             </motion.button>
+            {platform !== 'macos' && <WindowControls variant="header" />}
           </div>
         </div>
 

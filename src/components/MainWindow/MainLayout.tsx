@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './Sidebar';
 import ChatWindow from '../Chat/ChatWindow';
 import SettingsPanel from '../Settings/SettingsPanel';
+import WindowControls from '../Shared/WindowControls';
+import { usePlatform } from '../../hooks/usePlatform';
 import { useChatStore } from '../../stores/chatStore';
 import { useConversationStore } from '../../stores/conversationStore';
 
@@ -28,6 +30,7 @@ const itemVariants = {
 
 export default function MainLayout() {
   const [showSettings, setShowSettings] = useState(false);
+  const platform = usePlatform();
   const activeConversationId = useConversationStore((s) => s.activeConversationId);
   const loadFromConversation = useChatStore((s) => s.loadFromConversation);
 
@@ -49,6 +52,24 @@ export default function MainLayout() {
         <Sidebar onOpenSettings={() => setShowSettings(true)} />
       </motion.div>
       <motion.div variants={itemVariants} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+        {/* Titlebar drag region + window controls (Windows/Linux) */}
+        <div
+          data-tauri-drag-region
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 38,
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            pointerEvents: 'auto',
+          }}
+        >
+          {platform !== 'macos' && <WindowControls variant="header" />}
+        </div>
         <AnimatePresence mode="wait">
           {showSettings ? (
             <motion.div

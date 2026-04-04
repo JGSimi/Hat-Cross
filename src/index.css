@@ -322,6 +322,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Drag region support for custom titlebar */
+[data-tauri-drag-region] button,
+[data-tauri-drag-region] input,
+[data-tauri-drag-region] a,
+[data-tauri-drag-region] [data-no-drag] {
+  -webkit-app-region: no-drag;
+}
+
 :focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
