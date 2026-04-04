@@ -23,6 +23,11 @@ pub fn get_provider_key(provider: &str) -> String {
 }
 
 #[tauri::command]
+pub fn get_provider_key_cmd(provider: String) -> String {
+    get_provider_key(&provider)
+}
+
+#[tauri::command]
 pub async fn set_autostart(app: AppHandle, enabled: bool) -> Result<(), String> {
     use tauri_plugin_autostart::ManagerExt;
     let autostart = app.autolaunch();

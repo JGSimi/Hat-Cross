@@ -181,6 +181,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
 
   saveSettings: async () => {
+    if (!get()._hydrated) return; // Don't overwrite persisted data before hydration
     try {
       const { settings, providerConfigs } = get();
       await tauriStore.set('hat-settings', { settings, providerConfigs });

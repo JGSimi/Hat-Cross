@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { useSettingsStore } from '../stores/settingsStore';
 
 export type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
 
@@ -64,7 +65,8 @@ export function useUpdater() {
       });
 
       setStatus('ready');
-      // Relaunch the app to apply the update
+      // Flush settings to disk before relaunching to preserve API keys
+      await useSettingsStore.getState().saveSettings();
       await relaunch();
     } catch (e) {
       setError(String(e));
