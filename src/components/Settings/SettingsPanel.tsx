@@ -299,6 +299,8 @@ function GeneralTab() {
             if (contentLength > 0) setUpdateProgress(Math.round((downloaded / contentLength) * 100));
           }
         });
+        // Flush settings to disk before relaunching to preserve API keys
+        await useSettingsStore.getState().saveSettings();
         const { relaunch } = await import('@tauri-apps/plugin-process');
         await relaunch();
       } else {
