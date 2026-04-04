@@ -30,7 +30,7 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
   }, [isStreaming]);
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
       <AnimatePresence initial={false}>
         {messages.map((msg, i) => {
           const prev = i > 0 ? messages[i - 1] : null;
@@ -48,9 +48,9 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
           return (
             <motion.div
               key={msg.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay, type: 'spring', stiffness: 400, damping: 28 }}
             >
               <MessageBubble
                 message={msg}

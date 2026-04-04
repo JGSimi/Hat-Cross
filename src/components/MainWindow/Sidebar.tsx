@@ -8,6 +8,15 @@ interface Props {
   onOpenSettings: () => void;
 }
 
+const staggerItem = {
+  hidden: { opacity: 0, y: 6 },
+  show: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: 0.05 + i * 0.05, type: 'spring' as const, stiffness: 300, damping: 25 },
+  }),
+};
+
 export default function Sidebar({ onOpenSettings }: Props) {
   const {
     conversations,
@@ -40,12 +49,20 @@ export default function Sidebar({ onOpenSettings }: Props) {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: 'var(--bg-secondary)',
+        background: 'color-mix(in srgb, var(--bg-secondary) 85%, transparent)',
+        backdropFilter: 'blur(30px) saturate(1.5)',
+        WebkitBackdropFilter: 'blur(30px) saturate(1.5)',
         borderRight: '0.5px solid var(--border-subtle)',
+        position: 'relative',
+        zIndex: 1,
       }}
     >
       {/* Header */}
-      <div
+      <motion.div
+        custom={0}
+        variants={staggerItem}
+        initial="hidden"
+        animate="show"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -54,7 +71,14 @@ export default function Sidebar({ onOpenSettings }: Props) {
           borderBottom: '0.5px solid var(--border-subtle)',
         }}
       >
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+        <span style={{
+          fontSize: 14,
+          fontWeight: 700,
+          letterSpacing: -0.5,
+          background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+        }}>
           Hat
         </span>
         <motion.button
@@ -76,10 +100,16 @@ export default function Sidebar({ onOpenSettings }: Props) {
         >
           <Plus size={14} />
         </motion.button>
-      </div>
+      </motion.div>
 
       {/* Search */}
-      <div style={{ padding: '8px 12px' }}>
+      <motion.div
+        custom={1}
+        variants={staggerItem}
+        initial="hidden"
+        animate="show"
+        style={{ padding: '8px 12px' }}
+      >
         <div
           style={{
             display: 'flex',
@@ -106,10 +136,16 @@ export default function Sidebar({ onOpenSettings }: Props) {
             }}
           />
         </div>
-      </div>
+      </motion.div>
 
       {/* Conversations */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <motion.div
+        custom={2}
+        variants={staggerItem}
+        initial="hidden"
+        animate="show"
+        style={{ flex: 1, overflowY: 'auto' }}
+      >
         {pinned.length > 0 && (
           <>
             <p
@@ -119,7 +155,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
                 fontWeight: 600,
                 color: 'var(--text-muted)',
                 textTransform: 'uppercase',
-                letterSpacing: 0.3,
+                letterSpacing: 0.6,
               }}
             >
               Fixadas
@@ -147,7 +183,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
                 fontWeight: 600,
                 color: 'var(--text-muted)',
                 textTransform: 'uppercase',
-                letterSpacing: 0.3,
+                letterSpacing: 0.6,
               }}
             >
               Recentes
@@ -178,16 +214,21 @@ export default function Sidebar({ onOpenSettings }: Props) {
             Nenhuma conversa
           </p>
         )}
-      </div>
+      </motion.div>
 
       {/* Footer */}
-      <div
+      <motion.div
+        custom={3}
+        variants={staggerItem}
+        initial="hidden"
+        animate="show"
         style={{
           borderTop: '0.5px solid var(--border-subtle)',
           padding: '10px 12px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          background: 'linear-gradient(to top, color-mix(in srgb, var(--color-accent) 3%, transparent), transparent 40%)',
         }}
       >
         <motion.button
@@ -214,7 +255,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
         <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>
           v2
         </span>
-      </div>
+      </motion.div>
     </div>
   );
 }

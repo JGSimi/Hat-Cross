@@ -68,15 +68,21 @@ export default function InputArea({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      style={{ padding: '8px 12px 12px', flexShrink: 0 }}
+      style={{ padding: '10px 16px 14px', flexShrink: 0 }}
     >
       <AttachmentPreview attachments={attachments} onRemove={onRemoveAttachment} />
       <div
         style={{
-          background: isDragOver ? 'var(--surface-input-hover)' : 'var(--surface-input)',
+          background: isDragOver
+            ? 'var(--surface-input-hover)'
+            : 'color-mix(in srgb, var(--surface-input) 80%, transparent)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           border: isFocused ? '1px solid var(--border-focused)' : '1px solid var(--border-input)',
-          borderRadius: 12, padding: '8px 12px',
-          boxShadow: isFocused ? '0 0 0 3px var(--accent-glow), var(--inset-highlight)' : 'var(--inset-highlight)',
+          borderRadius: 14, padding: '10px 14px',
+          boxShadow: isFocused
+            ? '0 0 0 3px var(--accent-glow), 0 0 20px color-mix(in srgb, var(--color-accent) 8%, transparent), var(--inset-highlight)'
+            : 'var(--inset-highlight)',
           transition: 'border-color var(--transition-normal), box-shadow var(--transition-normal), background var(--transition-normal)',
           display: 'flex', alignItems: 'flex-end', gap: 6,
         }}
@@ -109,8 +115,9 @@ export default function InputArea({
           rows={1}
           style={{
             flex: 1, background: 'none', border: 'none', outline: 'none',
-            color: 'var(--text-strong)', fontSize: 13, lineHeight: 1.5,
+            color: 'var(--text-strong)', fontSize: 13.5, lineHeight: 1.5,
             resize: 'none', padding: '2px 0', maxHeight: 96, fontFamily: 'inherit',
+            letterSpacing: '0.01em',
           }}
         />
         <motion.button
@@ -125,7 +132,9 @@ export default function InputArea({
             padding: hasContent || isStreaming ? 5 : 4,
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             color: isStreaming ? 'var(--error)' : hasContent ? 'white' : 'var(--text-faint)',
-            borderRadius: 8, transition: 'all var(--transition-normal)',
+            borderRadius: 10,
+            boxShadow: hasContent && !isStreaming ? '0 2px 8px var(--accent-glow)' : 'none',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
           aria-label="Enviar"
         >

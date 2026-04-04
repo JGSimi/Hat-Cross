@@ -6,6 +6,26 @@ import SettingsPanel from '../Settings/SettingsPanel';
 import { useChatStore } from '../../stores/chatStore';
 import { useConversationStore } from '../../stores/conversationStore';
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring' as const, stiffness: 280, damping: 24 },
+  },
+};
+
 export default function MainLayout() {
   const [showSettings, setShowSettings] = useState(false);
   const activeConversationId = useConversationStore((s) => s.activeConversationId);
@@ -18,9 +38,17 @@ export default function MainLayout() {
   }, [activeConversationId, loadFromConversation]);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100%', background: 'var(--bg-primary)' }}>
-      <Sidebar onOpenSettings={() => setShowSettings(true)} />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+    <motion.div
+      className="bg-atmosphere"
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      style={{ display: 'flex', height: '100vh', width: '100%' }}
+    >
+      <motion.div variants={itemVariants} style={{ position: 'relative', zIndex: 1 }}>
+        <Sidebar onOpenSettings={() => setShowSettings(true)} />
+      </motion.div>
+      <motion.div variants={itemVariants} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
         <AnimatePresence mode="wait">
           {showSettings ? (
             <motion.div
@@ -46,7 +74,7 @@ export default function MainLayout() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

@@ -54,6 +54,7 @@ export default function SettingsPanel({ onClose }: Props) {
         height: '100%',
         background: 'var(--bg-primary)',
       }}
+      className="bg-atmosphere"
     >
       {/* Header */}
       <div
@@ -63,6 +64,8 @@ export default function SettingsPanel({ onClose }: Props) {
           gap: 12,
           padding: '12px 16px',
           borderBottom: '0.5px solid var(--border-subtle)',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         <motion.button
@@ -87,9 +90,9 @@ export default function SettingsPanel({ onClose }: Props) {
         </h2>
       </div>
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
         {/* Tab sidebar */}
-        <div style={{ width: 160, borderRight: '0.5px solid var(--border-subtle)', paddingTop: 8 }}>
+        <div style={{ width: 160, borderRight: '0.5px solid var(--border-subtle)', paddingTop: 8, background: 'linear-gradient(to bottom, transparent 70%, color-mix(in srgb, var(--color-accent) 3%, transparent))' }}>
           {tabs.map((tab) => (
             <motion.button
               key={tab.id}
@@ -103,7 +106,7 @@ export default function SettingsPanel({ onClose }: Props) {
                 fontSize: 11,
                 fontWeight: activeTab === tab.id ? 600 : 400,
                 color: activeTab === tab.id ? 'var(--color-accent)' : 'var(--text-secondary)',
-                background: activeTab === tab.id ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' : 'transparent',
+                background: activeTab === tab.id ? 'linear-gradient(to right, color-mix(in srgb, var(--color-accent) 12%, transparent), color-mix(in srgb, var(--color-accent) 4%, transparent))' : 'transparent',
                 border: 'none',
                 borderRight: activeTab === tab.id ? '2px solid var(--color-accent)' : '2px solid transparent',
                 cursor: 'pointer',
@@ -169,7 +172,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
       style={{
         fontSize: 10,
         fontWeight: 600,
-        color: 'var(--text-muted)',
+        color: 'color-mix(in srgb, var(--text-muted) 70%, var(--color-accent))',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
         marginBottom: 12,
@@ -190,6 +193,7 @@ function GlassCard({ children }: { children: React.ReactNode }) {
         borderRadius: 12,
         padding: 14,
         marginBottom: 16,
+        boxShadow: 'var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.03)',
       }}
     >
       {children}

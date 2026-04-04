@@ -37,10 +37,10 @@ export default function ChatWindow({ showScreenCapture = true }: Props) {
         {showEmpty ? (
           <motion.div
             key="empty"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <EmptyState />
@@ -82,7 +82,8 @@ export default function ChatWindow({ showScreenCapture = true }: Props) {
             margin: '0 12px 8px',
             background: 'color-mix(in srgb, var(--error) 10%, transparent)',
             border: '1px solid color-mix(in srgb, var(--error) 20%, transparent)',
-            borderRadius: 8,
+            borderLeft: '3px solid var(--error)',
+            borderRadius: '0 8px 8px 0',
             fontSize: 12,
             color: 'var(--error)',
           }}
