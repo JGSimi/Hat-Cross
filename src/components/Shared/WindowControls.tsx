@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { usePlatform } from '../../hooks/usePlatform';
 
@@ -108,7 +108,7 @@ function MacControls({ appWindow }: { appWindow: ReturnType<typeof getCurrentWin
 function WinLinuxControls({ appWindow }: { appWindow: ReturnType<typeof getCurrentWindow> }) {
   const [hoveredBtn, setHoveredBtn] = useState<string | null>(null);
 
-  const btnBase: React.CSSProperties = {
+  const btnBase: CSSProperties = {
     width: 46,
     height: 32,
     border: 'none',

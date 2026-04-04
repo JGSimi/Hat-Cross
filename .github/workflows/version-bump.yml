@@ -17,6 +17,7 @@ jobs:
     outputs:
       new_version: ${{ steps.version.outputs.version }}
       bumped: ${{ steps.bump.outputs.type != 'none' && 'true' || 'false' }}
+      sha: ${{ steps.commit.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -64,6 +65,7 @@ jobs:
 
       - name: Commit and tag
         if: steps.bump.outputs.type != 'none'
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -71,6 +73,7 @@ jobs:
           git commit -m "chore: bump version to v${{ steps.version.outputs.version }}"
           git tag "v${{ steps.version.outputs.version }}"
           git push origin main --tags
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
   # Build and release — runs after version bump
   build-release:
@@ -95,16 +98,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
-          fetch-depth: 0
-
-      - name: Pull latest (includes version bump commit)
-        run: git pull origin main
+          ref: ${{ needs.version-bump.outputs.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
+          cache: 'npm'
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
