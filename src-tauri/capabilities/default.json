@@ -33,6 +33,8 @@
     "dialog:allow-ask",
     "store:allow-get",
     "store:allow-set",
+    "store:allow-save",
+    "store:allow-load",
     "store:allow-delete",
     "store:allow-keys",
     "store:allow-entries",
