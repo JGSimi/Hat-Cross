@@ -31,6 +31,7 @@ pub fn run() {
             commands::open_analysis_window,
             commands::send_notification,
             commands::set_provider_key,
+            commands::get_provider_key_cmd,
             streaming::stream_chat,
             streaming::cancel_stream,
             streaming::fetch_models,

@@ -33,6 +33,8 @@ function App() {
         const update = await check();
         if (update) {
           await update.downloadAndInstall();
+          // Flush settings to disk before relaunching to preserve API keys
+          await useSettingsStore.getState().saveSettings();
           const { relaunch } = await import('@tauri-apps/plugin-process');
           await relaunch();
         } else {

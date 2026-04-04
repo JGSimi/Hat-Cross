@@ -166,11 +166,14 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
           _hydrated: true,
         });
         // Sync all stored API keys to the Rust backend
-        for (const [provider, config] of Object.entries(mergedConfigs)) {
-          if (config.apiKey) {
-            invoke('set_provider_key', { provider, key: config.apiKey }).catch(console.error);
-          }
-        }
+        const syncPromises = Object.entries(mergedConfigs)
+          .filter(([, config]) => config.apiKey)
+          .map(([provider, config]) =>
+            invoke('set_provider_key', { provider, key: config.apiKey })
+          );
+        await Promise.all(syncPromises).catch((err) =>
+          console.error('[SettingsStore] Failed to sync keys to backend:', err)
+        );
       } else {
         set({ _hydrated: true });
       }
@@ -181,6 +184,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
 
   saveSettings: async () => {
+    if (!get()._hydrated) return; // Don't overwrite persisted data before hydration
     try {
       const { settings, providerConfigs } = get();
       await tauriStore.set('hat-settings', { settings, providerConfigs });
