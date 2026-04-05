@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, type KeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap, Send, Square, Copy, Check, RotateCcw } from 'lucide-react';
+import { Send, Square, Copy, Check, RotateCcw } from 'lucide-react';
+import HorseLogo from '../Shared/HorseLogo';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -125,9 +126,9 @@ export default function QuickInputPanel() {
           animate={isStreaming ? { opacity: [0.6, 1, 0.6] } : { opacity: 0.8 }}
           transition={isStreaming ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } : {}}
         >
-          <GraduationCap
+          <HorseLogo
             size={20}
-            style={{ color: 'var(--color-accent)', flexShrink: 0 }}
+            color="var(--color-accent)"
           />
         </motion.div>
         <input

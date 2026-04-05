@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { GraduationCap, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import HorseLogo from './HorseLogo';
 import { getGreeting } from '../../utils/markdown';
 
 const shortcuts = [
@@ -41,7 +42,7 @@ export default function EmptyState() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: 'var(--accent-shadow-lg)',
         }}>
-          <GraduationCap size={26} color="white" strokeWidth={2} />
+          <HorseLogo size={26} color="white" />
         </div>
         {/* Sparkle */}
         <motion.div
