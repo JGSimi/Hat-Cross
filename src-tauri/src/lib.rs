@@ -46,7 +46,7 @@ pub fn run() {
                 for label in &["main", "analysis"] {
                     if let Some(window) = app.get_webview_window(label) {
                         let _ = window.set_decorations(true);
-                        let _ = window.set_title_bar_style(tauri_utils::TitleBarStyle::Overlay);
+                        let _ = window.set_title_bar_style(tauri::TitleBarStyle::Overlay);
                     }
                 }
             }
