@@ -10,10 +10,9 @@ import type { Message } from '../../types';
 interface Props {
   message: Message;
   isGrouped: boolean;
-  isFirst: boolean;
 }
 
-function MessageBubble({ message, isGrouped, isFirst }: Props) {
+function MessageBubble({ message, isGrouped }: Props) {
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -104,6 +103,5 @@ function MessageBubble({ message, isGrouped, isFirst }: Props) {
 export default memo(MessageBubble, (prev, next) => {
   return prev.message.id === next.message.id &&
          prev.message.content === next.message.content &&
-         prev.isGrouped === next.isGrouped &&
-         prev.isFirst === next.isFirst;
+         prev.isGrouped === next.isGrouped;
 });

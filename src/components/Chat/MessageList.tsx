@@ -34,7 +34,6 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
         {messages.map((msg, i) => {
           const prev = i > 0 ? messages[i - 1] : null;
           const isGrouped = prev !== null && prev.isUser === msg.isUser;
-          const isFirst = !isGrouped;
 
           // Only stagger the last N messages
           const staggerIndex = i >= messages.length - STAGGER_WINDOW
@@ -54,7 +53,6 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
               <MessageBubble
                 message={msg}
                 isGrouped={isGrouped}
-                isFirst={isFirst}
               />
             </motion.div>
           );
