@@ -14,6 +14,30 @@ import {
 
 const tauriStore = new LazyStore('settings.json');
 
+// --- Deep merge helper (preserves nested user values, fills in new defaults) ---
+
+function deepMerge<T extends Record<string, unknown>>(defaults: T, stored: Partial<T>): T {
+  const result = { ...defaults };
+  for (const key in stored) {
+    const storedVal = stored[key];
+    const defaultVal = defaults[key];
+    if (storedVal !== undefined && storedVal !== null) {
+      if (
+        typeof defaultVal === 'object' && defaultVal !== null && !Array.isArray(defaultVal) &&
+        typeof storedVal === 'object' && storedVal !== null && !Array.isArray(storedVal)
+      ) {
+        (result as Record<string, unknown>)[key] = deepMerge(
+          defaultVal as Record<string, unknown>,
+          storedVal as Record<string, unknown>,
+        );
+      } else {
+        (result as Record<string, unknown>)[key] = storedVal;
+      }
+    }
+  }
+  return result;
+}
+
 // --- Provider config helpers ---
 
 export interface ProviderConfigEntry {
@@ -76,7 +100,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
   updateSettings: (partial) => {
     set((state) => ({
-      settings: { ...state.settings, ...partial },
+      settings: deepMerge(state.settings, partial as Record<string, unknown>) as AppSettings,
     }));
     get().saveSettings();
   },
@@ -163,12 +187,18 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       }>('hat-settings');
 
       if (stored) {
-        const mergedConfigs = {
-          ...defaultProviderConfigs(),
-          ...stored.providerConfigs,
-        };
+        // Deep merge provider configs (per-provider field merge)
+        const defaults = defaultProviderConfigs();
+        const mergedConfigs = { ...defaults };
+        if (stored.providerConfigs) {
+          for (const provider of Object.keys(defaults) as CloudProvider[]) {
+            if (stored.providerConfigs[provider]) {
+              mergedConfigs[provider] = { ...defaults[provider], ...stored.providerConfigs[provider] };
+            }
+          }
+        }
         set({
-          settings: { ...DEFAULT_SETTINGS, ...stored.settings },
+          settings: deepMerge(DEFAULT_SETTINGS, (stored.settings ?? {}) as Record<string, unknown>) as AppSettings,
           providerConfigs: mergedConfigs,
           _hydrated: true,
         });
