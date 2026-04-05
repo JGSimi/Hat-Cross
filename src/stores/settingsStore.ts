@@ -16,22 +16,24 @@ const tauriStore = new LazyStore('settings.json');
 
 // --- Deep merge helper (preserves nested user values, fills in new defaults) ---
 
-function deepMerge<T extends Record<string, unknown>>(defaults: T, stored: Partial<T>): T {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function deepMerge(defaults: any, stored: any): any {
+  if (
+    typeof defaults !== 'object' || defaults === null || Array.isArray(defaults) ||
+    typeof stored !== 'object' || stored === null || Array.isArray(stored)
+  ) {
+    return stored;
+  }
   const result = { ...defaults };
   for (const key in stored) {
-    const storedVal = stored[key];
-    const defaultVal = defaults[key];
-    if (storedVal !== undefined && storedVal !== null) {
+    if (stored[key] !== undefined && stored[key] !== null) {
       if (
-        typeof defaultVal === 'object' && defaultVal !== null && !Array.isArray(defaultVal) &&
-        typeof storedVal === 'object' && storedVal !== null && !Array.isArray(storedVal)
+        typeof defaults[key] === 'object' && defaults[key] !== null && !Array.isArray(defaults[key]) &&
+        typeof stored[key] === 'object' && stored[key] !== null && !Array.isArray(stored[key])
       ) {
-        (result as Record<string, unknown>)[key] = deepMerge(
-          defaultVal as Record<string, unknown>,
-          storedVal as Record<string, unknown>,
-        );
+        result[key] = deepMerge(defaults[key], stored[key]);
       } else {
-        (result as Record<string, unknown>)[key] = storedVal;
+        result[key] = stored[key];
       }
     }
   }
@@ -100,7 +102,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
   updateSettings: (partial) => {
     set((state) => ({
-      settings: deepMerge(state.settings, partial as Record<string, unknown>) as AppSettings,
+      settings: deepMerge(state.settings, partial),
     }));
     get().saveSettings();
   },
@@ -198,7 +200,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
           }
         }
         set({
-          settings: deepMerge(DEFAULT_SETTINGS, (stored.settings ?? {}) as Record<string, unknown>) as AppSettings,
+          settings: deepMerge(DEFAULT_SETTINGS, stored.settings ?? {}),
           providerConfigs: mergedConfigs,
           _hydrated: true,
         });
