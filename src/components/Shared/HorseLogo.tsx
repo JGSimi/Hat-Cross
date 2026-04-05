@@ -28,7 +28,7 @@ export default function HorseLogo({ size = 26, animated = false, className, colo
         className={className}
         style={{
           ...maskStyle,
-          background: 'linear-gradient(270deg, #6366F1, #EC4899, #14B8A6, #F59E0B, #6366F1)',
+          background: 'linear-gradient(270deg, var(--color-accent), var(--color-accent-hover), color-mix(in srgb, var(--color-accent) 60%, white), var(--color-accent-hover), var(--color-accent))',
           backgroundSize: '300% 300%',
           animation: 'horse-gradient-shift 4s ease infinite',
         }}
