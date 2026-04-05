@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { listen } from '@tauri-apps/api/event';
 import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
@@ -26,7 +26,9 @@ function App() {
       useChatStore.getState().clearMessages();
       useConversationStore.getState().createConversation();
     });
-    const unlistenSettings = listen('open-settings', () => {});
+    const unlistenSettings = listen('open-settings', () => {
+      useSettingsStore.getState().setShowSettingsPanel(true);
+    });
     const unlistenUpdates = listen('check-updates', async () => {
       try {
         const { check } = await import('@tauri-apps/plugin-updater');
@@ -44,12 +46,66 @@ function App() {
         console.error('Update check failed:', e);
       }
     });
+    const unlistenLoadConv = listen<string>('load-conversation', (event) => {
+      useConversationStore.getState().setActiveConversation(event.payload);
+    });
     return () => {
       unlistenNew.then(fn => fn());
       unlistenSettings.then(fn => fn());
       unlistenUpdates.then(fn => fn());
+      unlistenLoadConv.then(fn => fn());
     };
   }, []);
+
+  // Dynamic tray menu sync — rebuild when settings, conversations or streaming state change
+  const rebuildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rebuildTrayMenu = useCallback(() => {
+    if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current);
+    rebuildTimerRef.current = setTimeout(() => {
+      const { settings, providerConfigs } = useSettingsStore.getState();
+      const isLocal = settings.inferenceMode === 'local';
+      const provider = isLocal ? 'Ollama' : settings.cloudProvider.charAt(0).toUpperCase() + settings.cloudProvider.slice(1);
+      const cfg = isLocal ? null : providerConfigs[settings.cloudProvider];
+      const model = isLocal ? (settings.localModel || 'local') : (cfg?.model || '');
+      const providerLabel = `${provider} — ${model}`;
+
+      const conversations = useConversationStore.getState().conversations;
+      const recentConversations = conversations.slice(0, 5).map(c => ({
+        id: c.id,
+        title: c.title,
+      }));
+
+      const isProcessing = useChatStore.getState().isStreaming;
+
+      invoke('rebuild_tray_menu', {
+        state: { providerLabel, isProcessing, recentConversations },
+      }).catch(() => {});
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    // Subscribe to store changes and rebuild tray menu
+    const unsubSettings = useSettingsStore.subscribe(rebuildTrayMenu);
+    const unsubConversations = useConversationStore.subscribe(rebuildTrayMenu);
+    const unsubChat = useChatStore.subscribe(
+      (state) => state.isStreaming,
+      (isStreaming) => {
+        rebuildTrayMenu();
+        // Also update tray icon
+        invoke('set_tray_icon', { iconState: isStreaming ? 'processing' : 'idle' }).catch(() => {});
+      },
+    );
+
+    // Initial rebuild after settings load
+    rebuildTrayMenu();
+
+    return () => {
+      unsubSettings();
+      unsubConversations();
+      unsubChat();
+      if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current);
+    };
+  }, [rebuildTrayMenu]);
 
   // Clipboard processing — core feature
   // Flow: user copies text → presses shortcut → AI processes → notification with response

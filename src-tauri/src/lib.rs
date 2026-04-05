@@ -35,6 +35,8 @@ pub fn run() {
             streaming::stream_chat,
             streaming::cancel_stream,
             streaming::fetch_models,
+            tray::rebuild_tray_menu,
+            tray::set_tray_icon,
         ])
         .setup(|app| {
             tray::setup_tray(app)?;
