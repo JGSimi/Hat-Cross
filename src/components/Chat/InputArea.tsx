@@ -81,7 +81,7 @@ export default function InputArea({
           border: isFocused ? '1px solid var(--border-focused)' : '1px solid var(--border-input)',
           borderRadius: 14, padding: '10px 14px',
           boxShadow: isFocused
-            ? '0 0 0 3px var(--accent-glow), 0 0 20px color-mix(in srgb, var(--color-accent) 8%, transparent), var(--inset-highlight)'
+            ? '0 0 0 1px var(--accent-glow), var(--inset-highlight)'
             : 'var(--inset-highlight)',
           transition: 'border-color var(--transition-normal), box-shadow var(--transition-normal), background var(--transition-normal)',
           display: 'flex', alignItems: 'flex-end', gap: 6,
