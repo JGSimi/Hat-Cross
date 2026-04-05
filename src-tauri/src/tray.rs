@@ -47,10 +47,8 @@ fn build_tray_menu(app: &AppHandle, state: Option<&TrayState>) -> Result<Menu<ta
 
     // Quick actions
     let processar_clipboard = MenuItem::with_id(app, "processar_clipboard", "Processar Clipboard", true, None::<&str>)?;
-    let input_rapido = MenuItem::with_id(app, "input_rapido", "Input Rápido", true, None::<&str>)?;
     let captura_tela = MenuItem::with_id(app, "captura_tela", "Captura de Tela", true, None::<&str>)?;
     menu.append(&processar_clipboard)?;
-    menu.append(&input_rapido)?;
     menu.append(&captura_tela)?;
 
     menu.append(&PredefinedMenuItem::separator(app)?)?;
@@ -101,13 +99,6 @@ fn handle_menu_event(app_handle: &AppHandle, id: &str) {
         }
         "processar_clipboard" => {
             let _ = app_handle.emit("process-clipboard", ());
-        }
-        "input_rapido" => {
-            if windows::is_window_visible(app_handle, "quickinput") {
-                windows::hide_window(app_handle, "quickinput");
-            } else {
-                windows::show_window(app_handle, "quickinput");
-            }
         }
         "captura_tela" => {
             windows::show_window(app_handle, "analysis");

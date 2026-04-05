@@ -5,7 +5,6 @@ import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { invoke } from '@tauri-apps/api/core';
 import { AnimatePresence, motion } from 'framer-motion';
 import MainPage from './pages/MainPage';
-import QuickInputPage from './pages/QuickInputPage';
 import AnalysisPage from './pages/AnalysisPage';
 import HorseLogo from './components/Shared/HorseLogo';
 import { useSettingsStore } from './stores/settingsStore';
@@ -315,7 +314,6 @@ function App() {
 
       <Routes>
         <Route path="/main" element={<MainPage />} />
-        <Route path="/quickinput" element={<QuickInputPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="*" element={<Navigate to="/main" replace />} />
       </Routes>
