@@ -48,8 +48,10 @@ interface SettingsState {
   settings: AppSettings;
   providerConfigs: Record<CloudProvider, ProviderConfigEntry>;
   _hydrated: boolean;
+  showSettingsPanel: boolean;
 
   // Actions
+  setShowSettingsPanel: (show: boolean) => void;
   updateSettings: (partial: Partial<AppSettings>) => void;
   setTheme: (theme: AppTheme) => void;
   setProvider: (provider: CloudProvider) => void;
@@ -66,6 +68,11 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   settings: { ...DEFAULT_SETTINGS },
   providerConfigs: defaultProviderConfigs(),
   _hydrated: false,
+  showSettingsPanel: false,
+
+  setShowSettingsPanel: (show) => {
+    set({ showSettingsPanel: show });
+  },
 
   updateSettings: (partial) => {
     set((state) => ({

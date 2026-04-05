@@ -203,15 +203,13 @@ export default function AnalysisLayout() {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '12px 16px',
+            paddingTop: platform === 'macos' ? 28 : 12,
             borderBottom: '0.5px solid var(--border-subtle)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {platform === 'macos' && <WindowControls variant="sidebar" />}
-            <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-              Analise de Tela
-            </h2>
-          </div>
+          <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+            Analise de Tela
+          </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <motion.button
               whileHover={{ scale: 1.1 }}
@@ -249,7 +247,7 @@ export default function AnalysisLayout() {
             >
               <MessageSquare size={14} />
             </motion.button>
-            {platform !== 'macos' && <WindowControls variant="header" />}
+            <WindowControls />
           </div>
         </div>
 

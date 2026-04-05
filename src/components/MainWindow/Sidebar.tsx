@@ -4,7 +4,6 @@ import { Plus, Search, Settings } from 'lucide-react';
 import ConversationItem from './ConversationItem';
 import { useConversations } from '../../hooks/useConversations';
 import { usePlatform } from '../../hooks/usePlatform';
-import WindowControls from '../Shared/WindowControls';
 
 interface Props {
   onOpenSettings: () => void;
@@ -60,7 +59,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
         zIndex: 1,
       }}
     >
-      {/* Header — drag region for custom titlebar */}
+      {/* Header — drag region */}
       <motion.div
         custom={0}
         variants={staggerItem}
@@ -70,26 +69,12 @@ export default function Sidebar({ onOpenSettings }: Props) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: platform === 'macos' ? '10px 12px 10px 12px' : '12px',
-          paddingTop: platform === 'macos' ? 10 : 12,
+          justifyContent: 'flex-end',
+          padding: '8px 12px',
+          paddingTop: platform === 'macos' ? 28 : 8,
           borderBottom: '0.5px solid var(--border-subtle)',
-          gap: 8,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {platform === 'macos' && <WindowControls variant="sidebar" />}
-          <span style={{
-            fontSize: 14,
-            fontWeight: 700,
-            letterSpacing: -0.5,
-            background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}>
-            Hat
-          </span>
-        </div>
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}

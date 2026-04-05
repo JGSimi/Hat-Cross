@@ -18,7 +18,9 @@
         "height": 650,
         "minWidth": 600,
         "minHeight": 500,
-        "decorations": false,
+        "decorations": true,
+        "titleBarStyle": "overlay",
+        "hiddenTitle": true,
         "transparent": false,
         "visible": true,
         "url": "/main"
@@ -43,7 +45,9 @@
         "title": "Hat - Análise de Tela",
         "width": 1000,
         "height": 700,
-        "decorations": false,
+        "decorations": true,
+        "titleBarStyle": "overlay",
+        "hiddenTitle": true,
         "transparent": false,
         "visible": false,
         "url": "/analysis"

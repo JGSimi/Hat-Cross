@@ -1,5 +1,22 @@
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
+#[cfg(target_os = "macos")]
+fn apply_macos_overlay<'a, R: tauri::Runtime, M: tauri::Manager<R>>(
+    builder: WebviewWindowBuilder<'a, R, M>,
+) -> WebviewWindowBuilder<'a, R, M> {
+    builder
+        .decorations(true)
+        .title_bar_style(tauri::TitleBarStyle::Overlay)
+        .hidden_title(true)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn apply_macos_overlay<'a, R: tauri::Runtime, M: tauri::Manager<R>>(
+    builder: WebviewWindowBuilder<'a, R, M>,
+) -> WebviewWindowBuilder<'a, R, M> {
+    builder.decorations(false)
+}
+
 pub fn show_window(app: &AppHandle, label: &str) {
     if let Some(window) = app.get_webview_window(label) {
         let _ = window.show();
@@ -26,11 +43,13 @@ pub fn show_window(app: &AppHandle, label: &str) {
                 .shadow(false)
                 .skip_taskbar(true)
                 .always_on_top(true),
-            "main" => builder
-                .title("Hat")
-                .inner_size(820.0, 650.0)
-                .min_inner_size(600.0, 500.0)
-                .decorations(false),
+            "main" => {
+                let b = builder
+                    .title("Hat")
+                    .inner_size(820.0, 650.0)
+                    .min_inner_size(600.0, 500.0);
+                apply_macos_overlay(b)
+            }
             "quickinput" => builder
                 .title("Hat Quick Input")
                 .inner_size(680.0, 72.0)
@@ -40,10 +59,12 @@ pub fn show_window(app: &AppHandle, label: &str) {
                 .skip_taskbar(true)
                 .always_on_top(true)
                 .center(),
-            "analysis" => builder
-                .title("Hat - Analise de Tela")
-                .inner_size(1000.0, 700.0)
-                .decorations(false),
+            "analysis" => {
+                let b = builder
+                    .title("Hat - Analise de Tela")
+                    .inner_size(1000.0, 700.0);
+                apply_macos_overlay(b)
+            }
             _ => builder
                 .title("Hat")
                 .inner_size(820.0, 650.0)
