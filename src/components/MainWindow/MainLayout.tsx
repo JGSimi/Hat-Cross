@@ -54,7 +54,7 @@ export default function MainLayout() {
         <Sidebar onOpenSettings={() => setShowSettings(true)} />
       </motion.div>
       <motion.div variants={itemVariants} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-        {/* Titlebar drag region + window controls */}
+        {/* Titlebar drag region + window controls (Windows/Linux) */}
         <div
           data-tauri-drag-region
           style={{
@@ -62,7 +62,7 @@ export default function MainLayout() {
             top: 0,
             left: 0,
             right: 0,
-            height: platform === 'macos' ? 28 : 32,
+            height: 38,
             zIndex: 50,
             display: 'flex',
             alignItems: 'center',
@@ -71,7 +71,7 @@ export default function MainLayout() {
             pointerEvents: 'auto',
           }}
         >
-          <WindowControls />
+          {platform !== 'macos' && <WindowControls variant="header" />}
         </div>
         <AnimatePresence mode="wait">
           {showSettings ? (

@@ -39,17 +39,6 @@ pub fn run() {
             tray::set_tray_icon,
         ])
         .setup(|app| {
-            // Apply macOS overlay titlebar to initial windows
-            #[cfg(target_os = "macos")]
-            {
-                use tauri::Manager;
-                for label in &["main", "analysis"] {
-                    if let Some(window) = app.get_webview_window(label) {
-                        let _ = window.set_decorations(true);
-                        let _ = window.set_title_bar_style(tauri::TitleBarStyle::Overlay);
-                    }
-                }
-            }
             tray::setup_tray(app)?;
             shortcuts::register_default_shortcuts(app.handle())?;
             Ok(())

@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import ThemePicker from './ThemePicker';
 import WindowControls from '../Shared/WindowControls';
+import { usePlatform } from '../../hooks/usePlatform';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { PROVIDER_DEFAULTS, type CloudProvider } from '../../types';
 import { fetchModels } from '../../services/ai';
@@ -23,6 +24,7 @@ const tabContentVariants = {
 
 export default function SettingsPanel({ onClose }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('general');
+  const platform = usePlatform();
   const {
     settings,
     providerConfigs,
@@ -90,7 +92,7 @@ export default function SettingsPanel({ onClose }: Props) {
         <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0, flex: 1 }}>
           Configurações
         </h2>
-        <WindowControls />
+        {platform !== 'macos' && <WindowControls variant="header" />}
       </div>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
