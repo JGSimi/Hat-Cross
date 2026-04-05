@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
 import HorseLogo from './HorseLogo';
 import { getGreeting } from '../../utils/markdown';
 
@@ -24,39 +23,7 @@ export default function EmptyState() {
         transition={{ type: 'spring', stiffness: 200, damping: 18, delay: 0.15 }}
         style={{ position: 'relative', marginBottom: 24 }}
       >
-        {/* Ambient glow */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: [0, 0.25, 0.15], scale: [0.5, 1.2, 1] }}
-          transition={{ duration: 2, ease: 'easeOut', delay: 0.2 }}
-          style={{
-            position: 'absolute', inset: -16, borderRadius: '50%',
-            background: 'var(--color-accent)', filter: 'blur(24px)',
-          }}
-        />
-        {/* Icon container */}
-        <div style={{
-          position: 'relative', width: 52, height: 52, borderRadius: 16,
-          background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 50%, #000))',
-          border: '1px solid var(--border-glass)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: 'var(--accent-shadow-lg)',
-        }}>
-          <HorseLogo size={26} color="white" />
-        </div>
-        {/* Sparkle */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1, rotate: [0, 15, -15, 0] }}
-          transition={{
-            opacity: { delay: 0.5, duration: 0.3 },
-            scale: { delay: 0.5, type: 'spring', stiffness: 300 },
-            rotate: { delay: 0.8, duration: 4, repeat: Infinity, ease: 'easeInOut' },
-          }}
-          style={{ position: 'absolute', top: -4, right: -6 }}
-        >
-          <Sparkles size={14} color="var(--color-accent)" strokeWidth={2.5} />
-        </motion.div>
+        <HorseLogo size={64} animated />
       </motion.div>
 
       {/* Greeting */}
