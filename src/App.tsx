@@ -26,7 +26,10 @@ function App() {
   const theme = useSettingsStore((s) => s.settings.theme);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
 
-  useEffect(() => { loadSettings(); }, [loadSettings]);
+  useEffect(() => {
+    loadSettings();
+    useConversationStore.getState().loadConversations();
+  }, [loadSettings]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

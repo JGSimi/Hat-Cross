@@ -92,7 +92,7 @@ export default function MainLayout() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2, ease: 'easeInOut' }}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}
             >
               <ChatWindow showScreenCapture />
             </motion.div>
