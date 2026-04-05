@@ -81,7 +81,7 @@ export default function MainLayout() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: '100%', opacity: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              style={{ position: 'absolute', inset: 0, zIndex: 10 }}
+              style={{ position: 'absolute', inset: 0, zIndex: 60 }}
             >
               <SettingsPanel onClose={() => setShowSettings(false)} />
             </motion.div>
