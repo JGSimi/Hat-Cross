@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import HorseLogo from '../Shared/HorseLogo';
 import MessageBubble from './MessageBubble';
 import type { Message } from '../../types';
 
@@ -65,22 +64,11 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
         {isStreaming && streamingContent && (
           <motion.div key="streaming" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="flex justify-start" style={{ marginTop: 12 }}>
-              <div style={{ width: 28, flexShrink: 0, marginRight: 8 }}>
-                {(messages.length === 0 || messages[messages.length - 1].isUser) && (
-                  <div style={{
-                    width: 28, height: 28, borderRadius: 8,
-                    background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 50%, #000))',
-                    border: '1px solid var(--border-subtle)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: 'var(--accent-shadow)',
-                  }}>
-                    <HorseLogo size={14} color="white" />
-                  </div>
-                )}
-              </div>
               <div style={{
                 fontSize: 13, lineHeight: 1.6, color: 'var(--text-normal)',
                 whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxWidth: '82%',
+                borderLeft: '2px solid color-mix(in srgb, var(--color-accent) 20%, transparent)',
+                paddingLeft: 14,
               }}>
                 {streamingContent}
                 <span style={{ display: 'inline-block', width: 6, height: 14, background: 'var(--color-accent)', borderRadius: 1, marginLeft: 2, animation: 'blink 1s step-end infinite' }} />

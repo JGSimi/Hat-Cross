@@ -1,7 +1,6 @@
 import { useState, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, Check } from 'lucide-react';
-import HorseLogo from '../Shared/HorseLogo';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -34,24 +33,6 @@ function MessageBubble({ message, isGrouped, isFirst }: Props) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {!message.isUser && (
-        <div style={{ width: 28, flexShrink: 0, marginRight: 8 }}>
-          {isFirst && (
-            <div
-              style={{
-                width: 28, height: 28, borderRadius: 10,
-                background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 50%, #000))',
-                border: '1px solid var(--border-subtle)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-accent) 20%, transparent), var(--accent-shadow)',
-              }}
-            >
-              <HorseLogo size={14} color="white" />
-            </div>
-          )}
-        </div>
-      )}
-
       <div style={{ position: 'relative', maxWidth: '82%' }}>
         {message.isUser ? (
           <div
