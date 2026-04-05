@@ -87,14 +87,14 @@ function App() {
     // Subscribe to store changes and rebuild tray menu
     const unsubSettings = useSettingsStore.subscribe(rebuildTrayMenu);
     const unsubConversations = useConversationStore.subscribe(rebuildTrayMenu);
-    const unsubChat = useChatStore.subscribe(
-      (state) => state.isStreaming,
-      (isStreaming) => {
+    let prevStreaming = useChatStore.getState().isStreaming;
+    const unsubChat = useChatStore.subscribe((state) => {
+      if (state.isStreaming !== prevStreaming) {
+        prevStreaming = state.isStreaming;
         rebuildTrayMenu();
-        // Also update tray icon
-        invoke('set_tray_icon', { iconState: isStreaming ? 'processing' : 'idle' }).catch(() => {});
-      },
-    );
+        invoke('set_tray_icon', { iconState: state.isStreaming ? 'processing' : 'idle' }).catch(() => {});
+      }
+    });
 
     // Initial rebuild after settings load
     rebuildTrayMenu();
