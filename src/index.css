@@ -599,6 +599,25 @@ code {
   opacity: 1;
 }
 
+/* Mouse-reactive glow overlay */
+.mouse-glow {
+  position: fixed;
+  width: 1000px;
+  height: 1000px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+  background: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--color-accent) 8%, transparent) 0%,
+    color-mix(in srgb, var(--color-accent) 3%, transparent) 40%,
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+  filter: blur(40px);
+}
+
 /* Accent separator line */
 .accent-line {
   height: 1px;

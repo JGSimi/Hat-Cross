@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import ChatWindow from '../Chat/ChatWindow';
 import SettingsPanel from '../Settings/SettingsPanel';
 import WindowControls from '../Shared/WindowControls';
+import MouseGlow from '../Shared/MouseGlow';
 import { usePlatform } from '../../hooks/usePlatform';
 import { useChatStore } from '../../stores/chatStore';
 import { useConversationStore } from '../../stores/conversationStore';
@@ -50,6 +51,7 @@ export default function MainLayout() {
       animate="show"
       style={{ display: 'flex', height: '100vh', width: '100%' }}
     >
+      <MouseGlow />
       <motion.div variants={itemVariants} style={{ position: 'relative', zIndex: 1 }}>
         <Sidebar onOpenSettings={() => setShowSettings(true)} />
       </motion.div>
