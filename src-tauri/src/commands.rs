@@ -63,11 +63,6 @@ pub fn open_main_window(app: AppHandle) {
 }
 
 #[tauri::command]
-pub fn open_quick_input(app: AppHandle) {
-    windows::show_window(&app, "quickinput");
-}
-
-#[tauri::command]
 pub fn close_window(app: AppHandle, label: String) {
     windows::hide_window(&app, &label);
 }

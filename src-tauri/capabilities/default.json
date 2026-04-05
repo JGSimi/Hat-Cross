@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default capabilities for Hat",
-  "windows": ["popover", "main", "quickinput", "analysis"],
+  "windows": ["popover", "main", "analysis"],
   "permissions": [
     "core:default",
     "clipboard-manager:allow-read-text",

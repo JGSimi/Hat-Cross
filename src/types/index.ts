@@ -150,7 +150,6 @@ export interface PopoverSettings {
 export interface ShortcutSettings {
   clipboard: string;
   screenCapture: string;
-  quickInput: string;
 }
 
 export interface ClipboardSettings {
@@ -203,7 +202,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   shortcuts: {
     clipboard: 'CmdOrCtrl+Shift+X',
     screenCapture: 'CmdOrCtrl+Shift+Z',
-    quickInput: 'CmdOrCtrl+Shift+Space',
   },
   tokenStats: {
     inputTokens: 0,

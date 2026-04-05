@@ -24,21 +24,6 @@
         "url": "/main"
       },
       {
-        "label": "quickinput",
-        "title": "Hat Quick Input",
-        "width": 680,
-        "height": 72,
-        "resizable": true,
-        "decorations": false,
-        "transparent": false,
-        "shadow": false,
-        "visible": false,
-        "skipTaskbar": true,
-        "alwaysOnTop": true,
-        "center": true,
-        "url": "/quickinput"
-      },
-      {
         "label": "analysis",
         "title": "Hat - Análise de Tela",
         "width": 1000,

@@ -948,13 +948,6 @@ function ShortcutsTab({
             style={inputStyle}
           />
         </SettingRow>
-        <SettingRow label="Quick Input">
-          <input
-            value={settings.shortcuts.quickInput}
-            onChange={(e) => updateSettings({ shortcuts: { ...settings.shortcuts, quickInput: e.target.value } })}
-            style={inputStyle}
-          />
-        </SettingRow>
       </GlassCard>
     </>
   );

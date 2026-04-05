@@ -19,7 +19,6 @@ Se o SmartScreen aparecer, clique **Mais informações** -> **Executar mesmo ass
 
 - **Multi-provider AI**: Google Gemini, OpenAI, Anthropic Claude, Inception Mercury, OpenRouter, Custom, Ollama local
 - **Popover flutuante**: chat rápido que fica sempre visível (não fecha ao perder foco)
-- **Quick Input**: atalho global (Cmd/Ctrl+Shift+Space) abre input tipo Spotlight
 - **Análise de tela**: captura tela e envia para IA com análise proativa (Cmd/Ctrl+Shift+Z)
 - **Clipboard processing**: lê clipboard, processa com IA, devolve resposta (Cmd/Ctrl+Shift+X)
 - **Stealth Mode**: popover quase invisível, aparece ao passar o mouse
@@ -51,6 +50,5 @@ npm run tauri build
 
 | Atalho | Ação |
 |--------|------|
-| Cmd/Ctrl+Shift+Space | Quick Input |
 | Cmd/Ctrl+Shift+Z | Análise de Tela |
 | Cmd/Ctrl+Shift+X | Processar Clipboard |

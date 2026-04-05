@@ -8,7 +8,6 @@ pub fn show_window(app: &AppHandle, label: &str) {
         let url = match label {
             "popover" => "/popover",
             "main" => "/main",
-            "quickinput" => "/quickinput",
             "analysis" => "/analysis",
             _ => "/main",
         };
@@ -31,15 +30,6 @@ pub fn show_window(app: &AppHandle, label: &str) {
                 .inner_size(820.0, 650.0)
                 .min_inner_size(600.0, 500.0)
                 .decorations(false),
-            "quickinput" => builder
-                .title("Hat Quick Input")
-                .inner_size(680.0, 72.0)
-                .resizable(true)
-                .decorations(false)
-                .shadow(false)
-                .skip_taskbar(true)
-                .always_on_top(true)
-                .center(),
             "analysis" => builder
                 .title("Hat - Analise de Tela")
                 .inner_size(1000.0, 700.0)
