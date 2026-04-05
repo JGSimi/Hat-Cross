@@ -1,6 +1,7 @@
 import { useState, memo } from 'react';
 import { motion } from 'framer-motion';
-import { Copy, Check, GraduationCap } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
+import HorseLogo from '../Shared/HorseLogo';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -45,7 +46,7 @@ function MessageBubble({ message, isGrouped, isFirst }: Props) {
                 boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-accent) 20%, transparent), var(--accent-shadow)',
               }}
             >
-              <GraduationCap size={14} color="white" strokeWidth={2.5} />
+              <HorseLogo size={14} color="white" />
             </div>
           )}
         </div>

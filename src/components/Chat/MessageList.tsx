@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { GraduationCap } from 'lucide-react';
+import HorseLogo from '../Shared/HorseLogo';
 import MessageBubble from './MessageBubble';
 import type { Message } from '../../types';
 
@@ -74,7 +74,7 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     boxShadow: 'var(--accent-shadow)',
                   }}>
-                    <GraduationCap size={14} color="white" strokeWidth={2.5} />
+                    <HorseLogo size={14} color="white" />
                   </div>
                 )}
               </div>

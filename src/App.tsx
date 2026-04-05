@@ -1,16 +1,29 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useRef, useCallback, useState } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { listen } from '@tauri-apps/api/event';
 import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { invoke } from '@tauri-apps/api/core';
+import { AnimatePresence, motion } from 'framer-motion';
 import MainPage from './pages/MainPage';
 import QuickInputPage from './pages/QuickInputPage';
 import AnalysisPage from './pages/AnalysisPage';
+import HorseLogo from './components/Shared/HorseLogo';
 import { useSettingsStore } from './stores/settingsStore';
 import { useChatStore } from './stores/chatStore';
 import { useConversationStore } from './stores/conversationStore';
 
 function App() {
+  const location = useLocation();
+  const isMainWindow = location.pathname === '/main' || location.pathname === '/';
+  const [showSplash, setShowSplash] = useState(isMainWindow);
+
+  // Auto-dismiss splash after 2s (then 1s fade-out via AnimatePresence)
+  useEffect(() => {
+    if (!showSplash) return;
+    const timer = setTimeout(() => setShowSplash(false), 2000);
+    return () => clearTimeout(timer);
+  }, [showSplash]);
+
   const theme = useSettingsStore((s) => s.settings.theme);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
 
@@ -200,12 +213,113 @@ function App() {
   }, []);
 
   return (
-    <Routes>
-      <Route path="/main" element={<MainPage />} />
-      <Route path="/quickinput" element={<QuickInputPage />} />
-      <Route path="/analysis" element={<AnalysisPage />} />
-      <Route path="*" element={<Navigate to="/main" replace />} />
-    </Routes>
+    <>
+      {/* Splash screen — dramatic entrance with animated gradient logo */}
+      <AnimatePresence>
+        {showSplash && (
+          <motion.div
+            key="splash"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1, ease: 'easeInOut' }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9999,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'var(--bg-primary)',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Ambient glow */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.3 }}
+              animate={{ opacity: 0.35, scale: 1.5 }}
+              transition={{ duration: 2, ease: 'easeOut' }}
+              style={{
+                position: 'absolute',
+                width: 220,
+                height: 220,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 70%)',
+                filter: 'blur(60px)',
+              }}
+            />
+            {/* Secondary glow pulse */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.2, 0.1, 0.25, 0.1] }}
+              transition={{ duration: 3, ease: 'easeInOut' }}
+              style={{
+                position: 'absolute',
+                width: 350,
+                height: 350,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, var(--color-accent-hover) 0%, transparent 60%)',
+                filter: 'blur(80px)',
+              }}
+            />
+
+            {/* Horse logo with entrance animation */}
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 180, damping: 16, delay: 0.15 }}
+              style={{ position: 'relative', zIndex: 1 }}
+            >
+              <HorseLogo size={130} animated />
+            </motion.div>
+
+            {/* App name */}
+            <motion.h1
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.7, ease: 'easeOut' }}
+              style={{
+                position: 'relative',
+                zIndex: 1,
+                marginTop: 20,
+                fontSize: 32,
+                fontWeight: 800,
+                letterSpacing: -1,
+                color: 'var(--text-bright)',
+                fontFamily: "'General Sans', -apple-system, sans-serif",
+              }}
+            >
+              Hat
+            </motion.h1>
+
+            {/* Tagline */}
+            <motion.p
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 0.5, y: 0 }}
+              transition={{ delay: 0.7, duration: 0.6, ease: 'easeOut' }}
+              style={{
+                position: 'relative',
+                zIndex: 1,
+                marginTop: 6,
+                fontSize: 13,
+                color: 'var(--text-muted)',
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+              }}
+            >
+              AI Assistant
+            </motion.p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Routes>
+        <Route path="/main" element={<MainPage />} />
+        <Route path="/quickinput" element={<QuickInputPage />} />
+        <Route path="/analysis" element={<AnalysisPage />} />
+        <Route path="*" element={<Navigate to="/main" replace />} />
+      </Routes>
+    </>
   );
 }
 

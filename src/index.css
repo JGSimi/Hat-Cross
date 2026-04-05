@@ -601,3 +601,10 @@ code {
   background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
   opacity: 0.3;
 }
+
+/* Horse logo gradient animation */
+@keyframes horse-gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
