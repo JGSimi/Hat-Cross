@@ -129,20 +129,124 @@ jobs:
           tagName: v${{ needs.version-bump.outputs.new_version }}
           releaseName: 'Hat v${{ needs.version-bump.outputs.new_version }}'
           releaseBody: |
-            ## Download
-
-            Escolha o instalador para sua plataforma abaixo.
-
-            ### macOS (sem certificado Apple)
-            O app não é notarizado. Na primeira abertura:
-            1. Clique direito no app → **Abrir**
-            2. Clique **Abrir** no diálogo de segurança
-            3. Ou execute no terminal: `xattr -cr /Applications/Hat.app`
-
-            ### Windows
-            Se o SmartScreen aparecer, clique em **Mais informações** → **Executar mesmo assim**.
-
-            O app inclui auto-update — você será notificado quando houver novas versões.
+            Os downloads estão sendo preparados... A lista organizada será atualizada em breve.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+  # Organize release assets into a user-friendly body
+  organize-release:
+    needs: [version-bump, build-release]
+    if: always() && needs.version-bump.outputs.bumped == 'true' && needs.version-bump.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: v${{ needs.version-bump.outputs.new_version }}
+      VERSION: ${{ needs.version-bump.outputs.new_version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build organized release body
+        run: |
+          set -euo pipefail
+
+          REPO="${{ github.repository }}"
+          BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
+
+          ASSETS=$(gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets[].name')
+
+          if [ -z "$ASSETS" ]; then
+            echo "::warning::No assets found for release ${TAG}"
+            exit 0
+          fi
+
+          link_or_missing() {
+            local filename="$1"
+            local label="$2"
+            if echo "$ASSETS" | grep -qx "$filename"; then
+              echo "| ${label} | [📥 Download](${BASE_URL}/${filename}) |"
+            else
+              echo "| ${label} | _Indisponível nesta versão_ |"
+            fi
+          }
+
+          WIN_EXE="Hat_${VERSION}_x64-setup.exe"
+          MAC_ARM="Hat_${VERSION}_aarch64.dmg"
+          MAC_INTEL="Hat_${VERSION}_x64.dmg"
+          LINUX_DEB="Hat_${VERSION}_amd64.deb"
+          LINUX_APPIMAGE="Hat_${VERSION}_amd64.AppImage"
+          LINUX_RPM="Hat-${VERSION}-1.x86_64.rpm"
+
+          UPDATER_FILES=""
+          while IFS= read -r asset; do
+            case "$asset" in
+              *.sig|*.nsis.zip|*.tar.gz|latest.json)
+                UPDATER_FILES="${UPDATER_FILES}
+          - [\`${asset}\`](${BASE_URL}/${asset})"
+                ;;
+            esac
+          done <<< "$ASSETS"
+
+          cat > /tmp/release-body.md << EOF
+          ## Download — Hat v${VERSION}
+
+          Escolha o instalador para sua plataforma abaixo.
+
+          ---
+
+          ### 🪟 Windows
+
+          | Versão | Link |
+          |--------|------|
+          $(link_or_missing "$WIN_EXE" "Windows 64-bit (.exe)")
+
+          > Se o Windows SmartScreen aparecer, clique em **Mais informações** → **Executar mesmo assim**.
+
+          ---
+
+          ### 🍎 macOS
+
+          | Processador | Link |
+          |-------------|------|
+          $(link_or_missing "$MAC_ARM" "Apple Silicon — M1, M2, M3, M4")
+          $(link_or_missing "$MAC_INTEL" "Intel (x86_64)")
+
+          > **Não sabe qual escolher?** Clique em  → **Sobre este Mac**. Se mostrar chip **M1/M2/M3/M4**, baixe **Apple Silicon**. Caso contrário, baixe **Intel**.
+
+          > O app não é notarizado (sem Apple Developer Account). Na primeira abertura:
+          > 1. Clique direito no app → **Abrir**
+          > 2. Clique **Abrir** no diálogo de segurança
+          > 3. Ou execute no terminal: \`xattr -cr /Applications/Hat.app\`
+
+          ---
+
+          ### 🐧 Linux
+
+          | Formato | Link |
+          |---------|------|
+          $(link_or_missing "$LINUX_DEB" "Debian / Ubuntu (.deb)")
+          $(link_or_missing "$LINUX_APPIMAGE" "AppImage (universal)")
+          $(link_or_missing "$LINUX_RPM" "Fedora / openSUSE (.rpm)")
+
+          ---
+
+          O app inclui **auto-update** — você será notificado automaticamente quando houver novas versões.
+
+          <details>
+          <summary>📦 Arquivos do atualizador (uso interno)</summary>
+
+          Estes arquivos são usados pelo sistema de auto-update e não precisam ser baixados manualmente.
+          ${UPDATER_FILES}
+
+          </details>
+          EOF
+
+          sed -i 's/^          //' /tmp/release-body.md
+
+      - name: Update release body
+        run: |
+          gh release edit "$TAG" \
+            --repo "${{ github.repository }}" \
+            --notes-file /tmp/release-body.md
