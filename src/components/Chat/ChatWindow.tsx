@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import MessageList from './MessageList';
 import InputArea from './InputArea';
 import { useChat } from '../../hooks/useChat';
@@ -63,16 +64,6 @@ export default function ChatWindow({ showScreenCapture = true }: Props) {
         )}
       </AnimatePresence>
 
-      <InputArea
-        onSend={sendMessage}
-        onCancel={cancel}
-        onScreenCapture={showScreenCapture ? handleScreenCapture : undefined}
-        isStreaming={isStreaming}
-        attachments={pendingAttachments}
-        onRemoveAttachment={removeAttachment}
-        onAddAttachment={addAttachment}
-      />
-
       {error && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -86,11 +77,35 @@ export default function ChatWindow({ showScreenCapture = true }: Props) {
             borderRadius: '0 8px 8px 0',
             fontSize: 12,
             color: 'var(--error)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
           }}
         >
-          {error}
+          <span>{error}</span>
+          <button
+            onClick={() => useChatStore.getState().setError(null)}
+            aria-label="Fechar erro"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--error)', padding: 4, display: 'flex',
+              alignItems: 'center', flexShrink: 0, marginLeft: 8,
+            }}
+          >
+            <X size={14} />
+          </button>
         </motion.div>
       )}
+
+      <InputArea
+        onSend={sendMessage}
+        onCancel={cancel}
+        onScreenCapture={showScreenCapture ? handleScreenCapture : undefined}
+        isStreaming={isStreaming}
+        attachments={pendingAttachments}
+        onRemoveAttachment={removeAttachment}
+        onAddAttachment={addAttachment}
+      />
     </div>
   );
 }

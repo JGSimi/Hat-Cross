@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 import MessageBubble from './MessageBubble';
 import type { Message } from '../../types';
 
@@ -58,17 +61,22 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
           );
         })}
 
-        {/* Streaming message - render as plain text, not markdown */}
+        {/* Streaming message */}
         {isStreaming && streamingContent && (
           <motion.div key="streaming" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="flex justify-start" style={{ marginTop: 12 }}>
-              <div style={{
-                fontSize: 13, lineHeight: 1.6, color: 'var(--text-normal)',
-                whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxWidth: '82%',
-                borderLeft: '2px solid color-mix(in srgb, var(--color-accent) 20%, transparent)',
-                paddingLeft: 14,
-              }}>
-                {streamingContent}
+              <div
+                className="prose prose-invert prose-sm max-w-none"
+                style={{
+                  fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-normal)',
+                  wordBreak: 'break-word', maxWidth: '82%',
+                  borderLeft: '2px solid color-mix(in srgb, var(--color-accent) 20%, transparent)',
+                  paddingLeft: 14,
+                }}
+              >
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                  {streamingContent}
+                </ReactMarkdown>
                 <span style={{ display: 'inline-block', width: 6, height: 14, background: 'var(--color-accent)', borderRadius: 1, marginLeft: 2, animation: 'blink 1s step-end infinite' }} />
               </div>
             </div>

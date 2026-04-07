@@ -25,6 +25,8 @@ export default function ConversationItem({
   const [isRenaming, setIsRenaming] = useState(false);
   const [newTitle, setNewTitle] = useState(conversation.title);
   const [isHovered, setIsHovered] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const lastMessage = conversation.messages[conversation.messages.length - 1];
@@ -42,11 +44,16 @@ export default function ConversationItem({
     const handleClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowMenu(false);
+        setConfirmingDelete(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showMenu]);
+
+  useEffect(() => {
+    return () => clearTimeout(deleteTimerRef.current);
+  }, []);
 
   return (
     <motion.div
@@ -137,6 +144,7 @@ export default function ConversationItem({
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
+              aria-label="Opções da conversa"
               style={{
                 padding: 4,
                 borderRadius: 4,
@@ -223,8 +231,16 @@ export default function ConversationItem({
                     whileHover={{ backgroundColor: 'color-mix(in srgb, var(--error) 10%, transparent)' }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onDelete();
-                      setShowMenu(false);
+                      if (confirmingDelete) {
+                        onDelete();
+                        setShowMenu(false);
+                        setConfirmingDelete(false);
+                        clearTimeout(deleteTimerRef.current);
+                      } else {
+                        setConfirmingDelete(true);
+                        clearTimeout(deleteTimerRef.current);
+                        deleteTimerRef.current = setTimeout(() => setConfirmingDelete(false), 3000);
+                      }
                     }}
                     style={{
                       width: '100%',
@@ -232,16 +248,17 @@ export default function ConversationItem({
                       padding: '6px 12px',
                       fontSize: 12,
                       color: 'var(--error)',
-                      background: 'transparent',
+                      background: confirmingDelete ? 'color-mix(in srgb, var(--error) 10%, transparent)' : 'transparent',
                       border: 'none',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 8,
+                      fontWeight: confirmingDelete ? 600 : 400,
                     }}
                   >
                     <Trash2 size={11} />
-                    Excluir
+                    {confirmingDelete ? 'Tem certeza?' : 'Excluir'}
                   </motion.button>
                 </motion.div>
               )}
