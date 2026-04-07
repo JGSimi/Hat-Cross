@@ -4,9 +4,18 @@ Assistente de IA cross-platform que vive na barra de menus (macOS) / system tray
 
 ## Download
 
-Acesse a [Releases](https://github.com/JGSimi/Hat-Cross/releases) para baixar o instalador da sua plataforma.
+Baixe a última versão na página de [Releases](https://github.com/JGSimi/Hat-Cross/releases/latest).
 
-### macOS
+| Plataforma | Arquivo | Notas |
+|------------|---------|-------|
+| **Windows 64-bit** | `Hat_X.Y.Z_x64-setup.exe` | |
+| **macOS Apple Silicon** (M1/M2/M3/M4) | `Hat_X.Y.Z_aarch64.dmg` | Veja instruções abaixo |
+| **macOS Intel** | `Hat_X.Y.Z_x64.dmg` | Veja instruções abaixo |
+| **Linux Debian/Ubuntu** | `Hat_X.Y.Z_amd64.deb` | |
+| **Linux AppImage** | `Hat_X.Y.Z_amd64.AppImage` | Universal |
+| **Linux RPM** | `Hat-X.Y.Z-1.x86_64.rpm` | Fedora/openSUSE |
+
+### macOS (sem certificado Apple)
 O app **não é notarizado** (sem Apple Developer Account). Na primeira abertura:
 1. Clique direito no `.app` -> **Abrir**
 2. Clique **Abrir** no diálogo de segurança
