@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Search, Settings } from 'lucide-react';
+import { getVersion } from '@tauri-apps/api/app';
 import ConversationItem from './ConversationItem';
 import { useConversations } from '../../hooks/useConversations';
 import { usePlatform } from '../../hooks/usePlatform';
@@ -30,7 +31,12 @@ export default function Sidebar({ onOpenSettings }: Props) {
     setActiveConversation,
   } = useConversations();
   const [searchQuery, setSearchQuery] = useState('');
+  const [appVersion, setAppVersion] = useState('');
   const platform = usePlatform();
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => {
     if (!searchQuery) return conversations;
@@ -95,6 +101,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
           whileTap={{ scale: 0.95 }}
           onClick={() => createConversation()}
           title="Nova conversa"
+          aria-label="Nova conversa"
           style={{
             padding: 6,
             borderRadius: 8,
@@ -135,6 +142,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar..."
+            aria-label="Buscar conversas"
             style={{
               flex: 1,
               background: 'transparent',
@@ -220,7 +228,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
               textAlign: 'center',
             }}
           >
-            Nenhuma conversa
+            {searchQuery ? `Nenhum resultado para "${searchQuery}"` : 'Nenhuma conversa'}
           </p>
         )}
       </motion.div>
@@ -244,6 +252,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
           whileHover={{ scale: 1.05, backgroundColor: 'var(--surface-hover)' }}
           whileTap={{ scale: 0.97 }}
           onClick={onOpenSettings}
+          aria-label="Configurações"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -262,7 +271,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
           <span>Configurações</span>
         </motion.button>
         <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>
-          v2
+          {appVersion ? `v${appVersion}` : ''}
         </span>
       </motion.div>
     </div>

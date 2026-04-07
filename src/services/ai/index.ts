@@ -46,6 +46,8 @@ export async function startStream(options: StreamOptions): Promise<() => void> {
 
   unlistenError = await listen<string>('chat-stream-error', (event) => {
     onError(event.payload);
+    unlisten();
+    unlistenError?.();
   });
 
   try {
@@ -61,6 +63,8 @@ export async function startStream(options: StreamOptions): Promise<() => void> {
     });
   } catch (e) {
     onError(String(e));
+    unlisten();
+    unlistenError?.();
   }
 
   // Return cancel function

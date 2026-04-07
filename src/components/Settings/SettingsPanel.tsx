@@ -76,6 +76,7 @@ export default function SettingsPanel({ onClose }: Props) {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           onClick={onClose}
+          aria-label="Voltar"
           style={{
             padding: 6,
             borderRadius: 6,

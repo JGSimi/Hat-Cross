@@ -69,6 +69,16 @@ export function useChat() {
         : cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
       const model = isLocal ? settings.localModel : cfg?.model || '';
 
+      if (!isLocal && provider !== 'ollama') {
+        const apiKey = cfg?.apiKey || '';
+        if (!apiKey.trim()) {
+          setError(
+            'Chave de API não configurada. Vá em Configurações > Modelos & IA para adicionar sua chave.'
+          );
+          return;
+        }
+      }
+
       setStreaming(true);
       setError(null);
 
@@ -151,11 +161,11 @@ export function useChat() {
         timestamp: Date.now(),
         source: 'chat',
       };
-      finishStream();
+      useChatStore.setState({ streamingContent: '', isStreaming: false });
       addMessage(aiMsg);
     }
     setStreaming(false);
-  }, [finishStream, addMessage, setStreaming]);
+  }, [addMessage, setStreaming]);
 
   return {
     messages,
