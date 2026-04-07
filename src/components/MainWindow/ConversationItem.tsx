@@ -26,7 +26,7 @@ export default function ConversationItem({
   const [newTitle, setNewTitle] = useState(conversation.title);
   const [isHovered, setIsHovered] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const deleteTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const lastMessage = conversation.messages[conversation.messages.length - 1];
