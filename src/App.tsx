@@ -125,16 +125,24 @@ function App() {
   // Clipboard processing — core feature
   // Flow: user copies text → presses shortcut → AI processes → notification with response
   useEffect(() => {
+    let isProcessing = false;
+
     const unlisten = listen('process-clipboard', async () => {
+      if (isProcessing) return;
+      isProcessing = true;
+
+      let chunkUnlisten: (() => void) | null = null;
+
       try {
         const { settings, providerConfigs } = useSettingsStore.getState();
         const clip = settings.clipboard;
 
-        if (!clip.enabled) return;
+        if (!clip.enabled) { isProcessing = false; return; }
 
         const clipText = await readText();
         if (!clipText) {
           invoke('send_notification', { title: 'Hat', body: 'Clipboard vazio.' }).catch(() => {});
+          isProcessing = false;
           return;
         }
 
@@ -153,47 +161,60 @@ function App() {
           : settings.systemPrompt;
 
         let response = '';
-        const chunkUnlisten = await listen<{ text: string; isFinished: boolean }>(
+        let hasReceivedContent = false;
+
+        chunkUnlisten = await listen<{ text: string; isFinished: boolean }>(
           'chat-stream',
           (event) => {
-            if (event.payload.text) response += event.payload.text;
-            if (event.payload.isFinished && response) {
-              // Truncate if configured
-              const maxLen = clip.maxResponseLength || 4096;
-              const finalResponse = response.length > maxLen ? response.slice(0, maxLen) + '...' : response;
+            if (event.payload.text && !event.payload.isFinished) {
+              response += event.payload.text;
+              hasReceivedContent = true;
+            }
+            if (event.payload.isFinished) {
+              if (hasReceivedContent && response) {
+                // Truncate if configured
+                const maxLen = clip.maxResponseLength || 4096;
+                const finalResponse = response.length > maxLen ? response.slice(0, maxLen) + '...' : response;
 
-              // Copy to clipboard
-              if (clip.copyResponseToClipboard) {
-                const textToWrite = clip.appendMode
-                  ? `${clipText}\n\n---\n\n${finalResponse}`
-                  : finalResponse;
-                writeText(textToWrite).catch(() => {});
+                // Copy to clipboard
+                if (clip.copyResponseToClipboard) {
+                  const textToWrite = clip.appendMode
+                    ? `${clipText}\n\n---\n\n${finalResponse}`
+                    : finalResponse;
+                  writeText(textToWrite).catch(() => {});
+                }
+
+                // Notification with full response text
+                if (clip.showNotificationWithResponse) {
+                  const notifBody = finalResponse.length > 500
+                    ? finalResponse.slice(0, 500) + '...'
+                    : finalResponse;
+                  invoke('send_notification', {
+                    title: clip.copyResponseToClipboard ? 'Hat — Copiado para clipboard' : 'Hat — Resposta',
+                    body: notifBody,
+                  }).catch(() => {});
+                }
+
+                // Sound
+                if (clip.soundOnComplete) {
+                  try {
+                    const ctx = new AudioContext();
+                    const osc = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    osc.connect(g); g.connect(ctx.destination);
+                    osc.frequency.value = 880; g.gain.value = 0.08;
+                    osc.start(); osc.stop(ctx.currentTime + 0.12);
+                  } catch {}
+                }
+              } else {
+                // Error: isFinished without prior content — backend sent error text
+                const errorMsg = event.payload.text || 'Erro desconhecido';
+                invoke('send_notification', { title: 'Hat — Erro', body: errorMsg }).catch(() => {});
               }
 
-              // Notification with full response text
-              if (clip.showNotificationWithResponse) {
-                const notifBody = finalResponse.length > 500
-                  ? finalResponse.slice(0, 500) + '...'
-                  : finalResponse;
-                invoke('send_notification', {
-                  title: clip.copyResponseToClipboard ? 'Hat — Copiado para clipboard' : 'Hat — Resposta',
-                  body: notifBody,
-                }).catch(() => {});
-              }
-
-              // Sound
-              if (clip.soundOnComplete) {
-                try {
-                  const ctx = new AudioContext();
-                  const osc = ctx.createOscillator();
-                  const g = ctx.createGain();
-                  osc.connect(g); g.connect(ctx.destination);
-                  osc.frequency.value = 880; g.gain.value = 0.08;
-                  osc.start(); osc.stop(ctx.currentTime + 0.12);
-                } catch {}
-              }
-
-              chunkUnlisten();
+              chunkUnlisten?.();
+              chunkUnlisten = null;
+              isProcessing = false;
             }
           },
         );
@@ -208,7 +229,12 @@ function App() {
         });
       } catch (e) {
         console.error('Clipboard processing failed:', e);
+        if (chunkUnlisten) {
+          chunkUnlisten();
+          chunkUnlisten = null;
+        }
         invoke('send_notification', { title: 'Hat — Erro', body: 'Falha ao processar clipboard.' }).catch(() => {});
+        isProcessing = false;
       }
     });
     return () => { unlisten.then(fn => fn()); };
