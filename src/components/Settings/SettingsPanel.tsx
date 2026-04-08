@@ -14,7 +14,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'general' | 'clipboard' | 'appearance' | 'models' | 'behavior' | 'shortcuts';
+type Tab = 'general' | 'notifications' | 'clipboard' | 'appearance' | 'models' | 'behavior' | 'shortcuts';
 
 const tabContentVariants = {
   initial: { opacity: 0, y: 8 },
@@ -39,6 +39,7 @@ export default function SettingsPanel({ onClose }: Props) {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'general', label: 'Geral' },
+    { id: 'notifications', label: 'Notificações' },
     { id: 'clipboard', label: 'Clipboard' },
     { id: 'appearance', label: 'Aparência' },
     { id: 'models', label: 'Modelos & IA' },
@@ -136,6 +137,9 @@ export default function SettingsPanel({ onClose }: Props) {
               transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
               {activeTab === 'general' && <GeneralTab />}
+              {activeTab === 'notifications' && (
+                <NotificationsTab settings={settings} updateSettings={updateSettings} />
+              )}
               {activeTab === 'clipboard' && (
                 <ClipboardTab settings={settings} updateSettings={updateSettings} />
               )}
@@ -339,12 +343,6 @@ function GeneralTab() {
             onChange={(v) => updateSettings({ soundEnabled: v })}
           />
         </SettingRow>
-        <SettingRow label="Notificacoes">
-          <Toggle
-            checked={settings.notificationsEnabled}
-            onChange={(v) => updateSettings({ notificationsEnabled: v })}
-          />
-        </SettingRow>
       </GlassCard>
 
       <SectionTitle>Atualizacoes</SectionTitle>
@@ -377,6 +375,90 @@ function GeneralTab() {
         </div>
         <div style={{ paddingTop: 12, fontSize: 10, color: 'var(--text-muted)' }}>
           Hat v{version}
+        </div>
+      </GlassCard>
+    </>
+  );
+}
+
+function NotificationsTab({
+  settings,
+  updateSettings,
+}: {
+  settings: ReturnType<typeof useSettingsStore.getState>['settings'];
+  updateSettings: ReturnType<typeof useSettingsStore.getState>['updateSettings'];
+}) {
+  const notif = settings.notifications;
+  const update = (partial: Partial<typeof notif>) => {
+    updateSettings({ notifications: { ...notif, ...partial } });
+  };
+
+  const disabledStyle = {
+    opacity: notif.enabled ? 1 : 0.4,
+    pointerEvents: (notif.enabled ? 'auto' : 'none') as React.CSSProperties['pointerEvents'],
+    transition: 'opacity 0.2s ease',
+  };
+
+  return (
+    <>
+      <SectionTitle>Geral</SectionTitle>
+      <GlassCard>
+        <SettingRow label="Notificações ativas">
+          <Toggle checked={notif.enabled} onChange={(v) => update({ enabled: v })} />
+        </SettingRow>
+      </GlassCard>
+
+      <SectionTitle>Clipboard</SectionTitle>
+      <div style={disabledStyle}>
+        <GlassCard>
+          <SettingRow label="Notificação de processamento">
+            <Toggle checked={notif.showProcessingNotification} onChange={(v) => update({ showProcessingNotification: v })} />
+          </SettingRow>
+          <SettingRow label="Notificação de resposta">
+            <Toggle checked={notif.showResponseNotification} onChange={(v) => update({ showResponseNotification: v })} />
+          </SettingRow>
+          <SettingRow label="Notificação de clipboard vazio">
+            <Toggle checked={notif.showClipboardEmptyNotification} onChange={(v) => update({ showClipboardEmptyNotification: v })} />
+          </SettingRow>
+          <SettingRow label="Notificação de erro">
+            <Toggle checked={notif.showErrorNotification} onChange={(v) => update({ showErrorNotification: v })} />
+          </SettingRow>
+        </GlassCard>
+      </div>
+
+      <SectionTitle>Chat</SectionTitle>
+      <div style={disabledStyle}>
+        <GlassCard>
+          <SettingRow label="Resposta recebida (janela sem foco)">
+            <Toggle checked={notif.showChatResponseNotification} onChange={(v) => update({ showChatResponseNotification: v })} />
+          </SettingRow>
+        </GlassCard>
+      </div>
+
+      <SectionTitle>Sistema</SectionTitle>
+      <div style={disabledStyle}>
+        <GlassCard>
+          <SettingRow label="Notificação de atualização">
+            <Toggle checked={notif.showUpdateNotification} onChange={(v) => update({ showUpdateNotification: v })} />
+          </SettingRow>
+        </GlassCard>
+      </div>
+
+      <SectionTitle>Tempo de exibição</SectionTitle>
+      <GlassCard>
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          <p>
+            O tempo de exibição das notificações é controlado pelo sistema operacional
+            e não pode ser alterado pelo Hat.
+          </p>
+          <p style={{ marginTop: 8 }}>
+            <strong style={{ color: 'var(--text-primary)' }}>macOS:</strong> Ajuste em{' '}
+            <em>Preferências do Sistema &gt; Notificações &gt; Hat</em>.
+          </p>
+          <p style={{ marginTop: 6 }}>
+            <strong style={{ color: 'var(--text-primary)' }}>Windows:</strong> Ajuste em{' '}
+            <em>Configurações &gt; Acessibilidade &gt; Efeitos visuais &gt; Tempo de exibição de notificações</em>.
+          </p>
         </div>
       </GlassCard>
     </>
@@ -423,9 +505,6 @@ function ClipboardTab({
       <GlassCard>
         <SettingRow label="Copiar resposta para o clipboard">
           <Toggle checked={clip.copyResponseToClipboard} onChange={(v) => update({ copyResponseToClipboard: v })} />
-        </SettingRow>
-        <SettingRow label="Mostrar resposta na notificação">
-          <Toggle checked={clip.showNotificationWithResponse} onChange={(v) => update({ showNotificationWithResponse: v })} />
         </SettingRow>
         <SettingRow label="Modo anexar (original + resposta)">
           <Toggle checked={clip.appendMode} onChange={(v) => update({ appendMode: v })} />

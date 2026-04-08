@@ -55,7 +55,10 @@ function App() {
           const { relaunch } = await import('@tauri-apps/plugin-process');
           await relaunch();
         } else {
-          invoke('send_notification', { title: 'Hat', body: 'Você já está na versão mais recente!' }).catch(() => {});
+          const { notifications } = useSettingsStore.getState().settings;
+          if (notifications.enabled && notifications.showUpdateNotification) {
+            invoke('send_notification', { title: 'Hat', body: 'Você já está na versão mais recente!' }).catch(() => {});
+          }
         }
       } catch (e) {
         console.error('Update check failed:', e);
@@ -141,14 +144,18 @@ function App() {
 
         const clipText = await readText();
         if (!clipText) {
-          invoke('send_notification', { title: 'Hat', body: 'Clipboard vazio.' }).catch(() => {});
+          if (settings.notifications.enabled && settings.notifications.showClipboardEmptyNotification) {
+            invoke('send_notification', { title: 'Hat', body: 'Clipboard vazio.' }).catch(() => {});
+          }
           isProcessing = false;
           return;
         }
 
         // Notify processing started
-        const preview = clipText.length > 80 ? clipText.slice(0, 80) + '...' : clipText;
-        invoke('send_notification', { title: 'Hat — Processando', body: preview }).catch(() => {});
+        if (settings.notifications.enabled && settings.notifications.showProcessingNotification) {
+          const preview = clipText.length > 80 ? clipText.slice(0, 80) + '...' : clipText;
+          invoke('send_notification', { title: 'Hat — Processando', body: preview }).catch(() => {});
+        }
 
         const isLocal = settings.inferenceMode === 'local';
         const provider = isLocal ? 'ollama' : settings.cloudProvider;
@@ -185,7 +192,8 @@ function App() {
                 }
 
                 // Notification with full response text
-                if (clip.showNotificationWithResponse) {
+                const currentNotif = useSettingsStore.getState().settings.notifications;
+                if (currentNotif.enabled && currentNotif.showResponseNotification) {
                   const notifBody = finalResponse.length > 500
                     ? finalResponse.slice(0, 500) + '...'
                     : finalResponse;
@@ -208,8 +216,11 @@ function App() {
                 }
               } else {
                 // Error: isFinished without prior content — backend sent error text
-                const errorMsg = event.payload.text || 'Erro desconhecido';
-                invoke('send_notification', { title: 'Hat — Erro', body: errorMsg }).catch(() => {});
+                const errorNotif = useSettingsStore.getState().settings.notifications;
+                if (errorNotif.enabled && errorNotif.showErrorNotification) {
+                  const errorMsg = event.payload.text || 'Erro desconhecido';
+                  invoke('send_notification', { title: 'Hat — Erro', body: errorMsg }).catch(() => {});
+                }
               }
 
               chunkUnlisten?.();
@@ -233,7 +244,10 @@ function App() {
           chunkUnlisten();
           chunkUnlisten = null;
         }
-        invoke('send_notification', { title: 'Hat — Erro', body: 'Falha ao processar clipboard.' }).catch(() => {});
+        const catchNotif = useSettingsStore.getState().settings.notifications;
+        if (catchNotif.enabled && catchNotif.showErrorNotification) {
+          invoke('send_notification', { title: 'Hat — Erro', body: 'Falha ao processar clipboard.' }).catch(() => {});
+        }
         isProcessing = false;
       }
     });
