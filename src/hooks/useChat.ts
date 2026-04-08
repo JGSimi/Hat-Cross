@@ -130,7 +130,7 @@ export function useChat() {
                   osc.start(); osc.stop(ctx.currentTime + 0.15);
                 } catch {}
               }
-              if (currentSettings.notificationsEnabled && !document.hasFocus()) {
+              if (currentSettings.notifications.enabled && currentSettings.notifications.showChatResponseNotification && !document.hasFocus()) {
                 invoke('send_notification', { title: 'Hat', body: 'Resposta recebida' }).catch(() => {});
               }
             } else {

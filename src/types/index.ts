@@ -155,7 +155,6 @@ export interface ShortcutSettings {
 export interface ClipboardSettings {
   enabled: boolean;
   copyResponseToClipboard: boolean;
-  showNotificationWithResponse: boolean;
   customPrompt: string;
   useCustomPrompt: boolean;
   maxResponseLength: number;
@@ -163,10 +162,19 @@ export interface ClipboardSettings {
   soundOnComplete: boolean;
 }
 
+export interface NotificationSettings {
+  enabled: boolean;
+  showProcessingNotification: boolean;
+  showResponseNotification: boolean;
+  showErrorNotification: boolean;
+  showChatResponseNotification: boolean;
+  showUpdateNotification: boolean;
+  showClipboardEmptyNotification: boolean;
+}
+
 export interface AppSettings {
   autoLaunch: boolean;
   soundEnabled: boolean;
-  notificationsEnabled: boolean;
   theme: AppTheme;
   popover: PopoverSettings;
   inferenceMode: InferenceMode;
@@ -178,12 +186,12 @@ export interface AppSettings {
   shortcuts: ShortcutSettings;
   tokenStats: TokenUsage;
   clipboard: ClipboardSettings;
+  notifications: NotificationSettings;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   autoLaunch: false,
   soundEnabled: true,
-  notificationsEnabled: true,
   theme: 'indigo',
   popover: {
     width: 380,
@@ -211,11 +219,19 @@ export const DEFAULT_SETTINGS: AppSettings = {
   clipboard: {
     enabled: true,
     copyResponseToClipboard: true,
-    showNotificationWithResponse: true,
     customPrompt: '',
     useCustomPrompt: false,
     maxResponseLength: 4096,
     appendMode: false,
     soundOnComplete: true,
+  },
+  notifications: {
+    enabled: true,
+    showProcessingNotification: true,
+    showResponseNotification: true,
+    showErrorNotification: true,
+    showChatResponseNotification: true,
+    showUpdateNotification: true,
+    showClipboardEmptyNotification: true,
   },
 };
