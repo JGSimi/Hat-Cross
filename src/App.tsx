@@ -1,8 +1,9 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { listen } from '@tauri-apps/api/event';
+import { listen, emit } from '@tauri-apps/api/event';
 import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { invoke } from '@tauri-apps/api/core';
+import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
 import { AnimatePresence, motion } from 'framer-motion';
 import MainPage from './pages/MainPage';
 import AnalysisPage from './pages/AnalysisPage';
@@ -10,6 +11,11 @@ import HorseLogo from './components/Shared/HorseLogo';
 import { useSettingsStore } from './stores/settingsStore';
 import { useChatStore } from './stores/chatStore';
 import { useConversationStore } from './stores/conversationStore';
+
+/** Normalize legacy shortcut format (CmdOrCtrl → CommandOrControl) */
+function normalizeShortcut(s: string): string {
+  return s.replace(/CmdOrCtrl/g, 'CommandOrControl');
+}
 
 function App() {
   const location = useLocation();
@@ -24,6 +30,7 @@ function App() {
   }, [showSplash]);
 
   const theme = useSettingsStore((s) => s.settings.theme);
+  const shortcuts = useSettingsStore((s) => s.settings.shortcuts);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
 
   useEffect(() => {
@@ -34,6 +41,58 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Global shortcut registration via JS API (handles CommandOrControl correctly per platform)
+  const registeredShortcuts = useRef<{ clipboard: string; screenCapture: string }>({ clipboard: '', screenCapture: '' });
+  useEffect(() => {
+    const prev = registeredShortcuts.current;
+
+    async function registerShortcuts() {
+      const clipShortcut = normalizeShortcut(shortcuts.clipboard);
+      const captureShortcut = normalizeShortcut(shortcuts.screenCapture);
+
+      // Unregister old shortcuts if they changed
+      if (prev.clipboard && prev.clipboard !== clipShortcut) {
+        try { await unregister(prev.clipboard); } catch {}
+      }
+      if (prev.screenCapture && prev.screenCapture !== captureShortcut) {
+        try { await unregister(prev.screenCapture); } catch {}
+      }
+
+      // Register clipboard shortcut
+      if (clipShortcut && clipShortcut !== prev.clipboard) {
+        try {
+          await register(clipShortcut, () => {
+            emit('process-clipboard');
+          });
+          prev.clipboard = clipShortcut;
+        } catch (e) {
+          console.error('Failed to register clipboard shortcut:', e);
+          prev.clipboard = '';
+        }
+      }
+
+      // Register screen capture shortcut
+      if (captureShortcut && captureShortcut !== prev.screenCapture) {
+        try {
+          await register(captureShortcut, () => {
+            invoke('open_analysis_window').catch(() => {});
+          });
+          prev.screenCapture = captureShortcut;
+        } catch (e) {
+          console.error('Failed to register screen capture shortcut:', e);
+          prev.screenCapture = '';
+        }
+      }
+    }
+
+    registerShortcuts();
+
+    return () => {
+      if (prev.clipboard) { unregister(prev.clipboard).catch(() => {}); prev.clipboard = ''; }
+      if (prev.screenCapture) { unregister(prev.screenCapture).catch(() => {}); prev.screenCapture = ''; }
+    };
+  }, [shortcuts.clipboard, shortcuts.screenCapture]);
 
   // Tray menu events
   useEffect(() => {

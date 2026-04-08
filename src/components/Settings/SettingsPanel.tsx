@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, RefreshCw, Eye, EyeOff, Bot, Brain, Zap, Shuffle, Globe, Monitor, Cloud, Gem } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
@@ -990,6 +990,154 @@ function BehaviorTab({
   );
 }
 
+/** Maps keyboard event keys to Tauri-compatible accelerator names */
+function keyToAccelerator(e: React.KeyboardEvent): string | null {
+  const { code, key } = e;
+  // Letter keys
+  if (code.startsWith('Key')) return code.slice(3);
+  // Digit keys
+  if (code.startsWith('Digit')) return code.slice(5);
+  // Function keys
+  if (/^F\d{1,2}$/.test(key)) return key;
+  // Special keys
+  const specialMap: Record<string, string> = {
+    Space: 'Space', Tab: 'Tab', Enter: 'Enter',
+    ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
+    Home: 'Home', End: 'End', PageUp: 'PageUp', PageDown: 'PageDown',
+    Delete: 'Delete', Insert: 'Insert',
+    Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']',
+    Semicolon: ';', Quote: "'", Backquote: '`', Backslash: '\\',
+    Comma: ',', Period: '.', Slash: '/',
+    NumpadAdd: 'num+', NumpadSubtract: 'num-', NumpadMultiply: 'num*',
+    NumpadDivide: 'num/', NumpadDecimal: 'numdec', NumpadEnter: 'numenter',
+  };
+  if (code.startsWith('Numpad') && /^Numpad\d$/.test(code)) return 'num' + code.slice(6);
+  return specialMap[code] ?? null;
+}
+
+/** Formats an accelerator string for display (e.g., CommandOrControl+Shift+X → Ctrl+Shift+X) */
+function displayShortcut(accelerator: string, platform: 'macos' | 'windows' | 'linux'): string {
+  return accelerator
+    .replace(/CommandOrControl/g, platform === 'macos' ? 'Cmd' : 'Ctrl')
+    .replace(/CmdOrCtrl/g, platform === 'macos' ? 'Cmd' : 'Ctrl');
+}
+
+function ShortcutRecorder({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [recording, setRecording] = useState(false);
+  const [currentKeys, setCurrentKeys] = useState('');
+  const platform = usePlatform();
+  const ref = useRef<HTMLButtonElement>(null);
+
+  const boxStyle: React.CSSProperties = {
+    width: 200,
+    minHeight: 30,
+    background: recording ? 'var(--color-accent-muted, rgba(99,102,241,0.12))' : 'var(--input-bg)',
+    color: recording ? 'var(--color-accent)' : 'var(--text-primary)',
+    borderRadius: 8,
+    padding: '6px 12px',
+    fontSize: 11,
+    outline: 'none',
+    border: recording ? '1.5px solid var(--color-accent)' : '0.5px solid var(--border-subtle)',
+    textAlign: 'center' as const,
+    fontFamily: "'SF Mono', monospace",
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!recording) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Escape cancels recording
+    if (e.key === 'Escape') {
+      setRecording(false);
+      setCurrentKeys('');
+      return;
+    }
+
+    // Backspace/Delete clears the shortcut
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      onChange('');
+      setRecording(false);
+      setCurrentKeys('');
+      return;
+    }
+
+    // Ignore lone modifier keys — just show preview
+    const isModifier = ['Control', 'Shift', 'Alt', 'Meta'].includes(e.key);
+
+    // Build modifiers
+    const parts: string[] = [];
+    if (e.ctrlKey || e.metaKey) parts.push('CommandOrControl');
+    if (e.altKey) parts.push('Alt');
+    if (e.shiftKey) parts.push('Shift');
+
+    if (isModifier) {
+      // Show current modifier preview
+      setCurrentKeys(parts.length > 0 ? displayShortcut(parts.join('+'), platform) + '+...' : '');
+      return;
+    }
+
+    // Must have at least one modifier
+    if (parts.length === 0) return;
+
+    const mainKey = keyToAccelerator(e);
+    if (!mainKey) return;
+
+    parts.push(mainKey);
+    const accelerator = parts.join('+');
+    onChange(accelerator);
+    setRecording(false);
+    setCurrentKeys('');
+  };
+
+  const handleClick = () => {
+    setRecording(true);
+    setCurrentKeys('');
+    // Focus so we can capture keydown
+    setTimeout(() => ref.current?.focus(), 0);
+  };
+
+  const handleBlur = () => {
+    // Small delay to avoid instant blur on click
+    setTimeout(() => {
+      setRecording(false);
+      setCurrentKeys('');
+    }, 150);
+  };
+
+  const display = recording
+    ? (currentKeys || 'Pressione as teclas...')
+    : value
+      ? displayShortcut(value, platform)
+      : 'Clique para definir';
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      style={boxStyle}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
+      title={recording ? 'Esc para cancelar, Backspace para limpar' : 'Clique para gravar um novo atalho'}
+    >
+      {display}
+    </button>
+  );
+}
+
 function ShortcutsTab({
   settings,
   updateSettings,
@@ -997,38 +1145,26 @@ function ShortcutsTab({
   settings: ReturnType<typeof useSettingsStore.getState>['settings'];
   updateSettings: ReturnType<typeof useSettingsStore.getState>['updateSettings'];
 }) {
-  const inputStyle: React.CSSProperties = {
-    width: 176,
-    background: 'var(--input-bg)',
-    color: 'var(--text-primary)',
-    borderRadius: 8,
-    padding: '6px 12px',
-    fontSize: 11,
-    outline: 'none',
-    border: '0.5px solid var(--border-subtle)',
-    textAlign: 'center',
-    fontFamily: "'SF Mono', monospace",
-  };
-
   return (
     <>
       <SectionTitle>Atalhos Globais</SectionTitle>
       <GlassCard>
         <SettingRow label="Processar Clipboard">
-          <input
+          <ShortcutRecorder
             value={settings.shortcuts.clipboard}
-            onChange={(e) => updateSettings({ shortcuts: { ...settings.shortcuts, clipboard: e.target.value } })}
-            style={inputStyle}
+            onChange={(v) => updateSettings({ shortcuts: { ...settings.shortcuts, clipboard: v } })}
           />
         </SettingRow>
         <SettingRow label="Analisar Tela">
-          <input
+          <ShortcutRecorder
             value={settings.shortcuts.screenCapture}
-            onChange={(e) => updateSettings({ shortcuts: { ...settings.shortcuts, screenCapture: e.target.value } })}
-            style={inputStyle}
+            onChange={(v) => updateSettings({ shortcuts: { ...settings.shortcuts, screenCapture: v } })}
           />
         </SettingRow>
       </GlassCard>
+      <div style={{ marginTop: 8, padding: '0 4px', fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        Clique no atalho e pressione a nova combinacao de teclas. Esc para cancelar, Backspace para limpar.
+      </div>
     </>
   );
 }
