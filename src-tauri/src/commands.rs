@@ -48,13 +48,40 @@ pub async fn open_analysis_window(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub fn send_notification(app: AppHandle, title: String, body: String) -> Result<(), String> {
     use tauri_plugin_notification::NotificationExt;
-    app.notification()
+
+    // Write the notification icon to a temp file so the OS can reference it.
+    // On macOS, the app bundle icon is used automatically, but we also write
+    // a PNG so that if the icon cache is stale the path-based icon can help
+    // on Linux/Windows where .icon() accepts a file path.
+    let icon_path = get_or_create_notification_icon();
+
+    let mut builder = app.notification()
         .builder()
         .title(&title)
-        .body(&body)
-        .show()
+        .body(&body);
+
+    if let Some(path) = icon_path {
+        builder = builder.icon(path);
+    }
+
+    builder.show()
         .map_err(|e| format!("Falha na notificacao: {}", e))?;
     Ok(())
+}
+
+/// Writes the embedded horse icon to a file in the temp directory once,
+/// then returns the path on subsequent calls.
+fn get_or_create_notification_icon() -> Option<String> {
+    let icon_bytes = include_bytes!("../icons/notification.png");
+    let path = std::env::temp_dir().join("hat-notification-icon.png");
+
+    if !path.exists() {
+        if std::fs::write(&path, icon_bytes).is_err() {
+            return None;
+        }
+    }
+
+    Some(path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
