@@ -2,12 +2,20 @@ import { create } from 'zustand';
 import { readTextFile, writeTextFile, mkdir, exists } from '@tauri-apps/plugin-fs';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import type { Conversation, Message } from '../types';
+import { useSettingsStore } from './settingsStore';
 
 const CONVERSATIONS_FILE = 'conversations.json';
-const MAX_CONVERSATIONS = 50;
-const MAX_MESSAGES_PER_CONVERSATION = 200;
+const SAVE_DEBOUNCE_MS = 500;
 
 // --- Helpers ---
+
+function getMaxConversations(): number {
+  return useSettingsStore.getState().settings.chatLimits?.maxConversations ?? 50;
+}
+
+function getMaxMessagesPerConversation(): number {
+  return useSettingsStore.getState().settings.chatLimits?.maxMessagesPerConversation ?? 200;
+}
 
 function sortConversations(conversations: Conversation[]): Conversation[] {
   return [...conversations].sort((a, b) => {
@@ -25,6 +33,13 @@ function autoTitle(messages: Message[]): string {
 
 // --- Store interface ---
 
+interface StorageStats {
+  totalConversations: number;
+  totalMessages: number;
+  estimatedSizeKB: number;
+  oldestConversationDate: number | null;
+}
+
 interface ConversationState {
   conversations: Conversation[];
   activeConversationId: string | null;
@@ -33,12 +48,26 @@ interface ConversationState {
   // Actions
   createConversation: (firstMessage?: Message) => Conversation;
   deleteConversation: (id: string) => void;
+  clearAllConversations: () => void;
+  clearOldConversations: (keepCount: number) => number;
   pinConversation: (id: string) => void;
   renameConversation: (id: string, title: string) => void;
   setActiveConversation: (id: string | null) => void;
   addMessageToConversation: (conversationId: string, message: Message) => void;
+  getStorageStats: () => StorageStats;
+  getMessageCount: (conversationId: string) => number;
   loadConversations: () => Promise<void>;
   saveConversations: () => Promise<void>;
+}
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function debouncedSave(saveFn: () => Promise<void>) {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveFn();
+    saveTimer = null;
+  }, SAVE_DEBOUNCE_MS);
 }
 
 export const useConversationStore = create<ConversationState>()((set, get) => ({
@@ -59,11 +88,12 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
 
     set((state) => {
       let conversations = [conversation, ...state.conversations];
+      const maxConv = getMaxConversations();
       // Enforce max conversations — drop oldest unpinned
-      if (conversations.length > MAX_CONVERSATIONS) {
+      if (conversations.length > maxConv) {
         const pinned = conversations.filter((c) => c.isPinned);
         const unpinned = conversations.filter((c) => !c.isPinned);
-        conversations = [...pinned, ...unpinned.slice(0, MAX_CONVERSATIONS - pinned.length)];
+        conversations = [...pinned, ...unpinned.slice(0, maxConv - pinned.length)];
       }
       return {
         conversations: sortConversations(conversations),
@@ -71,7 +101,7 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       };
     });
 
-    get().saveConversations();
+    debouncedSave(() => get().saveConversations());
     return conversation;
   },
 
@@ -84,7 +114,36 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
           : state.activeConversationId;
       return { conversations, activeConversationId };
     });
-    get().saveConversations();
+    debouncedSave(() => get().saveConversations());
+  },
+
+  clearAllConversations: () => {
+    set({ conversations: [], activeConversationId: null });
+    debouncedSave(() => get().saveConversations());
+  },
+
+  clearOldConversations: (keepCount: number) => {
+    const { conversations } = get();
+    const pinned = conversations.filter((c) => c.isPinned);
+    const unpinned = conversations.filter((c) => !c.isPinned);
+    const toKeep = unpinned.slice(0, keepCount);
+    const removed = unpinned.length - toKeep.length;
+
+    if (removed > 0) {
+      const newConversations = sortConversations([...pinned, ...toKeep]);
+      const removedIds = new Set(unpinned.slice(keepCount).map((c) => c.id));
+      const activeId = get().activeConversationId;
+
+      set({
+        conversations: newConversations,
+        activeConversationId: removedIds.has(activeId ?? '')
+          ? newConversations[0]?.id ?? null
+          : activeId,
+      });
+      debouncedSave(() => get().saveConversations());
+    }
+
+    return removed;
   },
 
   pinConversation: (id) => {
@@ -94,7 +153,7 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       );
       return { conversations: sortConversations(conversations) };
     });
-    get().saveConversations();
+    debouncedSave(() => get().saveConversations());
   },
 
   renameConversation: (id, title) => {
@@ -104,7 +163,7 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       );
       return { conversations };
     });
-    get().saveConversations();
+    debouncedSave(() => get().saveConversations());
   },
 
   setActiveConversation: (id) => {
@@ -113,13 +172,14 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
 
   addMessageToConversation: (conversationId, message) => {
     set((state) => {
+      const maxMsg = getMaxMessagesPerConversation();
       const conversations = state.conversations.map((c) => {
         if (c.id !== conversationId) return c;
 
         let messages = [...c.messages, message];
         // Enforce max messages per conversation
-        if (messages.length > MAX_MESSAGES_PER_CONVERSATION) {
-          messages = messages.slice(messages.length - MAX_MESSAGES_PER_CONVERSATION);
+        if (messages.length > maxMsg) {
+          messages = messages.slice(messages.length - maxMsg);
         }
 
         // Auto-title on first user message
@@ -133,7 +193,29 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
 
       return { conversations: sortConversations(conversations) };
     });
-    get().saveConversations();
+    debouncedSave(() => get().saveConversations());
+  },
+
+  getStorageStats: () => {
+    const { conversations } = get();
+    const totalMessages = conversations.reduce((sum, c) => sum + c.messages.length, 0);
+    const jsonStr = JSON.stringify(conversations);
+    const estimatedSizeKB = Math.round(new Blob([jsonStr]).size / 1024);
+    const oldest = conversations.length > 0
+      ? Math.min(...conversations.map((c) => c.createdAt))
+      : null;
+
+    return {
+      totalConversations: conversations.length,
+      totalMessages,
+      estimatedSizeKB,
+      oldestConversationDate: oldest,
+    };
+  },
+
+  getMessageCount: (conversationId: string) => {
+    const conv = get().conversations.find((c) => c.id === conversationId);
+    return conv?.messages.length ?? 0;
   },
 
   loadConversations: async () => {
@@ -149,7 +231,17 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
 
       const raw = await readTextFile(filePath);
       const data = JSON.parse(raw) as Conversation[];
-      set({ conversations: sortConversations(data), loaded: true });
+
+      // Enforce limits on load (in case settings changed)
+      const maxConv = getMaxConversations();
+      let conversations = data;
+      if (conversations.length > maxConv) {
+        const pinned = conversations.filter((c) => c.isPinned);
+        const unpinned = conversations.filter((c) => !c.isPinned);
+        conversations = [...pinned, ...unpinned.slice(0, maxConv - pinned.length)];
+      }
+
+      set({ conversations: sortConversations(conversations), loaded: true });
     } catch (err) {
       console.error('[ConversationStore] Failed to load conversations:', err);
       set({ conversations: [], loaded: true });
@@ -165,7 +257,7 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       }
       const filePath = await join(dataDir, CONVERSATIONS_FILE);
       const { conversations } = get();
-      await writeTextFile(filePath, JSON.stringify(conversations, null, 2));
+      await writeTextFile(filePath, JSON.stringify(conversations));
     } catch (err) {
       console.error('[ConversationStore] Failed to save conversations:', err);
     }

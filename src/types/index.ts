@@ -172,6 +172,13 @@ export interface NotificationSettings {
   showClipboardEmptyNotification: boolean;
 }
 
+export interface ChatLimits {
+  maxContextMessages: number;    // Max messages sent as context to AI (prevents context overflow)
+  maxConversations: number;      // Max conversations stored in history
+  maxMessagesPerConversation: number; // Max messages stored per conversation
+  autoNewChatOnLimit: boolean;   // Auto-create new chat when context limit reached
+}
+
 export interface AppSettings {
   autoLaunch: boolean;
   soundEnabled: boolean;
@@ -187,6 +194,7 @@ export interface AppSettings {
   tokenStats: TokenUsage;
   clipboard: ClipboardSettings;
   notifications: NotificationSettings;
+  chatLimits: ChatLimits;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -233,5 +241,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
     showChatResponseNotification: true,
     showUpdateNotification: true,
     showClipboardEmptyNotification: true,
+  },
+  chatLimits: {
+    maxContextMessages: 40,        // ~20 user+assistant pairs
+    maxConversations: 50,
+    maxMessagesPerConversation: 200,
+    autoNewChatOnLimit: true,
   },
 };

@@ -953,6 +953,16 @@ function BehaviorTab({
   settings: ReturnType<typeof useSettingsStore.getState>['settings'];
   updateSettings: ReturnType<typeof useSettingsStore.getState>['updateSettings'];
 }) {
+  const limits = settings.chatLimits ?? {
+    maxContextMessages: 40,
+    maxConversations: 50,
+    maxMessagesPerConversation: 200,
+    autoNewChatOnLimit: true,
+  };
+  const updateLimits = (partial: Partial<typeof limits>) => {
+    updateSettings({ chatLimits: { ...limits, ...partial } });
+  };
+
   return (
     <>
       <SectionTitle>System Prompt</SectionTitle>
@@ -985,6 +995,35 @@ function BehaviorTab({
           <CustomSlider min={256} max={32768} step={256} value={settings.maxTokens}
             onChange={(v) => updateSettings({ maxTokens: v })} />
         </SettingRow>
+      </GlassCard>
+
+      <SectionTitle>Limites de Chat</SectionTitle>
+      <GlassCard>
+        <SettingRow label={`Contexto da IA: ${limits.maxContextMessages} msgs`}>
+          <CustomSlider min={10} max={100} step={2} value={limits.maxContextMessages}
+            onChange={(v) => updateLimits({ maxContextMessages: v })} />
+        </SettingRow>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '0 0 8px', lineHeight: 1.5 }}>
+          Quantidade de mensagens enviadas como contexto para a IA. Valores menores economizam tokens e mantêm respostas mais focadas.
+        </div>
+        <SettingRow label="Nova conversa automática ao atingir limite">
+          <Toggle checked={limits.autoNewChatOnLimit} onChange={(v) => updateLimits({ autoNewChatOnLimit: v })} />
+        </SettingRow>
+      </GlassCard>
+
+      <SectionTitle>Limites de Histórico</SectionTitle>
+      <GlassCard>
+        <SettingRow label={`Máx. conversas: ${limits.maxConversations}`}>
+          <CustomSlider min={10} max={200} step={10} value={limits.maxConversations}
+            onChange={(v) => updateLimits({ maxConversations: v })} />
+        </SettingRow>
+        <SettingRow label={`Máx. msgs/conversa: ${limits.maxMessagesPerConversation}`}>
+          <CustomSlider min={50} max={500} step={10} value={limits.maxMessagesPerConversation}
+            onChange={(v) => updateLimits({ maxMessagesPerConversation: v })} />
+        </SettingRow>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '0 0 4px', lineHeight: 1.5 }}>
+          Conversas mais antigas (não fixadas) são removidas automaticamente ao ultrapassar o limite. Valores altos podem causar lentidão.
+        </div>
       </GlassCard>
     </>
   );
