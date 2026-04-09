@@ -54,10 +54,10 @@ export default function MainLayout() {
     >
       <AmbientBubbles />
       <MouseReactiveBackground />
-      <motion.div variants={itemVariants} style={{ position: 'relative', zIndex: 1 }}>
+      <motion.div variants={itemVariants} style={{ position: 'relative', zIndex: 2 }}>
         <Sidebar onOpenSettings={() => setShowSettings(true)} />
       </motion.div>
-      <motion.div variants={itemVariants} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+      <motion.div variants={itemVariants} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 2 }}>
         {/* Titlebar drag region + window controls (Windows/Linux) */}
         <div
           data-tauri-drag-region
