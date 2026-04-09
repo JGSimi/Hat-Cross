@@ -1,17 +1,22 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Settings, Trash2, HardDrive } from 'lucide-react';
+import { Plus, Search, Settings, Trash2, HardDrive, MessageSquare, Clipboard } from 'lucide-react';
 import { getVersion } from '@tauri-apps/api/app';
 import ConversationItem from './ConversationItem';
 import { useConversations } from '../../hooks/useConversations';
 import { useConversationStore } from '../../stores/conversationStore';
+import { useClipboardStore } from '../../stores/clipboardStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { usePlatform } from '../../hooks/usePlatform';
 import WindowControls from '../Shared/WindowControls';
 import type { Conversation } from '../../types';
 
+export type SidebarView = 'chats' | 'clipboard';
+
 interface Props {
   onOpenSettings: () => void;
+  activeView: SidebarView;
+  onViewChange: (view: SidebarView) => void;
 }
 
 const staggerItem = {
@@ -63,7 +68,7 @@ function formatStorageSize(kb: number): string {
   return `${(kb / 1024).toFixed(1)} MB`;
 }
 
-export default function Sidebar({ onOpenSettings }: Props) {
+export default function Sidebar({ onOpenSettings, activeView, onViewChange }: Props) {
   const {
     conversations,
     activeConversationId,
@@ -81,6 +86,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
   const [showStorageInfo, setShowStorageInfo] = useState(false);
   const platform = usePlatform();
   const sidebarWidth = useSettingsStore((s) => s.settings.appearance?.sidebarWidth ?? 220);
+  const clipboardCount = useClipboardStore((s) => s.entries.length);
 
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => {});
@@ -197,8 +203,56 @@ export default function Sidebar({ onOpenSettings }: Props) {
         </motion.button>
       </motion.div>
 
-      {/* Search */}
-      <motion.div
+      {/* View toggle — Chats / Clipboard */}
+      <div style={{
+        display: 'flex', padding: '4px 10px', gap: 4,
+      }}>
+        {([
+          { id: 'chats' as const, icon: <MessageSquare size={11} />, label: 'Chats' },
+          { id: 'clipboard' as const, icon: <Clipboard size={11} />, label: 'Clipboard', badge: clipboardCount },
+        ]).map((tab) => (
+          <motion.button
+            key={tab.id}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => onViewChange(tab.id)}
+            style={{
+              flex: 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+              padding: '5px 8px',
+              borderRadius: 6,
+              fontSize: 10, fontWeight: activeView === tab.id ? 600 : 400,
+              background: activeView === tab.id
+                ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)'
+                : 'transparent',
+              color: activeView === tab.id ? 'var(--color-accent)' : 'var(--text-muted)',
+              border: activeView === tab.id
+                ? '1px solid color-mix(in srgb, var(--color-accent) 20%, transparent)'
+                : '1px solid transparent',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            {tab.icon}
+            {tab.label}
+            {tab.badge !== undefined && tab.badge > 0 && (
+              <span style={{
+                fontSize: 8, fontWeight: 600,
+                background: activeView === tab.id
+                  ? 'var(--color-accent)'
+                  : 'rgba(255,255,255,0.1)',
+                color: activeView === tab.id ? 'white' : 'var(--text-dim)',
+                padding: '1px 4px', borderRadius: 4,
+                minWidth: 14, textAlign: 'center',
+              }}>
+                {tab.badge > 99 ? '99+' : tab.badge}
+              </span>
+            )}
+          </motion.button>
+        ))}
+      </div>
+
+      {/* Search (only in chats view) */}
+      {activeView === 'chats' && <motion.div
         custom={1}
         variants={staggerItem}
         initial="hidden"
@@ -247,10 +301,10 @@ export default function Sidebar({ onOpenSettings }: Props) {
             </motion.button>
           )}
         </div>
-      </motion.div>
+      </motion.div>}
 
-      {/* Conversations */}
-      <motion.div
+      {/* Conversations (chats view only) */}
+      {activeView === 'chats' && <motion.div
         custom={2}
         variants={staggerItem}
         initial="hidden"
@@ -289,10 +343,19 @@ export default function Sidebar({ onOpenSettings }: Props) {
             {searchQuery ? `Nenhum resultado para "${searchQuery}"` : 'Nenhuma conversa'}
           </p>
         )}
-      </motion.div>
+      </motion.div>}
 
-      {/* Storage info */}
-      <AnimatePresence>
+      {/* Clipboard view takes over the middle area */}
+      {activeView === 'clipboard' && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px' }}>
+          <p style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.5 }}>
+            O histórico de clipboard é exibido no painel principal
+          </p>
+        </div>
+      )}
+
+      {/* Storage info (chats only) */}
+      {activeView === 'chats' && <AnimatePresence>
         {showStorageInfo && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
@@ -366,7 +429,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>}
 
       {/* Footer */}
       <motion.div

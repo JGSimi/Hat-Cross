@@ -25,6 +25,17 @@ export interface Conversation {
   updatedAt: number;
 }
 
+// === Clipboard History ===
+
+export interface ClipboardEntry {
+  id: string;
+  originalText: string;
+  response: string;
+  timestamp: number;
+  provider: string;
+  model: string;
+}
+
 // === AI Models ===
 
 export interface ConversationTurn {

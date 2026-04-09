@@ -11,6 +11,7 @@ import HorseLogo from './components/Shared/HorseLogo';
 import { useSettingsStore } from './stores/settingsStore';
 import { useChatStore } from './stores/chatStore';
 import { useConversationStore } from './stores/conversationStore';
+import { useClipboardStore } from './stores/clipboardStore';
 
 /** Normalize legacy shortcut format (CmdOrCtrl → CommandOrControl) */
 function normalizeShortcut(s: string): string {
@@ -39,6 +40,7 @@ function App() {
   useEffect(() => {
     loadSettings();
     useConversationStore.getState().loadConversations();
+    useClipboardStore.getState().loadEntries();
   }, [loadSettings]);
 
   useEffect(() => {
@@ -286,6 +288,16 @@ function App() {
                     body: notifBody,
                   }).catch(() => {});
                 }
+
+                // Save to clipboard history
+                useClipboardStore.getState().addEntry({
+                  id: crypto.randomUUID(),
+                  originalText: clipText,
+                  response: finalResponse,
+                  timestamp: Date.now(),
+                  provider,
+                  model,
+                });
 
                 // Sound
                 if (clip.soundOnComplete) {

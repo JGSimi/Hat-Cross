@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Sidebar from './Sidebar';
+import Sidebar, { type SidebarView } from './Sidebar';
 import ChatWindow from '../Chat/ChatWindow';
+import ClipboardHistory from '../Clipboard/ClipboardHistory';
 import SettingsPanel from '../Settings/SettingsPanel';
 import WindowControls from '../Shared/WindowControls';
 import { usePlatform } from '../../hooks/usePlatform';
@@ -37,12 +38,20 @@ export default function MainLayout() {
   const platform = usePlatform();
   const activeConversationId = useConversationStore((s) => s.activeConversationId);
   const loadFromConversation = useChatStore((s) => s.loadFromConversation);
+  const [activeView, setActiveView] = useState<SidebarView>('chats');
 
   useEffect(() => {
     if (activeConversationId) {
       loadFromConversation(activeConversationId);
     }
   }, [activeConversationId, loadFromConversation]);
+
+  // When user opens a chat from clipboard, switch to chats view
+  useEffect(() => {
+    if (activeConversationId && activeView === 'clipboard') {
+      setActiveView('chats');
+    }
+  }, [activeConversationId]);
 
   return (
     <motion.div
@@ -55,7 +64,11 @@ export default function MainLayout() {
       <AmbientBubbles />
       <MouseReactiveBackground />
       <motion.div variants={itemVariants} style={{ position: 'relative', zIndex: 2 }}>
-        <Sidebar onOpenSettings={() => setShowSettings(true)} />
+        <Sidebar
+          onOpenSettings={() => setShowSettings(true)}
+          activeView={activeView}
+          onViewChange={setActiveView}
+        />
       </motion.div>
       <motion.div variants={itemVariants} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 2 }}>
         {/* Titlebar drag region + window controls (Windows/Linux) */}
@@ -88,6 +101,17 @@ export default function MainLayout() {
               style={{ position: 'absolute', inset: 0, zIndex: 60 }}
             >
               <SettingsPanel onClose={() => setShowSettings(false)} />
+            </motion.div>
+          ) : activeView === 'clipboard' ? (
+            <motion.div
+              key="clipboard"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}
+            >
+              <ClipboardHistory />
             </motion.div>
           ) : (
             <motion.div
