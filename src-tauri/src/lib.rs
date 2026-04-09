@@ -1,5 +1,4 @@
 mod commands;
-mod shortcuts;
 mod streaming;
 mod tray;
 mod windows;
@@ -39,7 +38,6 @@ pub fn run() {
         ])
         .setup(|app| {
             tray::setup_tray(app)?;
-            shortcuts::register_default_shortcuts(app.handle())?;
             Ok(())
         })
         .run(tauri::generate_context!())

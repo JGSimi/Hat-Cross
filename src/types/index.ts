@@ -208,8 +208,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   temperature: 0.7,
   maxTokens: 4096,
   shortcuts: {
-    clipboard: 'CmdOrCtrl+Shift+X',
-    screenCapture: 'CmdOrCtrl+Shift+Z',
+    clipboard: 'CommandOrControl+Shift+X',
+    screenCapture: 'CommandOrControl+Shift+Z',
   },
   tokenStats: {
     inputTokens: 0,
