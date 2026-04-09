@@ -8,7 +8,7 @@ import WindowControls from '../Shared/WindowControls';
 import { usePlatform } from '../../hooks/usePlatform';
 import { useChatStore } from '../../stores/chatStore';
 import MouseReactiveBackground from './MouseReactiveBackground';
-import AmbientBubbles from './AmbientBubbles';
+// AmbientBubbles removed — was intercepting clicks and breaking UI
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
@@ -61,16 +61,15 @@ export default function MainLayout() {
       animate="show"
       style={{ display: 'flex', height: '100vh', width: '100%' }}
     >
-      <AmbientBubbles />
       <MouseReactiveBackground />
-      <motion.div variants={itemVariants} style={{ position: 'relative', zIndex: 2 }}>
+      <motion.div variants={itemVariants} style={{ position: 'relative', zIndex: 1 }}>
         <Sidebar
           onOpenSettings={() => setShowSettings(true)}
           activeView={activeView}
           onViewChange={setActiveView}
         />
       </motion.div>
-      <motion.div variants={itemVariants} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 2 }}>
+      <motion.div variants={itemVariants} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
         {/* Titlebar drag region + window controls (Windows/Linux) */}
         <div
           data-tauri-drag-region
