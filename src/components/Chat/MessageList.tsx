@@ -16,6 +16,7 @@ const STAGGER_WINDOW = 6;
 
 export default function MessageList({ messages, streamingContent, isStreaming }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Scroll on new messages only
   useEffect(() => {
@@ -32,11 +33,18 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
   }, [isStreaming]);
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+    <div
+      ref={containerRef}
+      style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}
+    >
+      {/* System notices (auto-new-chat messages) */}
       <AnimatePresence initial={false}>
         {messages.map((msg, i) => {
           const prev = i > 0 ? messages[i - 1] : null;
           const isGrouped = prev !== null && prev.isUser === msg.isUser;
+
+          // Detect system notice (auto-created chat notification)
+          const isSystemNotice = !msg.isUser && msg.content.startsWith('**Nova conversa criada automaticamente');
 
           // Only stagger the last N messages
           const staggerIndex = i >= messages.length - STAGGER_WINDOW
@@ -45,6 +53,52 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
           const delay = i >= messages.length - STAGGER_WINDOW
             ? staggerIndex * 0.04
             : 0;
+
+          if (isSystemNotice) {
+            return (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay, type: 'spring', stiffness: 300, damping: 25 }}
+                style={{
+                  margin: '16px 0',
+                  padding: '10px 14px',
+                  background: 'color-mix(in srgb, var(--color-accent) 8%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--color-accent) 15%, transparent)',
+                  borderRadius: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                }}
+              >
+                <div style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <span style={{ fontSize: 13 }}>+</span>
+                </div>
+                <div style={{
+                  fontSize: 11.5,
+                  lineHeight: 1.5,
+                  color: 'var(--text-secondary)',
+                }}>
+                  <p style={{ margin: 0, fontWeight: 600, color: 'var(--color-accent)', fontSize: 11 }}>
+                    Nova conversa iniciada
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: 10.5, color: 'var(--text-muted)' }}>
+                    Limite de contexto atingido. Conversa anterior preservada no histórico.
+                  </p>
+                </div>
+              </motion.div>
+            );
+          }
 
           return (
             <motion.div

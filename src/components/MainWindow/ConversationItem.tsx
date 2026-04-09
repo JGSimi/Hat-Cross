@@ -1,5 +1,5 @@
-import { Pin, MoreHorizontal, Trash2, PenLine } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { Pin, MoreHorizontal, Trash2, PenLine, MessageSquare } from 'lucide-react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Conversation } from '../../types';
 import { truncate, formatTimestamp } from '../../utils/markdown';
@@ -13,7 +13,7 @@ interface Props {
   onRename: (title: string) => void;
 }
 
-export default function ConversationItem({
+function ConversationItemInner({
   conversation,
   isActive,
   onSelect,
@@ -29,8 +29,11 @@ export default function ConversationItem({
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const msgCount = conversation.messages.length;
   const lastMessage = conversation.messages[conversation.messages.length - 1];
-  const preview = lastMessage ? truncate(lastMessage.content, 60) : '';
+  const preview = lastMessage
+    ? `${lastMessage.isUser ? 'Você' : 'IA'}: ${truncate(lastMessage.content.replace(/\n/g, ' '), 50)}`
+    : '';
 
   const handleRename = () => {
     if (newTitle.trim()) {
@@ -65,12 +68,13 @@ export default function ConversationItem({
       style={{
         padding: '8px 12px',
         cursor: 'pointer',
-        borderRadius: 6,
+        borderRadius: 8,
         margin: '0 6px 2px',
         background: isActive ? 'color-mix(in srgb, var(--color-accent) 8%, transparent)' : 'transparent',
         borderLeft: isActive
           ? '2px solid var(--color-accent)'
           : '2px solid transparent',
+        transition: 'background 0.15s ease',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
@@ -117,23 +121,41 @@ export default function ConversationItem({
           {preview && (
             <p
               style={{
-                fontSize: 11,
+                fontSize: 10.5,
                 color: 'var(--text-muted)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
-                marginTop: 4,
+                marginTop: 3,
               }}
             >
               {preview}
             </p>
           )}
+          {/* Bottom row: timestamp + message count */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 4,
+          }}>
+            <span style={{ fontSize: 9.5, color: 'var(--text-dim)' }}>
+              {formatTimestamp(conversation.updatedAt)}
+            </span>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 3,
+              fontSize: 9.5,
+              color: 'var(--text-dim)',
+            }}>
+              <MessageSquare size={8} />
+              <span>{msgCount}</span>
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', opacity: 0.8 }}>
-            {formatTimestamp(conversation.updatedAt)}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
           <div style={{ position: 'relative' }} ref={menuRef}>
             <motion.button
               initial={{ opacity: 0 }}
@@ -269,3 +291,12 @@ export default function ConversationItem({
     </motion.div>
   );
 }
+
+export default memo(ConversationItemInner, (prev, next) => {
+  return prev.conversation.id === next.conversation.id &&
+    prev.conversation.title === next.conversation.title &&
+    prev.conversation.isPinned === next.conversation.isPinned &&
+    prev.conversation.updatedAt === next.conversation.updatedAt &&
+    prev.conversation.messages.length === next.conversation.messages.length &&
+    prev.isActive === next.isActive;
+});

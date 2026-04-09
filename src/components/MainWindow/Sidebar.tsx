@@ -1,11 +1,13 @@
-import { useState, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, Search, Settings } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, Search, Settings, Trash2, HardDrive } from 'lucide-react';
 import { getVersion } from '@tauri-apps/api/app';
 import ConversationItem from './ConversationItem';
 import { useConversations } from '../../hooks/useConversations';
+import { useConversationStore } from '../../stores/conversationStore';
 import { usePlatform } from '../../hooks/usePlatform';
 import WindowControls from '../Shared/WindowControls';
+import type { Conversation } from '../../types';
 
 interface Props {
   onOpenSettings: () => void;
@@ -20,6 +22,46 @@ const staggerItem = {
   }),
 };
 
+// --- Date grouping helpers ---
+
+function getDateGroup(timestamp: number): string {
+  const now = new Date();
+  const date = new Date(timestamp);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 86400000);
+  const weekAgo = new Date(today.getTime() - 7 * 86400000);
+  const monthAgo = new Date(today.getTime() - 30 * 86400000);
+
+  if (date >= today) return 'Hoje';
+  if (date >= yesterday) return 'Ontem';
+  if (date >= weekAgo) return 'Esta semana';
+  if (date >= monthAgo) return 'Este mês';
+  return 'Mais antigas';
+}
+
+const GROUP_ORDER = ['Hoje', 'Ontem', 'Esta semana', 'Este mês', 'Mais antigas'];
+
+function groupConversations(conversations: Conversation[]): Map<string, Conversation[]> {
+  const groups = new Map<string, Conversation[]>();
+  for (const conv of conversations) {
+    const group = getDateGroup(conv.updatedAt);
+    const existing = groups.get(group) || [];
+    existing.push(conv);
+    groups.set(group, existing);
+  }
+  // Sort by defined order
+  const sorted = new Map<string, Conversation[]>();
+  for (const key of GROUP_ORDER) {
+    if (groups.has(key)) sorted.set(key, groups.get(key)!);
+  }
+  return sorted;
+}
+
+function formatStorageSize(kb: number): string {
+  if (kb < 1024) return `${kb} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
+}
+
 export default function Sidebar({ onOpenSettings }: Props) {
   const {
     conversations,
@@ -30,13 +72,24 @@ export default function Sidebar({ onOpenSettings }: Props) {
     renameConversation,
     setActiveConversation,
   } = useConversations();
+  const clearAllConversations = useConversationStore((s) => s.clearAllConversations);
+  const getStorageStats = useConversationStore((s) => s.getStorageStats);
   const [searchQuery, setSearchQuery] = useState('');
   const [appVersion, setAppVersion] = useState('');
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [showStorageInfo, setShowStorageInfo] = useState(false);
   const platform = usePlatform();
 
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => {});
   }, []);
+
+  // Reset clear all confirm after 3s
+  useEffect(() => {
+    if (!confirmClearAll) return;
+    const t = setTimeout(() => setConfirmClearAll(false), 3000);
+    return () => clearTimeout(t);
+  }, [confirmClearAll]);
 
   const filtered = useMemo(() => {
     if (!searchQuery) return conversations;
@@ -48,8 +101,32 @@ export default function Sidebar({ onOpenSettings }: Props) {
     );
   }, [searchQuery, conversations]);
 
-  const pinned = filtered.filter((c) => c.isPinned);
-  const recent = filtered.filter((c) => !c.isPinned);
+  const pinned = useMemo(() => filtered.filter((c) => c.isPinned), [filtered]);
+  const recent = useMemo(() => filtered.filter((c) => !c.isPinned), [filtered]);
+  const recentGrouped = useMemo(() => groupConversations(recent), [recent]);
+
+  const storageStats = useMemo(() => getStorageStats(), [conversations]);
+
+  const handleClearAll = useCallback(() => {
+    if (confirmClearAll) {
+      clearAllConversations();
+      setConfirmClearAll(false);
+    } else {
+      setConfirmClearAll(true);
+    }
+  }, [confirmClearAll, clearAllConversations]);
+
+  const renderConversation = (conv: Conversation) => (
+    <ConversationItem
+      key={conv.id}
+      conversation={conv}
+      isActive={conv.id === activeConversationId}
+      onSelect={() => setActiveConversation(conv.id)}
+      onPin={() => pinConversation(conv.id)}
+      onDelete={() => deleteConversation(conv.id)}
+      onRename={(title) => renameConversation(conv.id, title)}
+    />
+  );
 
   return (
     <div
@@ -66,7 +143,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
         zIndex: 1,
       }}
     >
-      {/* Header — drag region for custom titlebar */}
+      {/* Header */}
       <motion.div
         custom={0}
         variants={staggerItem}
@@ -152,6 +229,21 @@ export default function Sidebar({ onOpenSettings }: Props) {
               border: 'none',
             }}
           />
+          {searchQuery && (
+            <motion.button
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              whileTap={{ scale: 0.8 }}
+              onClick={() => setSearchQuery('')}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-muted)', padding: 0, display: 'flex',
+                alignItems: 'center', fontSize: 11,
+              }}
+            >
+              <span style={{ fontSize: 12, lineHeight: 1 }}>✕</span>
+            </motion.button>
+          )}
         </div>
       </motion.div>
 
@@ -163,58 +255,22 @@ export default function Sidebar({ onOpenSettings }: Props) {
         animate="show"
         style={{ flex: 1, overflowY: 'auto' }}
       >
+        {/* Pinned section */}
         {pinned.length > 0 && (
           <>
-            <p
-              style={{
-                padding: '6px 14px',
-                fontSize: 11,
-                fontWeight: 600,
-                color: 'var(--text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: 0.6,
-              }}
-            >
-              Fixadas
-            </p>
-            {pinned.map((conv) => (
-              <ConversationItem
-                key={conv.id}
-                conversation={conv}
-                isActive={conv.id === activeConversationId}
-                onSelect={() => setActiveConversation(conv.id)}
-                onPin={() => pinConversation(conv.id)}
-                onDelete={() => deleteConversation(conv.id)}
-                onRename={(title) => renameConversation(conv.id, title)}
-              />
-            ))}
+            <SectionHeader label="Fixadas" count={pinned.length} />
+            {pinned.map(renderConversation)}
           </>
         )}
 
-        {recent.length > 0 && (
+        {/* Recent grouped by date */}
+        {recentGrouped.size > 0 && (
           <>
-            <p
-              style={{
-                padding: '6px 14px',
-                fontSize: 11,
-                fontWeight: 600,
-                color: 'var(--text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: 0.6,
-              }}
-            >
-              Recentes
-            </p>
-            {recent.map((conv) => (
-              <ConversationItem
-                key={conv.id}
-                conversation={conv}
-                isActive={conv.id === activeConversationId}
-                onSelect={() => setActiveConversation(conv.id)}
-                onPin={() => pinConversation(conv.id)}
-                onDelete={() => deleteConversation(conv.id)}
-                onRename={(title) => renameConversation(conv.id, title)}
-              />
+            {Array.from(recentGrouped.entries()).map(([group, convs]) => (
+              <div key={group}>
+                <SectionHeader label={group} count={convs.length} />
+                {convs.map(renderConversation)}
+              </div>
             ))}
           </>
         )}
@@ -233,6 +289,83 @@ export default function Sidebar({ onOpenSettings }: Props) {
         )}
       </motion.div>
 
+      {/* Storage info */}
+      <AnimatePresence>
+        {showStorageInfo && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            style={{ overflow: 'hidden', borderTop: '0.5px solid var(--border-subtle)' }}
+          >
+            <div style={{
+              padding: '8px 12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+              background: 'color-mix(in srgb, var(--color-accent) 3%, transparent)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)' }}>
+                <span>Conversas</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{storageStats.totalConversations}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)' }}>
+                <span>Mensagens</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{storageStats.totalMessages.toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)' }}>
+                <span>Armazenamento</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{formatStorageSize(storageStats.estimatedSizeKB)}</span>
+              </div>
+              {/* Storage bar */}
+              <div style={{
+                width: '100%', height: 3, background: 'rgba(255,255,255,0.06)',
+                borderRadius: 2, overflow: 'hidden', marginTop: 2,
+              }}>
+                <div style={{
+                  width: `${Math.min((storageStats.totalConversations / 50) * 100, 100)}%`,
+                  height: '100%',
+                  background: storageStats.totalConversations > 40
+                    ? 'var(--warning)' : 'var(--color-accent)',
+                  borderRadius: 2,
+                  transition: 'width 0.3s ease',
+                }} />
+              </div>
+              {conversations.length > 0 && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleClearAll}
+                  style={{
+                    marginTop: 4,
+                    padding: '4px 8px',
+                    borderRadius: 4,
+                    fontSize: 10,
+                    fontWeight: confirmClearAll ? 600 : 400,
+                    background: confirmClearAll
+                      ? 'color-mix(in srgb, var(--error) 15%, transparent)'
+                      : 'rgba(255,255,255,0.04)',
+                    color: confirmClearAll ? 'var(--error)' : 'var(--text-muted)',
+                    border: confirmClearAll
+                      ? '1px solid color-mix(in srgb, var(--error) 25%, transparent)'
+                      : '1px solid rgba(255,255,255,0.06)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <Trash2 size={9} />
+                  {confirmClearAll ? 'Tem certeza? Clique novamente' : 'Limpar todas as conversas'}
+                </motion.button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Footer */}
       <motion.div
         custom={3}
@@ -248,32 +381,94 @@ export default function Sidebar({ onOpenSettings }: Props) {
           background: 'linear-gradient(to top, color-mix(in srgb, var(--color-accent) 3%, transparent), transparent 40%)',
         }}
       >
-        <motion.button
-          whileHover={{ scale: 1.05, backgroundColor: 'var(--surface-hover)' }}
-          whileTap={{ scale: 0.97 }}
-          onClick={onOpenSettings}
-          aria-label="Configurações"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            width: '100%',
-            padding: '6px 8px',
-            borderRadius: 8,
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-            fontSize: 11,
-          }}
-        >
-          <Settings size={12} />
-          <span>Configurações</span>
-        </motion.button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+          <motion.button
+            whileHover={{ scale: 1.05, backgroundColor: 'var(--surface-hover)' }}
+            whileTap={{ scale: 0.97 }}
+            onClick={onOpenSettings}
+            aria-label="Configurações"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              flex: 1,
+              padding: '6px 8px',
+              borderRadius: 8,
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              fontSize: 11,
+            }}
+          >
+            <Settings size={12} />
+            <span>Configurações</span>
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.1, color: 'var(--text-secondary)' }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowStorageInfo(!showStorageInfo)}
+            title="Info de armazenamento"
+            aria-label="Info de armazenamento"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: showStorageInfo ? 'var(--color-accent)' : 'var(--text-muted)',
+              padding: 4,
+              display: 'flex',
+              alignItems: 'center',
+              borderRadius: 4,
+              transition: 'color 0.15s ease',
+            }}
+          >
+            <HardDrive size={11} />
+          </motion.button>
+        </div>
         <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>
           {appVersion ? `v${appVersion}` : ''}
         </span>
       </motion.div>
+    </div>
+  );
+}
+
+// --- Section Header subcomponent ---
+
+function SectionHeader({ label, count }: { label: string; count: number }) {
+  return (
+    <div
+      style={{
+        padding: '8px 14px 4px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}
+    >
+      <p
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          color: 'var(--text-muted)',
+          textTransform: 'uppercase',
+          letterSpacing: 0.8,
+          margin: 0,
+        }}
+      >
+        {label}
+      </p>
+      <span
+        style={{
+          fontSize: 9,
+          color: 'var(--text-dim)',
+          background: 'rgba(255,255,255,0.04)',
+          padding: '1px 5px',
+          borderRadius: 4,
+          fontWeight: 500,
+        }}
+      >
+        {count}
+      </span>
     </div>
   );
 }
