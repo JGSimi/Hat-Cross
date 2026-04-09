@@ -7,6 +7,7 @@ import WindowControls from '../Shared/WindowControls';
 import { usePlatform } from '../../hooks/usePlatform';
 import { useChatStore } from '../../stores/chatStore';
 import MouseReactiveBackground from './MouseReactiveBackground';
+import AmbientBubbles from './AmbientBubbles';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
@@ -51,6 +52,7 @@ export default function MainLayout() {
       animate="show"
       style={{ display: 'flex', height: '100vh', width: '100%' }}
     >
+      <AmbientBubbles />
       <MouseReactiveBackground />
       <motion.div variants={itemVariants} style={{ position: 'relative', zIndex: 1 }}>
         <Sidebar onOpenSettings={() => setShowSettings(true)} />
