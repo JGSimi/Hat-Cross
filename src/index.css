@@ -179,6 +179,13 @@
   /* Focus */
   --focus-ring: 0 0 0 2px var(--color-accent);
 
+  /* Dynamic appearance settings (overridden by JS) */
+  --font-scale: 1;
+  --bg-override: none;
+  --bubble-opacity: 1;
+  --ui-opacity: 1;
+  --sidebar-width: 220px;
+
   /* Atmospheric backgrounds */
   --bg-gradient-base: radial-gradient(ellipse 80% 60% at 50% -10%, color-mix(in srgb, var(--color-accent) 6%, transparent), transparent 70%);
   --bg-gradient-corner: radial-gradient(ellipse 50% 50% at 100% 100%, color-mix(in srgb, var(--color-accent) 4%, transparent), transparent 60%);
@@ -298,6 +305,249 @@
   --accent-glow: rgba(153, 153, 159, 0.30);
   --border-focused: rgba(153, 153, 159, 0.50);
   --color-border-focus: rgba(153, 153, 159, 0.50);
+}
+
+/* ==========================================================================
+   Full Themes — override backgrounds, text, and accent
+   ========================================================================== */
+
+/* Noir */
+[data-theme="noir"] {
+  --color-accent: #FFFFFF;
+  --color-accent-hover: #E0E0E0;
+  --user-bubble-bg: rgba(255, 255, 255, 0.10);
+  --color-user-bubble: rgba(255, 255, 255, 0.10);
+  --accent-border: rgba(255, 255, 255, 0.12);
+  --accent-glow: rgba(255, 255, 255, 0.15);
+  --border-focused: rgba(255, 255, 255, 0.30);
+  --color-border-focus: rgba(255, 255, 255, 0.30);
+  --bg-primary: #000000;
+  --bg-secondary: #080808;
+  --color-bg-primary: #000000;
+  --color-bg-secondary: #080808;
+  --text-primary: #FFFFFF;
+  --text-secondary: #AAAAAA;
+  --text-muted: #666666;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #AAAAAA;
+  --color-text-muted: #666666;
+  --text-bright: rgba(255, 255, 255, 1);
+  --text-strong: rgba(255, 255, 255, 0.95);
+  --text-normal: rgba(255, 255, 255, 0.85);
+}
+
+/* Cappuccino */
+[data-theme="cappuccino"] {
+  --color-accent: #C4956A;
+  --color-accent-hover: #D4A574;
+  --user-bubble-bg: rgba(196, 149, 106, 0.18);
+  --color-user-bubble: rgba(196, 149, 106, 0.18);
+  --accent-border: rgba(196, 149, 106, 0.15);
+  --accent-glow: rgba(196, 149, 106, 0.25);
+  --border-focused: rgba(196, 149, 106, 0.45);
+  --color-border-focus: rgba(196, 149, 106, 0.45);
+  --bg-primary: #1C1410;
+  --bg-secondary: #211914;
+  --color-bg-primary: #1C1410;
+  --color-bg-secondary: #211914;
+  --text-primary: #E8DDD4;
+  --text-secondary: #C4B5A5;
+  --text-muted: #8A7A6A;
+  --color-text-primary: #E8DDD4;
+  --color-text-secondary: #C4B5A5;
+  --color-text-muted: #8A7A6A;
+  --text-bright: rgba(232, 221, 212, 1);
+  --text-strong: rgba(232, 221, 212, 0.95);
+  --text-normal: rgba(232, 221, 212, 0.85);
+  --surface-primary: #2A1E18;
+  --surface-hover: rgba(196, 149, 106, 0.06);
+}
+
+/* Cyberpunk */
+[data-theme="cyberpunk"] {
+  --color-accent: #FF2D6A;
+  --color-accent-hover: #FF5A8A;
+  --user-bubble-bg: rgba(255, 45, 106, 0.18);
+  --color-user-bubble: rgba(255, 45, 106, 0.18);
+  --accent-border: rgba(255, 45, 106, 0.15);
+  --accent-glow: rgba(255, 45, 106, 0.35);
+  --border-focused: rgba(255, 45, 106, 0.50);
+  --color-border-focus: rgba(255, 45, 106, 0.50);
+  --bg-primary: #0A0A12;
+  --bg-secondary: #0E0E1A;
+  --color-bg-primary: #0A0A12;
+  --color-bg-secondary: #0E0E1A;
+  --text-primary: #E0F0FF;
+  --text-secondary: #80C8FF;
+  --text-muted: #4A6A8A;
+  --color-text-primary: #E0F0FF;
+  --color-text-secondary: #80C8FF;
+  --color-text-muted: #4A6A8A;
+  --text-bright: rgba(224, 240, 255, 1);
+  --text-strong: rgba(224, 240, 255, 0.95);
+  --text-normal: rgba(224, 240, 255, 0.85);
+  --surface-primary: #12122A;
+  --surface-hover: rgba(255, 45, 106, 0.06);
+}
+
+/* Minimal */
+[data-theme="minimal"] {
+  --color-accent: #666666;
+  --color-accent-hover: #888888;
+  --user-bubble-bg: rgba(102, 102, 102, 0.12);
+  --color-user-bubble: rgba(102, 102, 102, 0.12);
+  --accent-border: rgba(102, 102, 102, 0.10);
+  --accent-glow: rgba(102, 102, 102, 0.15);
+  --border-focused: rgba(102, 102, 102, 0.35);
+  --color-border-focus: rgba(102, 102, 102, 0.35);
+  --bg-primary: #111111;
+  --bg-secondary: #161616;
+  --color-bg-primary: #111111;
+  --color-bg-secondary: #161616;
+  --text-primary: #D4D4D4;
+  --text-secondary: #999999;
+  --text-muted: #555555;
+  --color-text-primary: #D4D4D4;
+  --color-text-secondary: #999999;
+  --color-text-muted: #555555;
+  --text-bright: rgba(212, 212, 212, 1);
+  --text-strong: rgba(212, 212, 212, 0.95);
+  --text-normal: rgba(212, 212, 212, 0.85);
+}
+
+/* Ocean */
+[data-theme="ocean"] {
+  --color-accent: #0EA5E9;
+  --color-accent-hover: #38BDF8;
+  --user-bubble-bg: rgba(14, 165, 233, 0.18);
+  --color-user-bubble: rgba(14, 165, 233, 0.18);
+  --accent-border: rgba(14, 165, 233, 0.15);
+  --accent-glow: rgba(14, 165, 233, 0.30);
+  --border-focused: rgba(14, 165, 233, 0.50);
+  --color-border-focus: rgba(14, 165, 233, 0.50);
+  --bg-primary: #0B1622;
+  --bg-secondary: #0F1C2A;
+  --color-bg-primary: #0B1622;
+  --color-bg-secondary: #0F1C2A;
+  --text-primary: #E0F2FE;
+  --text-secondary: #7DD3FC;
+  --text-muted: #3A7AA8;
+  --color-text-primary: #E0F2FE;
+  --color-text-secondary: #7DD3FC;
+  --color-text-muted: #3A7AA8;
+  --text-bright: rgba(224, 242, 254, 1);
+  --text-strong: rgba(224, 242, 254, 0.95);
+  --text-normal: rgba(224, 242, 254, 0.85);
+  --surface-primary: #132838;
+  --surface-hover: rgba(14, 165, 233, 0.06);
+}
+
+/* Sunset */
+[data-theme="sunset"] {
+  --color-accent: #F97316;
+  --color-accent-hover: #FB923C;
+  --user-bubble-bg: rgba(249, 115, 22, 0.18);
+  --color-user-bubble: rgba(249, 115, 22, 0.18);
+  --accent-border: rgba(249, 115, 22, 0.15);
+  --accent-glow: rgba(249, 115, 22, 0.30);
+  --border-focused: rgba(249, 115, 22, 0.50);
+  --color-border-focus: rgba(249, 115, 22, 0.50);
+  --bg-primary: #1A0E08;
+  --bg-secondary: #1E1210;
+  --color-bg-primary: #1A0E08;
+  --color-bg-secondary: #1E1210;
+  --text-primary: #FEF3C7;
+  --text-secondary: #FDBA74;
+  --text-muted: #9A6A3A;
+  --color-text-primary: #FEF3C7;
+  --color-text-secondary: #FDBA74;
+  --color-text-muted: #9A6A3A;
+  --text-bright: rgba(254, 243, 199, 1);
+  --text-strong: rgba(254, 243, 199, 0.95);
+  --text-normal: rgba(254, 243, 199, 0.85);
+  --surface-primary: #2A1810;
+  --surface-hover: rgba(249, 115, 22, 0.06);
+}
+
+/* Forest */
+[data-theme="forest"] {
+  --color-accent: #16A34A;
+  --color-accent-hover: #22C55E;
+  --user-bubble-bg: rgba(22, 163, 74, 0.18);
+  --color-user-bubble: rgba(22, 163, 74, 0.18);
+  --accent-border: rgba(22, 163, 74, 0.15);
+  --accent-glow: rgba(22, 163, 74, 0.30);
+  --border-focused: rgba(22, 163, 74, 0.50);
+  --color-border-focus: rgba(22, 163, 74, 0.50);
+  --bg-primary: #0A140C;
+  --bg-secondary: #0E1A10;
+  --color-bg-primary: #0A140C;
+  --color-bg-secondary: #0E1A10;
+  --text-primary: #DCFCE7;
+  --text-secondary: #86EFAC;
+  --text-muted: #3A7A4A;
+  --color-text-primary: #DCFCE7;
+  --color-text-secondary: #86EFAC;
+  --color-text-muted: #3A7A4A;
+  --text-bright: rgba(220, 252, 231, 1);
+  --text-strong: rgba(220, 252, 231, 0.95);
+  --text-normal: rgba(220, 252, 231, 0.85);
+  --surface-primary: #122218;
+  --surface-hover: rgba(22, 163, 74, 0.06);
+}
+
+/* Lavender */
+[data-theme="lavender"] {
+  --color-accent: #A78BFA;
+  --color-accent-hover: #C4B5FD;
+  --user-bubble-bg: rgba(167, 139, 250, 0.18);
+  --color-user-bubble: rgba(167, 139, 250, 0.18);
+  --accent-border: rgba(167, 139, 250, 0.15);
+  --accent-glow: rgba(167, 139, 250, 0.30);
+  --border-focused: rgba(167, 139, 250, 0.50);
+  --color-border-focus: rgba(167, 139, 250, 0.50);
+  --bg-primary: #110E18;
+  --bg-secondary: #16121E;
+  --color-bg-primary: #110E18;
+  --color-bg-secondary: #16121E;
+  --text-primary: #EDE9FE;
+  --text-secondary: #C4B5FD;
+  --text-muted: #6A5A8A;
+  --color-text-primary: #EDE9FE;
+  --color-text-secondary: #C4B5FD;
+  --color-text-muted: #6A5A8A;
+  --text-bright: rgba(237, 233, 254, 1);
+  --text-strong: rgba(237, 233, 254, 0.95);
+  --text-normal: rgba(237, 233, 254, 0.85);
+  --surface-primary: #1E182A;
+  --surface-hover: rgba(167, 139, 250, 0.06);
+}
+
+/* Cherry */
+[data-theme="cherry"] {
+  --color-accent: #E11D48;
+  --color-accent-hover: #FB7185;
+  --user-bubble-bg: rgba(225, 29, 72, 0.18);
+  --color-user-bubble: rgba(225, 29, 72, 0.18);
+  --accent-border: rgba(225, 29, 72, 0.15);
+  --accent-glow: rgba(225, 29, 72, 0.30);
+  --border-focused: rgba(225, 29, 72, 0.50);
+  --color-border-focus: rgba(225, 29, 72, 0.50);
+  --bg-primary: #180A10;
+  --bg-secondary: #1E0E14;
+  --color-bg-primary: #180A10;
+  --color-bg-secondary: #1E0E14;
+  --text-primary: #FFE4E6;
+  --text-secondary: #FDA4AF;
+  --text-muted: #8A3A4A;
+  --color-text-primary: #FFE4E6;
+  --color-text-secondary: #FDA4AF;
+  --color-text-muted: #8A3A4A;
+  --text-bright: rgba(255, 228, 230, 1);
+  --text-strong: rgba(255, 228, 230, 0.95);
+  --text-normal: rgba(255, 228, 230, 0.85);
+  --surface-primary: #2A121A;
+  --surface-hover: rgba(225, 29, 72, 0.06);
 }
 
 /* ==========================================================================
@@ -611,4 +861,78 @@ code {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+/* ==========================================================================
+   Performance Mode — Reduced Motion
+   Applied via [data-reduce-motion="true"] on <html>
+   ========================================================================== */
+[data-reduce-motion="true"] *,
+[data-reduce-motion="true"] *::before,
+[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* ==========================================================================
+   Performance Mode — Disable Blur
+   Applied via [data-disable-blur="true"] on <html>
+   ========================================================================== */
+[data-disable-blur="true"] * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ==========================================================================
+   Performance Mode — Disable Animated Gradients
+   Applied via [data-disable-gradients="true"] on <html>
+   ========================================================================== */
+[data-disable-gradients="true"] .bg-atmosphere::before {
+  animation: none !important;
+}
+
+[data-disable-gradients="true"] .animate-gradient {
+  animation: none !important;
+}
+
+[data-disable-gradients="true"] .animate-pulse-glow {
+  animation: none !important;
+}
+
+/* ==========================================================================
+   Custom Background Override
+   Applied via [data-bg-style] on <html>
+   ========================================================================== */
+[data-bg-style="solid"] .bg-atmosphere {
+  background: var(--bg-override, var(--bg-primary)) !important;
+}
+
+[data-bg-style="solid"] .bg-atmosphere::before,
+[data-bg-style="solid"] .bg-atmosphere::after {
+  display: none !important;
+}
+
+[data-bg-style="darker"] .bg-atmosphere {
+  background: #060608 !important;
+}
+
+[data-bg-style="lighter"] .bg-atmosphere {
+  background: #1a1a1f !important;
+}
+
+[data-bg-style="custom"] .bg-atmosphere {
+  background: var(--bg-override, var(--bg-primary)) !important;
+}
+
+[data-bg-style="custom"] .bg-atmosphere::before,
+[data-bg-style="custom"] .bg-atmosphere::after {
+  display: none !important;
+}
+
+/* ==========================================================================
+   Font Scale — Dynamic sizing via CSS var
+   ========================================================================== */
+body {
+  font-size: calc(13.5px * var(--font-scale, 1));
 }

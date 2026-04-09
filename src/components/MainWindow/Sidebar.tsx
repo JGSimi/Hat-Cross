@@ -5,6 +5,7 @@ import { getVersion } from '@tauri-apps/api/app';
 import ConversationItem from './ConversationItem';
 import { useConversations } from '../../hooks/useConversations';
 import { useConversationStore } from '../../stores/conversationStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { usePlatform } from '../../hooks/usePlatform';
 import WindowControls from '../Shared/WindowControls';
 import type { Conversation } from '../../types';
@@ -79,6 +80,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [showStorageInfo, setShowStorageInfo] = useState(false);
   const platform = usePlatform();
+  const sidebarWidth = useSettingsStore((s) => s.settings.appearance?.sidebarWidth ?? 220);
 
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => {});
@@ -131,7 +133,7 @@ export default function Sidebar({ onOpenSettings }: Props) {
   return (
     <div
       style={{
-        width: 220,
+        width: sidebarWidth,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
