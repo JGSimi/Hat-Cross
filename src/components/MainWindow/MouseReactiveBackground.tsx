@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { motion, useMotionValue, useSpring, useTransform, type MotionValue } from 'framer-motion';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 /* ── Config ──────────────────────────────────────────────────────── */
 
@@ -82,11 +83,14 @@ function BlobLayer({
 /* ── Container ───────────────────────────────────────────────────── */
 
 export default function MouseReactiveBackground() {
+  const disabled = useSettingsStore((s) => s.settings.performance?.disableMouseBackground);
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const visible = useMotionValue(0);
 
   useEffect(() => {
+    if (disabled) return;
+
     const handleMove = (e: MouseEvent) => {
       mouseX.set(e.clientX);
       mouseY.set(e.clientY);
@@ -105,7 +109,9 @@ export default function MouseReactiveBackground() {
       document.documentElement.removeEventListener('mouseleave', handleLeave);
       document.documentElement.removeEventListener('mouseenter', handleEnter);
     };
-  }, [mouseX, mouseY, visible]);
+  }, [mouseX, mouseY, visible, disabled]);
+
+  if (disabled) return null;
 
   return (
     <div

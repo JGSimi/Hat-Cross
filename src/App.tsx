@@ -20,7 +20,8 @@ function normalizeShortcut(s: string): string {
 function App() {
   const location = useLocation();
   const isMainWindow = location.pathname === '/main' || location.pathname === '/';
-  const [showSplash, setShowSplash] = useState(isMainWindow);
+  const perfSettings = useSettingsStore.getState().settings.performance;
+  const [showSplash, setShowSplash] = useState(isMainWindow && !perfSettings?.disableSplashScreen);
 
   // Auto-dismiss splash after 2s (then 1s fade-out via AnimatePresence)
   useEffect(() => {
@@ -31,6 +32,8 @@ function App() {
 
   const theme = useSettingsStore((s) => s.settings.theme);
   const shortcuts = useSettingsStore((s) => s.settings.shortcuts);
+  const appearance = useSettingsStore((s) => s.settings.appearance);
+  const performance = useSettingsStore((s) => s.settings.performance);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
 
   useEffect(() => {
@@ -41,6 +44,28 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Apply appearance & performance settings as CSS vars and data attributes
+  useEffect(() => {
+    const el = document.documentElement;
+    // Appearance
+    if (appearance) {
+      el.style.setProperty('--font-scale', String(appearance.fontScale ?? 1));
+      el.style.setProperty('--bubble-opacity', String(appearance.messageBubbleOpacity ?? 1));
+      el.style.setProperty('--ui-opacity', String(appearance.uiOpacity ?? 1));
+      el.style.setProperty('--sidebar-width', `${appearance.sidebarWidth ?? 220}px`);
+      el.setAttribute('data-bg-style', appearance.backgroundStyle ?? 'default');
+      if (appearance.backgroundStyle === 'custom' || appearance.backgroundStyle === 'solid') {
+        el.style.setProperty('--bg-override', appearance.customBackground ?? '#0C0C0E');
+      }
+    }
+    // Performance
+    if (performance) {
+      el.setAttribute('data-reduce-motion', String(!!performance.reducedMotion));
+      el.setAttribute('data-disable-blur', String(!!performance.disableBlur));
+      el.setAttribute('data-disable-gradients', String(!!performance.disableAnimatedGradients));
+    }
+  }, [appearance, performance]);
 
   // Global shortcut registration via JS API (handles CommandOrControl correctly per platform)
   const registeredShortcuts = useRef<{ clipboard: string; screenCapture: string }>({ clipboard: '', screenCapture: '' });
