@@ -148,7 +148,7 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
               display: 'flex',
               justifyContent: 'flex-start',
               marginTop: 8,
-              paddingLeft: 38,
+              paddingLeft: 16,
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 0' }}>

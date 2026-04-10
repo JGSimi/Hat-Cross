@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Conversation } from '../../types';
 import { truncate, formatTimestamp } from '../../utils/markdown';
+import { useToastStore } from '../../stores/toastStore';
 
 interface Props {
   conversation: Conversation;
@@ -26,6 +27,7 @@ function ConversationItemInner({
   const [newTitle, setNewTitle] = useState(conversation.title);
   const [isHovered, setIsHovered] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [menuFlipped, setMenuFlipped] = useState(false);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -50,8 +52,18 @@ function ConversationItemInner({
         setConfirmingDelete(false);
       }
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowMenu(false);
+        setConfirmingDelete(false);
+      }
+    };
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [showMenu]);
 
   useEffect(() => {
@@ -94,7 +106,7 @@ function ConversationItemInner({
                 color: 'var(--text-primary)',
                 borderRadius: 4,
                 padding: '2px 6px',
-                outline: 'none',
+                outline: undefined,
                 border: '0.5px solid var(--border-focused)',
               }}
             />
@@ -164,6 +176,10 @@ function ConversationItemInner({
               whileTap={{ scale: 0.9 }}
               onClick={(e) => {
                 e.stopPropagation();
+                // Detect if menu would overflow bottom of window
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                const menuHeight = 120; // approx 3 items * 34px + padding
+                setMenuFlipped(rect.bottom + menuHeight > window.innerHeight);
                 setShowMenu(!showMenu);
               }}
               aria-label="Opções da conversa"
@@ -190,8 +206,9 @@ function ConversationItemInner({
                   style={{
                     position: 'absolute',
                     right: 0,
-                    top: '100%',
-                    marginTop: 4,
+                    ...(menuFlipped
+                      ? { bottom: '100%', marginBottom: 4 }
+                      : { top: '100%', marginTop: 4 }),
                     width: 140,
                     background: 'var(--bg-secondary)',
                     border: '0.5px solid var(--glass-border-subtle)',
@@ -207,6 +224,10 @@ function ConversationItemInner({
                       e.stopPropagation();
                       onPin();
                       setShowMenu(false);
+                      useToastStore.getState().showToast(
+                        conversation.isPinned ? 'Conversa desafixada' : 'Conversa fixada',
+                        'info'
+                      );
                     }}
                     style={{
                       width: '100%',
@@ -258,6 +279,7 @@ function ConversationItemInner({
                         setShowMenu(false);
                         setConfirmingDelete(false);
                         clearTimeout(deleteTimerRef.current);
+                        useToastStore.getState().showToast('Conversa excluída', 'success');
                       } else {
                         setConfirmingDelete(true);
                         clearTimeout(deleteTimerRef.current);

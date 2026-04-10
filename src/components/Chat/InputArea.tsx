@@ -114,7 +114,7 @@ export default function InputArea({
           aria-label="Mensagem"
           rows={1}
           style={{
-            flex: 1, background: 'none', border: 'none', outline: 'none',
+            flex: 1, background: 'none', border: 'none',
             color: 'var(--text-strong)', fontSize: 13.5, lineHeight: 1.5,
             resize: 'none', padding: '2px 0', maxHeight: 96, fontFamily: 'inherit',
             letterSpacing: '0.01em',
@@ -127,11 +127,11 @@ export default function InputArea({
           style={{
             background: isStreaming
               ? 'color-mix(in srgb, var(--error) 15%, transparent)'
-              : hasContent ? 'var(--color-accent)' : 'transparent',
+              : hasContent ? 'var(--color-accent)' : 'rgba(255,255,255,0.04)',
             border: 'none', cursor: 'pointer',
             padding: hasContent || isStreaming ? 5 : 4,
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            color: isStreaming ? 'var(--error)' : hasContent ? 'white' : 'var(--text-faint)',
+            color: isStreaming ? 'var(--error)' : hasContent ? 'white' : 'var(--text-dim)',
             borderRadius: 10,
             boxShadow: hasContent && !isStreaming ? '0 2px 8px var(--accent-glow)' : 'none',
             transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',

@@ -41,7 +41,6 @@ export default function FollowUpInput({ onSend, disabled }: Props) {
           borderRadius: 8,
           padding: '8px 12px',
           fontSize: 12.5,
-          outline: 'none',
           border: isFocused ? '0.5px solid var(--border-focused)' : '0.5px solid var(--border-subtle)',
           boxShadow: isFocused ? '0 0 0 3px var(--accent-glow)' : 'none',
           transition: 'border-color 0.15s ease, box-shadow 0.15s ease',

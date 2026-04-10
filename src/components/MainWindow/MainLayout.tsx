@@ -5,6 +5,7 @@ import Sidebar, { type SidebarView } from './Sidebar';
 import ChatWindow from '../Chat/ChatWindow';
 import ClipboardHistory from '../Clipboard/ClipboardHistory';
 import SettingsPanel from '../Settings/SettingsPanel';
+import OnboardingWizard from '../Shared/OnboardingWizard';
 import WindowControls from '../Shared/WindowControls';
 import { usePlatform } from '../../hooks/usePlatform';
 import { useChatStore } from '../../stores/chatStore';
@@ -36,6 +37,16 @@ export default function MainLayout() {
   const activeConversationId = useConversationStore((s) => s.activeConversationId);
   const loadFromConversation = useChatStore((s) => s.loadFromConversation);
 
+  // Onboarding: show wizard if no API key configured for cloud mode
+  const hydrated = useSettingsStore((s) => s._hydrated);
+  const inferenceMode = useSettingsStore((s) => s.settings.inferenceMode);
+  const cloudProvider = useSettingsStore((s) => s.settings.cloudProvider);
+  const providerConfigs = useSettingsStore((s) => s.providerConfigs);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+
+  const needsOnboarding = hydrated && !onboardingDismissed &&
+    inferenceMode === 'api' && !providerConfigs[cloudProvider]?.apiKey;
+
   const [activeView, setActiveView] = useState<SidebarView>('chats');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -61,6 +72,17 @@ export default function MainLayout() {
     setSidebarCollapsed(false);
   }, []);
 
+  // Escape key closes settings panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showSettings) {
+        setShowSettings(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSettings, setShowSettings]);
+
   return (
     <motion.div
       className="bg-atmosphere"
@@ -70,6 +92,13 @@ export default function MainLayout() {
       style={{ display: 'flex', height: '100vh', width: '100%' }}
     >
       <MouseReactiveBackground />
+
+      {/* Onboarding wizard for first-run users */}
+      <AnimatePresence>
+        {needsOnboarding && (
+          <OnboardingWizard onComplete={() => setOnboardingDismissed(true)} />
+        )}
+      </AnimatePresence>
 
       {/* Sidebar with animated width */}
       <motion.div

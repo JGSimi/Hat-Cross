@@ -70,13 +70,11 @@ function MessageBubble({ message, isGrouped }: Props) {
 
         <div
           style={{
-            position: 'absolute', bottom: -20,
-            right: message.isUser ? 0 : undefined,
-            left: message.isUser ? undefined : 0,
             display: 'flex', alignItems: 'center', gap: 6,
-            opacity: hovered ? 1 : 0,
+            marginTop: 4,
+            justifyContent: message.isUser ? 'flex-end' : 'flex-start',
+            opacity: hovered ? 1 : 0.35,
             transition: 'opacity var(--transition-normal)',
-            pointerEvents: hovered ? 'auto' : 'none',
           }}
         >
           <button
