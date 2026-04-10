@@ -1,10 +1,30 @@
 use futures::StreamExt;
+use once_cell::sync::Lazy;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter};
 
-static CANCEL_STREAM: AtomicBool = AtomicBool::new(false);
+// Registry of active streams: maps caller-supplied stream_id to its cancel flag.
+// Each stream gets its own Arc<AtomicBool>, so concurrent streams never share
+// cancellation state and cancelling one never affects another.
+static STREAM_REGISTRY: Lazy<Mutex<HashMap<u64, Arc<AtomicBool>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+fn register_stream(stream_id: u64) -> Arc<AtomicBool> {
+    let flag = Arc::new(AtomicBool::new(false));
+    STREAM_REGISTRY
+        .lock()
+        .unwrap()
+        .insert(stream_id, flag.clone());
+    flag
+}
+
+fn unregister_stream(stream_id: u64) {
+    STREAM_REGISTRY.lock().unwrap().remove(&stream_id);
+}
 
 // ----- Data structures -----
 
@@ -19,6 +39,7 @@ pub struct ConversationTurn {
 #[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct StreamChunkPayload {
+    pub stream_id: u64,
     pub text: String,
     pub is_finished: bool,
     pub input_tokens: Option<u32>,
@@ -30,6 +51,7 @@ pub struct StreamChunkPayload {
 #[tauri::command]
 pub async fn stream_chat(
     app: AppHandle,
+    stream_id: u64,
     messages: Vec<ConversationTurn>,
     system_prompt: String,
     provider: String,
@@ -39,43 +61,50 @@ pub async fn stream_chat(
     max_tokens: u32,
     images: Vec<String>,
 ) -> Result<(), String> {
-    CANCEL_STREAM.store(false, Ordering::SeqCst);
+    let cancel_flag = register_stream(stream_id);
 
     let api_key = crate::commands::get_provider_key(&provider);
 
-    // HTTPS enforcement: reject insecure endpoints for remote connections
-    if !endpoint.starts_with("https://") && !endpoint.starts_with("http://localhost") && !endpoint.starts_with("http://127.0.0.1") {
-        return Err("Endpoint inseguro. Use HTTPS para conexões remotas.".to_string());
+    // HTTPS enforcement: reject insecure endpoints for remote connections.
+    // We parse the URL properly instead of using string prefix matching, which
+    // would incorrectly accept hosts like `http://localhost.evil.com`.
+    if let Err(e) = validate_endpoint_security(&endpoint) {
+        unregister_stream(stream_id);
+        return Err(e);
     }
 
     let result = match provider.as_str() {
         "anthropic" => {
             stream_anthropic(
-                &app, &messages, &system_prompt, &endpoint, &api_key, &model,
-                temperature, max_tokens, &images,
+                &app, stream_id, &cancel_flag, &messages, &system_prompt, &endpoint, &api_key,
+                &model, temperature, max_tokens, &images,
             )
             .await
         }
         "ollama" => {
             stream_ollama(
-                &app, &messages, &system_prompt, &model, temperature, &images,
+                &app, stream_id, &cancel_flag, &messages, &system_prompt, &endpoint, &model,
+                temperature, &images,
             )
             .await
         }
         // openai, google, inception, openrouter, custom -> all OpenAI-compatible
         _ => {
             stream_openai_compatible(
-                &app, &messages, &system_prompt, &endpoint, &api_key, &model,
-                temperature, max_tokens, &images,
+                &app, stream_id, &cancel_flag, &messages, &system_prompt, &endpoint, &api_key,
+                &model, temperature, max_tokens, &images,
             )
             .await
         }
     };
 
+    unregister_stream(stream_id);
+
     if let Err(e) = result {
         let _ = app.emit(
             "chat-stream",
             StreamChunkPayload {
+                stream_id,
                 text: e.clone(),
                 is_finished: true,
                 input_tokens: None,
@@ -89,14 +118,55 @@ pub async fn stream_chat(
 }
 
 #[tauri::command]
-pub fn cancel_stream() {
-    CANCEL_STREAM.store(true, Ordering::SeqCst);
+pub fn cancel_stream(stream_id: u64) {
+    if let Some(flag) = STREAM_REGISTRY.lock().unwrap().get(&stream_id) {
+        flag.store(true, Ordering::SeqCst);
+    }
+}
+
+fn validate_endpoint_security(endpoint: &str) -> Result<(), String> {
+    let parsed = reqwest::Url::parse(endpoint)
+        .map_err(|e| format!("Endpoint inválido: {}", e))?;
+    let scheme = parsed.scheme();
+    if scheme == "https" {
+        return Ok(());
+    }
+    if scheme == "http" {
+        let host = parsed.host_str().unwrap_or("");
+        let is_local = matches!(host, "localhost" | "127.0.0.1" | "::1" | "[::1]");
+        if is_local {
+            return Ok(());
+        }
+    }
+    Err("Endpoint inseguro. Use HTTPS para conexões remotas.".to_string())
+}
+
+// Drain all complete lines from a binary buffer, invoking `f` on each line as
+// a borrowed &str. Bytes for an incomplete trailing line stay in the buffer.
+// Using a byte buffer (instead of String::from_utf8_lossy per chunk) prevents
+// corruption when a multi-byte UTF-8 character is split across TCP chunks.
+fn drain_lines(buffer: &mut Vec<u8>, mut f: impl FnMut(&str)) {
+    while let Some(pos) = buffer.iter().position(|b| *b == b'\n') {
+        // line_with_nl includes the newline; we strip it when converting.
+        let mut line_with_nl: Vec<u8> = buffer.drain(..=pos).collect();
+        line_with_nl.pop(); // drop the '\n'
+        if line_with_nl.last() == Some(&b'\r') {
+            line_with_nl.pop();
+        }
+        if let Ok(s) = std::str::from_utf8(&line_with_nl) {
+            f(s.trim());
+        }
+        // Invalid UTF-8 at this point would mean the server sent non-UTF-8 data,
+        // which shouldn't happen for JSON; silently skip rather than corrupt.
+    }
 }
 
 // ----- OpenAI-compatible streaming -----
 
 async fn stream_openai_compatible(
     app: &AppHandle,
+    stream_id: u64,
+    cancel_flag: &Arc<AtomicBool>,
     messages: &[ConversationTurn],
     system_prompt: &str,
     endpoint: &str,
@@ -196,13 +266,15 @@ async fn stream_openai_compatible(
     }
 
     let mut stream = response.bytes_stream();
-    let mut buffer = String::new();
+    let mut buffer: Vec<u8> = Vec::new();
+    let mut finished = false;
 
     while let Some(chunk) = stream.next().await {
-        if CANCEL_STREAM.load(Ordering::SeqCst) {
+        if cancel_flag.load(Ordering::SeqCst) {
             let _ = app.emit(
                 "chat-stream",
                 StreamChunkPayload {
+                    stream_id,
                     text: String::new(),
                     is_finished: true,
                     input_tokens: None,
@@ -213,15 +285,11 @@ async fn stream_openai_compatible(
         }
 
         let chunk = chunk.map_err(|e| format!("Erro no stream: {}", e))?;
-        buffer.push_str(&String::from_utf8_lossy(&chunk));
+        buffer.extend_from_slice(&chunk);
 
-        // Process complete lines
-        while let Some(newline_pos) = buffer.find('\n') {
-            let line = buffer[..newline_pos].trim().to_string();
-            buffer = buffer[newline_pos + 1..].to_string();
-
-            if line.is_empty() || line.starts_with(':') {
-                continue;
+        drain_lines(&mut buffer, |line| {
+            if finished || line.is_empty() || line.starts_with(':') {
+                return;
             }
 
             if let Some(data) = line.strip_prefix("data: ") {
@@ -229,13 +297,15 @@ async fn stream_openai_compatible(
                     let _ = app.emit(
                         "chat-stream",
                         StreamChunkPayload {
+                            stream_id,
                             text: String::new(),
                             is_finished: true,
                             input_tokens: None,
                             output_tokens: None,
                         },
                     );
-                    return Ok(());
+                    finished = true;
+                    return;
                 }
 
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
@@ -247,6 +317,7 @@ async fn stream_openai_compatible(
                         let _ = app.emit(
                             "chat-stream",
                             StreamChunkPayload {
+                                stream_id,
                                 text: content.to_string(),
                                 is_finished: false,
                                 input_tokens: None,
@@ -263,6 +334,7 @@ async fn stream_openai_compatible(
                             let _ = app.emit(
                                 "chat-stream",
                                 StreamChunkPayload {
+                                    stream_id,
                                     text: String::new(),
                                     is_finished: false,
                                     input_tokens,
@@ -273,6 +345,10 @@ async fn stream_openai_compatible(
                     }
                 }
             }
+        });
+
+        if finished {
+            return Ok(());
         }
     }
 
@@ -280,6 +356,7 @@ async fn stream_openai_compatible(
     let _ = app.emit(
         "chat-stream",
         StreamChunkPayload {
+            stream_id,
             text: String::new(),
             is_finished: true,
             input_tokens: None,
@@ -294,6 +371,8 @@ async fn stream_openai_compatible(
 
 async fn stream_anthropic(
     app: &AppHandle,
+    stream_id: u64,
+    cancel_flag: &Arc<AtomicBool>,
     messages: &[ConversationTurn],
     system_prompt: &str,
     endpoint: &str,
@@ -389,15 +468,17 @@ async fn stream_anthropic(
     }
 
     let mut stream = response.bytes_stream();
-    let mut buffer = String::new();
+    let mut buffer: Vec<u8> = Vec::new();
     let mut input_tokens: Option<u32> = None;
     let mut output_tokens: Option<u32> = None;
+    let mut finished = false;
 
     while let Some(chunk) = stream.next().await {
-        if CANCEL_STREAM.load(Ordering::SeqCst) {
+        if cancel_flag.load(Ordering::SeqCst) {
             let _ = app.emit(
                 "chat-stream",
                 StreamChunkPayload {
+                    stream_id,
                     text: String::new(),
                     is_finished: true,
                     input_tokens,
@@ -408,14 +489,11 @@ async fn stream_anthropic(
         }
 
         let chunk = chunk.map_err(|e| format!("Erro no stream: {}", e))?;
-        buffer.push_str(&String::from_utf8_lossy(&chunk));
+        buffer.extend_from_slice(&chunk);
 
-        while let Some(newline_pos) = buffer.find('\n') {
-            let line = buffer[..newline_pos].trim().to_string();
-            buffer = buffer[newline_pos + 1..].to_string();
-
-            if line.is_empty() || line.starts_with("event:") {
-                continue;
+        drain_lines(&mut buffer, |line| {
+            if finished || line.is_empty() || line.starts_with("event:") {
+                return;
             }
 
             if let Some(data) = line.strip_prefix("data: ") {
@@ -429,6 +507,7 @@ async fn stream_anthropic(
                                 let _ = app.emit(
                                     "chat-stream",
                                     StreamChunkPayload {
+                                        stream_id,
                                         text: text.to_string(),
                                         is_finished: false,
                                         input_tokens: None,
@@ -453,18 +532,23 @@ async fn stream_anthropic(
                             let _ = app.emit(
                                 "chat-stream",
                                 StreamChunkPayload {
+                                    stream_id,
                                     text: String::new(),
                                     is_finished: true,
                                     input_tokens,
                                     output_tokens,
                                 },
                             );
-                            return Ok(());
+                            finished = true;
                         }
                         _ => {}
                     }
                 }
             }
+        });
+
+        if finished {
+            return Ok(());
         }
     }
 
@@ -472,6 +556,7 @@ async fn stream_anthropic(
     let _ = app.emit(
         "chat-stream",
         StreamChunkPayload {
+            stream_id,
             text: String::new(),
             is_finished: true,
             input_tokens,
@@ -486,13 +571,23 @@ async fn stream_anthropic(
 
 async fn stream_ollama(
     app: &AppHandle,
+    stream_id: u64,
+    cancel_flag: &Arc<AtomicBool>,
     messages: &[ConversationTurn],
     system_prompt: &str,
+    endpoint: &str,
     model: &str,
     temperature: f64,
     images: &[String],
 ) -> Result<(), String> {
-    let url = "http://localhost:11434/api/chat";
+    // Respect the caller-supplied endpoint instead of hardcoding localhost.
+    // Falls back to the default Ollama port if the caller passes an empty string.
+    let base = if endpoint.is_empty() {
+        "http://localhost:11434"
+    } else {
+        endpoint.trim_end_matches('/')
+    };
+    let url = format!("{}/api/chat", base);
 
     let mut api_messages = Vec::new();
 
@@ -550,7 +645,7 @@ async fn stream_ollama(
 
     let client = reqwest::Client::new();
     let response = client
-        .post(url)
+        .post(&url)
         .header(CONTENT_TYPE, "application/json")
         .json(&body)
         .send()
@@ -569,13 +664,15 @@ async fn stream_ollama(
     }
 
     let mut stream = response.bytes_stream();
-    let mut buffer = String::new();
+    let mut buffer: Vec<u8> = Vec::new();
+    let mut finished = false;
 
     while let Some(chunk) = stream.next().await {
-        if CANCEL_STREAM.load(Ordering::SeqCst) {
+        if cancel_flag.load(Ordering::SeqCst) {
             let _ = app.emit(
                 "chat-stream",
                 StreamChunkPayload {
+                    stream_id,
                     text: String::new(),
                     is_finished: true,
                     input_tokens: None,
@@ -586,17 +683,14 @@ async fn stream_ollama(
         }
 
         let chunk = chunk.map_err(|e| format!("Erro no stream: {}", e))?;
-        buffer.push_str(&String::from_utf8_lossy(&chunk));
+        buffer.extend_from_slice(&chunk);
 
-        while let Some(newline_pos) = buffer.find('\n') {
-            let line = buffer[..newline_pos].trim().to_string();
-            buffer = buffer[newline_pos + 1..].to_string();
-
-            if line.is_empty() {
-                continue;
+        drain_lines(&mut buffer, |line| {
+            if finished || line.is_empty() {
+                return;
             }
 
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line) {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
                 let done = json["done"].as_bool().unwrap_or(false);
 
                 if done {
@@ -605,13 +699,15 @@ async fn stream_ollama(
                     let _ = app.emit(
                         "chat-stream",
                         StreamChunkPayload {
+                            stream_id,
                             text: String::new(),
                             is_finished: true,
                             input_tokens,
                             output_tokens,
                         },
                     );
-                    return Ok(());
+                    finished = true;
+                    return;
                 }
 
                 let content = json["message"]["content"].as_str().unwrap_or("");
@@ -619,6 +715,7 @@ async fn stream_ollama(
                     let _ = app.emit(
                         "chat-stream",
                         StreamChunkPayload {
+                            stream_id,
                             text: content.to_string(),
                             is_finished: false,
                             input_tokens: None,
@@ -627,6 +724,10 @@ async fn stream_ollama(
                     );
                 }
             }
+        });
+
+        if finished {
+            return Ok(());
         }
     }
 
@@ -634,6 +735,7 @@ async fn stream_ollama(
     let _ = app.emit(
         "chat-stream",
         StreamChunkPayload {
+            stream_id,
             text: String::new(),
             is_finished: true,
             input_tokens: None,
@@ -663,7 +765,14 @@ pub async fn fetch_models(
                 "claude-3-5-haiku-20241022".to_string(),
             ]);
         }
-        "ollama" => "http://localhost:11434/api/tags".to_string(),
+        "ollama" => {
+            let base = if endpoint.is_empty() {
+                "http://localhost:11434"
+            } else {
+                endpoint.trim_end_matches('/')
+            };
+            format!("{}/api/tags", base)
+        }
         _ => format!("{}/models", endpoint.trim_end_matches('/')),
     };
 
@@ -738,5 +847,62 @@ fn map_http_error(status: u16, _body: &str) -> String {
         500 => "Erro interno do servidor do provedor. Tente novamente.".to_string(),
         502 | 503 => "Serviço temporariamente indisponível. Tente novamente em instantes.".to_string(),
         _ => format!("Erro do servidor ({}).", status),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn drain_lines_basic() {
+        let mut buf: Vec<u8> = b"alpha\nbeta\ngam".to_vec();
+        let mut out = Vec::new();
+        drain_lines(&mut buf, |s| out.push(s.to_string()));
+        assert_eq!(out, vec!["alpha".to_string(), "beta".to_string()]);
+        assert_eq!(buf, b"gam".to_vec());
+    }
+
+    #[test]
+    fn drain_lines_preserves_utf8_across_chunks() {
+        // Simulate "implementação" split mid-byte across two pushes.
+        // "ç" is 0xC3 0xA7; we split it.
+        let part1: Vec<u8> = vec![b'i', b'm', b'p', b'l', b'e', b'm', b'e', b'n', b't', b'a', b'\xC3'];
+        let part2: Vec<u8> = vec![b'\xA7', b'\xC3', b'\xA3', b'o', b'\n'];
+        let mut buf: Vec<u8> = Vec::new();
+        buf.extend_from_slice(&part1);
+        let mut out: Vec<String> = Vec::new();
+        drain_lines(&mut buf, |s| out.push(s.to_string()));
+        assert!(out.is_empty(), "no complete line yet");
+        buf.extend_from_slice(&part2);
+        drain_lines(&mut buf, |s| out.push(s.to_string()));
+        assert_eq!(out, vec!["implementação".to_string()]);
+    }
+
+    #[test]
+    fn drain_lines_strips_crlf() {
+        let mut buf: Vec<u8> = b"data: hello\r\n".to_vec();
+        let mut out = Vec::new();
+        drain_lines(&mut buf, |s| out.push(s.to_string()));
+        assert_eq!(out, vec!["data: hello".to_string()]);
+    }
+
+    #[test]
+    fn validate_endpoint_rejects_localhost_prefix_attack() {
+        assert!(validate_endpoint_security("http://localhost.evil.com").is_err());
+        assert!(validate_endpoint_security("http://localhostfoo.example").is_err());
+        assert!(validate_endpoint_security("http://127.0.0.1.evil.com").is_err());
+    }
+
+    #[test]
+    fn validate_endpoint_accepts_real_local_and_https() {
+        assert!(validate_endpoint_security("http://localhost:11434").is_ok());
+        assert!(validate_endpoint_security("http://127.0.0.1:8080/api").is_ok());
+        assert!(validate_endpoint_security("https://api.openai.com/v1").is_ok());
+    }
+
+    #[test]
+    fn validate_endpoint_rejects_plain_http_remote() {
+        assert!(validate_endpoint_security("http://api.example.com").is_err());
     }
 }

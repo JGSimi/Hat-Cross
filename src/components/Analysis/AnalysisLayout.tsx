@@ -11,6 +11,7 @@ import { usePlatform } from '../../hooks/usePlatform';
 import WindowControls from '../Shared/WindowControls';
 import { PROVIDER_DEFAULTS } from '../../types';
 import type { StreamChunk } from '../../types';
+import { nextStreamId } from '../../services/ai';
 
 function GradientSpinner() {
   return (
@@ -65,9 +66,11 @@ export default function AnalysisLayout() {
     analysisRef.current = '';
 
     const { provider, endpoint, model } = getProviderDetails();
+    const streamId = nextStreamId();
 
     const unlisten = await listen<StreamChunk>('chat-stream', (event) => {
       const chunk = event.payload;
+      if (chunk.streamId !== streamId) return;
       if (chunk.text) {
         analysisRef.current += chunk.text;
         setAnalysis(analysisRef.current);
@@ -80,6 +83,7 @@ export default function AnalysisLayout() {
 
     try {
       await invoke('stream_chat', {
+        streamId,
         messages: [{
           role: 'user',
           textContent: 'Analise o que esta na minha tela e me ajude de forma proativa. Nao me pergunte o que fazer, apenas forneca a analise ou ajuda diretamente com base no contexto.',
@@ -110,9 +114,11 @@ export default function AnalysisLayout() {
     analysisRef.current = '';
 
     const { provider, endpoint, model } = getProviderDetails();
+    const streamId = nextStreamId();
 
     const unlisten = await listen<StreamChunk>('chat-stream', (event) => {
       const chunk = event.payload;
+      if (chunk.streamId !== streamId) return;
       if (chunk.text) {
         analysisRef.current += chunk.text;
         setAnalysis(analysisRef.current);
@@ -125,6 +131,7 @@ export default function AnalysisLayout() {
 
     try {
       await invoke('stream_chat', {
+        streamId,
         messages: [
           { role: 'user', textContent: 'Analise o que esta na minha tela.' },
           { role: 'assistant', textContent: prevAnalysis },

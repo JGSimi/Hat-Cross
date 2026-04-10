@@ -13,6 +13,7 @@ import { useSettingsStore } from './stores/settingsStore';
 import { useChatStore } from './stores/chatStore';
 import { useConversationStore } from './stores/conversationStore';
 import { useClipboardStore } from './stores/clipboardStore';
+import { nextStreamId } from './services/ai';
 
 /** Normalize legacy shortcut format (CmdOrCtrl → CommandOrControl) */
 function normalizeShortcut(s: string): string {
@@ -305,10 +306,13 @@ function App() {
 
         let response = '';
         let hasReceivedContent = false;
+        const streamId = nextStreamId();
 
-        chunkUnlisten = await listen<{ text: string; isFinished: boolean }>(
+        chunkUnlisten = await listen<{ streamId: number; text: string; isFinished: boolean }>(
           'chat-stream',
           (event) => {
+            // Filter by streamId so we don't pick up chunks from other concurrent streams.
+            if (event.payload.streamId !== streamId) return;
             if (event.payload.text && !event.payload.isFinished) {
               response += event.payload.text;
               hasReceivedContent = true;
@@ -378,6 +382,7 @@ function App() {
         );
 
         await invoke('stream_chat', {
+          streamId,
           messages: [{ role: 'user', textContent: messageText }],
           systemPrompt,
           provider, endpoint, model,
