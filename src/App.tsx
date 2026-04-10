@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import MainPage from './pages/MainPage';
 import AnalysisPage from './pages/AnalysisPage';
 import HorseLogo from './components/Shared/HorseLogo';
+import ToastContainer from './components/Shared/ToastContainer';
 import { useSettingsStore } from './stores/settingsStore';
 import { useChatStore } from './stores/chatStore';
 import { useConversationStore } from './stores/conversationStore';
@@ -445,7 +446,7 @@ function App() {
                 textTransform: 'uppercase',
               }}
             >
-              AI Assistant
+              Assistente IA
             </motion.p>
           </motion.div>
         )}
@@ -456,6 +457,8 @@ function App() {
         <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="*" element={<Navigate to="/main" replace />} />
       </Routes>
+
+      <ToastContainer />
     </>
   );
 }

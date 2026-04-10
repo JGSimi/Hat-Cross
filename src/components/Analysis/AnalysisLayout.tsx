@@ -322,7 +322,6 @@ export default function AnalysisLayout() {
                 background: 'transparent',
                 color: 'var(--text-primary)',
                 fontSize: 13,
-                outline: 'none',
                 border: 'none',
               }}
             />

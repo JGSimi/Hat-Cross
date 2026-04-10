@@ -23,7 +23,7 @@ const tabContentVariants = {
 };
 
 export default function SettingsPanel({ onClose }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('general');
+  const [activeTab, setActiveTab] = useState<Tab>('models');
   const platform = usePlatform();
   const {
     settings,
@@ -38,12 +38,12 @@ export default function SettingsPanel({ onClose }: Props) {
   } = useSettingsStore();
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'general', label: 'Geral' },
-    { id: 'notifications', label: 'Notificações' },
-    { id: 'clipboard', label: 'Clipboard' },
-    { id: 'appearance', label: 'Aparência' },
     { id: 'models', label: 'Modelos & IA' },
+    { id: 'general', label: 'Geral' },
+    { id: 'appearance', label: 'Aparência' },
     { id: 'behavior', label: 'Comportamento' },
+    { id: 'clipboard', label: 'Clipboard' },
+    { id: 'notifications', label: 'Notificações' },
     { id: 'shortcuts', label: 'Atalhos' },
   ];
 
@@ -223,6 +223,8 @@ function SettingRow({ label, children }: { label: string; children: React.ReactN
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
+      role="switch"
+      aria-checked={checked}
       onClick={() => onChange(!checked)}
       style={{
         width: 36,
@@ -345,7 +347,7 @@ function GeneralTab() {
         </SettingRow>
       </GlassCard>
 
-      <SectionTitle>Atualizacoes</SectionTitle>
+      <SectionTitle>Atualizações</SectionTitle>
       <GlassCard>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <motion.button
@@ -370,7 +372,7 @@ function GeneralTab() {
              updateStatus === 'downloading' ? `Baixando ${updateProgress}%` :
              updateStatus === 'uptodate' ? 'Atualizado!' :
              updateStatus === 'error' ? 'Erro ao verificar' :
-             'Verificar atualizacoes'}
+             'Verificar atualizações'}
           </motion.button>
         </div>
         <div style={{ paddingTop: 12, fontSize: 10, color: 'var(--text-muted)' }}>
@@ -544,7 +546,7 @@ function ClipboardTab({
               rows={4}
               style={{
                 width: '100%', background: 'var(--input-bg)', color: 'var(--text-primary)',
-                borderRadius: 8, padding: '8px 12px', fontSize: 12, outline: 'none',
+                borderRadius: 8, padding: '8px 12px', fontSize: 12,
                 border: '1px solid var(--border-subtle)', resize: 'vertical',
                 fontFamily: 'inherit', lineHeight: 1.5,
               }}
@@ -735,7 +737,6 @@ function AppearanceTab({
                 padding: '3px 8px',
                 fontSize: 10,
                 fontFamily: "'JetBrains Mono', monospace",
-                outline: 'none',
               }}
             />
           </div>
@@ -948,7 +949,6 @@ function ModelsTab({
     borderRadius: 8,
     padding: '7px 12px',
     fontSize: 12,
-    outline: 'none',
     border: '1px solid var(--border-subtle)',
     width: '100%',
     transition: 'border-color 0.15s ease',
@@ -1242,14 +1242,13 @@ function BehaviorTab({
             borderRadius: 8,
             padding: '8px 12px',
             fontSize: 11,
-            outline: 'none',
             border: '0.5px solid var(--border-subtle)',
             resize: 'none',
           }}
         />
       </GlassCard>
 
-      <SectionTitle>Parametros</SectionTitle>
+      <SectionTitle>Parâmetros</SectionTitle>
       <GlassCard>
         <SettingRow label={`Temperature: ${settings.temperature}`}>
           <CustomSlider min={0} max={2} step={0.1} value={settings.temperature}
@@ -1345,7 +1344,6 @@ function ShortcutRecorder({
     borderRadius: 8,
     padding: '6px 12px',
     fontSize: 11,
-    outline: 'none',
     border: recording ? '1.5px solid var(--color-accent)' : '0.5px solid var(--border-subtle)',
     textAlign: 'center' as const,
     fontFamily: "'SF Mono', monospace",
@@ -1466,7 +1464,7 @@ function ShortcutsTab({
         </SettingRow>
       </GlassCard>
       <div style={{ marginTop: 8, padding: '0 4px', fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-        Clique no atalho e pressione a nova combinacao de teclas. Esc para cancelar, Backspace para limpar.
+        Clique no atalho e pressione a nova combinação de teclas. Esc para cancelar, Backspace para limpar.
       </div>
     </>
   );

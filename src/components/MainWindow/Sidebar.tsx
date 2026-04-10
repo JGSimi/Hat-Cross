@@ -7,6 +7,7 @@ import { useConversations } from '../../hooks/useConversations';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useClipboardStore } from '../../stores/clipboardStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useToastStore } from '../../stores/toastStore';
 import { usePlatform } from '../../hooks/usePlatform';
 import WindowControls from '../Shared/WindowControls';
 import type { Conversation } from '../../types';
@@ -101,8 +102,13 @@ export default function Sidebar({
   const storageStats = useMemo(() => getStorageStats(), [conversations]);
 
   const handleClearAll = useCallback(() => {
-    if (confirmClearAll) { clearAllConversations(); setConfirmClearAll(false); }
-    else setConfirmClearAll(true);
+    if (confirmClearAll) {
+      clearAllConversations();
+      setConfirmClearAll(false);
+      useToastStore.getState().showToast('Todas as conversas removidas', 'success');
+    } else {
+      setConfirmClearAll(true);
+    }
   }, [confirmClearAll, clearAllConversations]);
 
   const renderConversation = (conv: Conversation) => (
@@ -230,14 +236,16 @@ export default function Sidebar({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar..."
+            aria-label="Buscar conversas"
             style={{
               flex: 1, background: 'transparent', fontSize: 11,
-              color: 'var(--text-primary)', outline: 'none', border: 'none',
+              color: 'var(--text-primary)', border: 'none',
             }}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
+              aria-label="Limpar busca"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 color: 'var(--text-muted)', padding: 0, display: 'flex',
@@ -309,9 +317,9 @@ export default function Sidebar({
                 borderRadius: 2, overflow: 'hidden', marginTop: 2,
               }}>
                 <div style={{
-                  width: `${Math.min((storageStats.totalConversations / 50) * 100, 100)}%`,
+                  width: `${Math.min((storageStats.totalConversations / (useSettingsStore.getState().settings.chatLimits?.maxConversations ?? 50)) * 100, 100)}%`,
                   height: '100%',
-                  background: storageStats.totalConversations > 40 ? 'var(--warning)' : 'var(--color-accent)',
+                  background: storageStats.totalConversations > (useSettingsStore.getState().settings.chatLimits?.maxConversations ?? 50) * 0.8 ? 'var(--warning)' : 'var(--color-accent)',
                   borderRadius: 2, transition: 'width 0.3s ease',
                 }} />
               </div>
