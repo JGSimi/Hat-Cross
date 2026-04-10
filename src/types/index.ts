@@ -46,6 +46,7 @@ export interface ConversationTurn {
 }
 
 export interface StreamChunk {
+  streamId: number;
   text: string;
   isFinished: boolean;
   inputTokens: number | null;

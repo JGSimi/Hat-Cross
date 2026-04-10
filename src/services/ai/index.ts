@@ -16,6 +16,14 @@ export interface StreamOptions {
   onDone: () => void;
 }
 
+// Monotonic counter for stream IDs. The backend uses this to route cancel
+// requests to the correct stream and to tag emitted chunks so concurrent
+// streams never cross-contaminate each other's listeners.
+let _nextStreamId = 1;
+export function nextStreamId(): number {
+  return _nextStreamId++;
+}
+
 export async function startStream(options: StreamOptions): Promise<() => void> {
   const {
     messages,
@@ -31,52 +39,63 @@ export async function startStream(options: StreamOptions): Promise<() => void> {
     onDone,
   } = options;
 
-  // Listen for stream events
+  const streamId = nextStreamId();
+
   let unlistenError: (() => void) | null = null;
+  let done = false;
+
+  const cleanup = () => {
+    if (done) return;
+    done = true;
+    unlisten();
+    unlistenError?.();
+  };
 
   const unlisten = await listen<StreamChunk>('chat-stream', (event) => {
     const chunk = event.payload;
+    // Filter by streamId so concurrent streams don't cross-feed each other.
+    if (chunk.streamId !== streamId) return;
     onChunk(chunk);
     if (chunk.isFinished) {
       onDone();
-      unlisten();
-      unlistenError?.();
+      cleanup();
     }
   });
 
   unlistenError = await listen<string>('chat-stream-error', (event) => {
     onError(event.payload);
-    unlisten();
-    unlistenError?.();
+    cleanup();
   });
 
-  try {
-    await invoke('stream_chat', {
-      messages,
-      systemPrompt,
-      provider,
-      endpoint,
-      model,
-      temperature,
-      maxTokens,
-      images,
-    });
-  } catch (e) {
+  // Fire the invoke WITHOUT awaiting — stream_chat only resolves when the
+  // whole stream completes, and we need to return the cancel function
+  // immediately so the UI can cancel mid-stream.
+  invoke('stream_chat', {
+    streamId,
+    messages,
+    systemPrompt,
+    provider,
+    endpoint,
+    model,
+    temperature,
+    maxTokens,
+    images,
+  }).catch((e) => {
+    // Backend error (connection, HTTP status, etc.) — surface to caller.
+    if (done) return;
     onError(String(e));
-    unlisten();
-    unlistenError?.();
-  }
+    cleanup();
+  });
 
-  // Return cancel function
+  // Cancel function: set the backend flag and tear down listeners.
   return () => {
-    invoke('cancel_stream').catch(() => {});
-    unlisten();
-    unlistenError?.();
+    invoke('cancel_stream', { streamId }).catch(() => {});
+    cleanup();
   };
 }
 
-export async function cancelStream(): Promise<void> {
-  await invoke('cancel_stream');
+export async function cancelStream(streamId: number): Promise<void> {
+  await invoke('cancel_stream', { streamId });
 }
 
 export async function fetchModels(
