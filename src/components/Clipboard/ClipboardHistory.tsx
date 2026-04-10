@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clipboard, Copy, Check, MessageSquarePlus, Trash2, Clock, Cpu, X } from 'lucide-react';
+import { Clipboard, Copy, Check, MessageSquarePlus, Trash2, Clock, Cpu, X, ArrowLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -259,7 +259,7 @@ function ActionButton({ icon, label, onClick, primary, danger, active }: {
   );
 }
 
-export default function ClipboardHistory() {
+export default function ClipboardHistory({ onBack }: { onBack?: () => void }) {
   const entries = useClipboardStore((s) => s.entries);
   const deleteEntry = useClipboardStore((s) => s.deleteEntry);
   const clearAll = useClipboardStore((s) => s.clearAll);
@@ -337,13 +337,31 @@ export default function ClipboardHistory() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         flexShrink: 0,
       }}>
-        <div>
-          <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-            Clipboard
-          </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {onBack && (
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={onBack}
+              style={{
+                padding: 4, borderRadius: 6,
+                background: 'var(--glass-secondary)',
+                border: '0.5px solid var(--glass-border-subtle)',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center',
+              }}
+            >
+              <ArrowLeft size={14} />
+            </motion.button>
+          )}
+          <div>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+              Clipboard
+            </h2>
           <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '2px 0 0' }}>
             {entries.length} {entries.length === 1 ? 'processamento' : 'processamentos'}
           </p>
+          </div>
         </div>
         {entries.length > 0 && (
           <motion.button

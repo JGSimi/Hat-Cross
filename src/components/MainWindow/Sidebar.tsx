@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Settings, Trash2, HardDrive, MessageSquare, Clipboard } from 'lucide-react';
+import { Plus, Search, Settings, Trash2, HardDrive, Clipboard, PanelLeftClose } from 'lucide-react';
 import { getVersion } from '@tauri-apps/api/app';
 import ConversationItem from './ConversationItem';
 import { useConversations } from '../../hooks/useConversations';
@@ -17,16 +17,10 @@ interface Props {
   onOpenSettings: () => void;
   activeView: SidebarView;
   onViewChange: (view: SidebarView) => void;
+  onSelectConversation: (id: string) => void;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }
-
-const staggerItem = {
-  hidden: { opacity: 0, y: 6 },
-  show: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: 0.05 + i * 0.05, type: 'spring' as const, stiffness: 300, damping: 25 },
-  }),
-};
 
 // --- Date grouping helpers ---
 
@@ -55,7 +49,6 @@ function groupConversations(conversations: Conversation[]): Map<string, Conversa
     existing.push(conv);
     groups.set(group, existing);
   }
-  // Sort by defined order
   const sorted = new Map<string, Conversation[]>();
   for (const key of GROUP_ORDER) {
     if (groups.has(key)) sorted.set(key, groups.get(key)!);
@@ -68,15 +61,12 @@ function formatStorageSize(kb: number): string {
   return `${(kb / 1024).toFixed(1)} MB`;
 }
 
-export default function Sidebar({ onOpenSettings, activeView, onViewChange }: Props) {
+export default function Sidebar({
+  onOpenSettings, activeView, onViewChange, onSelectConversation, collapsed: _, onToggleCollapse,
+}: Props) {
   const {
-    conversations,
-    activeConversationId,
-    createConversation,
-    deleteConversation,
-    pinConversation,
-    renameConversation,
-    setActiveConversation,
+    conversations, activeConversationId, createConversation,
+    deleteConversation, pinConversation, renameConversation,
   } = useConversations();
   const clearAllConversations = useConversationStore((s) => s.clearAllConversations);
   const getStorageStats = useConversationStore((s) => s.getStorageStats);
@@ -88,11 +78,8 @@ export default function Sidebar({ onOpenSettings, activeView, onViewChange }: Pr
   const sidebarWidth = useSettingsStore((s) => s.settings.appearance?.sidebarWidth ?? 220);
   const clipboardCount = useClipboardStore((s) => s.entries.length);
 
-  useEffect(() => {
-    getVersion().then(setAppVersion).catch(() => {});
-  }, []);
+  useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
 
-  // Reset clear all confirm after 3s
   useEffect(() => {
     if (!confirmClearAll) return;
     const t = setTimeout(() => setConfirmClearAll(false), 3000);
@@ -103,8 +90,7 @@ export default function Sidebar({ onOpenSettings, activeView, onViewChange }: Pr
     if (!searchQuery) return conversations;
     const q = searchQuery.toLowerCase();
     return conversations.filter(
-      (c) =>
-        c.title.toLowerCase().includes(q) ||
+      (c) => c.title.toLowerCase().includes(q) ||
         c.messages.some((m) => m.content.toLowerCase().includes(q))
     );
   }, [searchQuery, conversations]);
@@ -112,16 +98,11 @@ export default function Sidebar({ onOpenSettings, activeView, onViewChange }: Pr
   const pinned = useMemo(() => filtered.filter((c) => c.isPinned), [filtered]);
   const recent = useMemo(() => filtered.filter((c) => !c.isPinned), [filtered]);
   const recentGrouped = useMemo(() => groupConversations(recent), [recent]);
-
   const storageStats = useMemo(() => getStorageStats(), [conversations]);
 
   const handleClearAll = useCallback(() => {
-    if (confirmClearAll) {
-      clearAllConversations();
-      setConfirmClearAll(false);
-    } else {
-      setConfirmClearAll(true);
-    }
+    if (confirmClearAll) { clearAllConversations(); setConfirmClearAll(false); }
+    else setConfirmClearAll(true);
   }, [confirmClearAll, clearAllConversations]);
 
   const renderConversation = (conv: Conversation) => (
@@ -129,7 +110,7 @@ export default function Sidebar({ onOpenSettings, activeView, onViewChange }: Pr
       key={conv.id}
       conversation={conv}
       isActive={conv.id === activeConversationId}
-      onSelect={() => setActiveConversation(conv.id)}
+      onSelect={() => onSelectConversation(conv.id)}
       onPin={() => pinConversation(conv.id)}
       onDelete={() => deleteConversation(conv.id)}
       onRename={(title) => renameConversation(conv.id, title)}
@@ -152,118 +133,92 @@ export default function Sidebar({ onOpenSettings, activeView, onViewChange }: Pr
       }}
     >
       {/* Header */}
-      <motion.div
-        custom={0}
-        variants={staggerItem}
-        initial="hidden"
-        animate="show"
+      <div
         data-tauri-drag-region
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: platform === 'macos' ? '10px 12px 10px 12px' : '12px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: platform === 'macos' ? '10px 12px' : '12px',
           paddingTop: platform === 'macos' ? 10 : 12,
           borderBottom: '0.5px solid var(--border-subtle)',
-          gap: 8,
+          gap: 6,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {platform === 'macos' && <WindowControls variant="sidebar" />}
           <span style={{
-            fontSize: 14,
-            fontWeight: 700,
-            letterSpacing: -0.5,
+            fontSize: 14, fontWeight: 700, letterSpacing: -0.5,
             background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           }}>
             Hat
           </span>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => createConversation()}
-          title="Nova conversa"
-          aria-label="Nova conversa"
-          style={{
-            padding: 6,
-            borderRadius: 8,
-            background: 'var(--glass-secondary)',
-            border: '0.5px solid var(--glass-border-subtle)',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Plus size={14} />
-        </motion.button>
-      </motion.div>
-
-      {/* View toggle — Chats / Clipboard */}
-      <div style={{
-        display: 'flex', padding: '4px 10px', gap: 4,
-      }}>
-        {([
-          { id: 'chats' as const, icon: <MessageSquare size={11} />, label: 'Chats' },
-          { id: 'clipboard' as const, icon: <Clipboard size={11} />, label: 'Clipboard', badge: clipboardCount },
-        ]).map((tab) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {/* Clipboard shortcut button */}
           <motion.button
-            key={tab.id}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => onViewChange(tab.id)}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onViewChange('clipboard')}
+            title="Clipboard"
             style={{
-              flex: 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-              padding: '5px 8px',
-              borderRadius: 6,
-              fontSize: 10, fontWeight: activeView === tab.id ? 600 : 400,
-              background: activeView === tab.id
-                ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)'
-                : 'transparent',
-              color: activeView === tab.id ? 'var(--color-accent)' : 'var(--text-muted)',
-              border: activeView === tab.id
-                ? '1px solid color-mix(in srgb, var(--color-accent) 20%, transparent)'
-                : '1px solid transparent',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
+              padding: 5, borderRadius: 6,
+              background: clipboardCount > 0 ? 'color-mix(in srgb, var(--color-accent) 8%, transparent)' : 'transparent',
+              border: 'none',
+              color: activeView === 'clipboard' ? 'var(--color-accent)' : 'var(--text-muted)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              position: 'relative',
             }}
           >
-            {tab.icon}
-            {tab.label}
-            {tab.badge !== undefined && tab.badge > 0 && (
+            <Clipboard size={13} />
+            {clipboardCount > 0 && (
               <span style={{
-                fontSize: 8, fontWeight: 600,
-                background: activeView === tab.id
-                  ? 'var(--color-accent)'
-                  : 'rgba(255,255,255,0.1)',
-                color: activeView === tab.id ? 'white' : 'var(--text-dim)',
-                padding: '1px 4px', borderRadius: 4,
-                minWidth: 14, textAlign: 'center',
-              }}>
-                {tab.badge > 99 ? '99+' : tab.badge}
-              </span>
+                position: 'absolute', top: -2, right: -2,
+                width: 8, height: 8, borderRadius: '50%',
+                background: 'var(--color-accent)',
+                border: '1.5px solid var(--bg-secondary)',
+              }} />
             )}
           </motion.button>
-        ))}
+          {/* New conversation */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => createConversation()}
+            title="Nova conversa"
+            style={{
+              padding: 5, borderRadius: 6,
+              background: 'var(--glass-secondary)',
+              border: '0.5px solid var(--glass-border-subtle)',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <Plus size={13} />
+          </motion.button>
+          {/* Collapse sidebar */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onToggleCollapse}
+            title="Ocultar sidebar"
+            style={{
+              padding: 5, borderRadius: 6,
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <PanelLeftClose size={13} />
+          </motion.button>
+        </div>
       </div>
 
-      {/* Search (only in chats view) */}
-      {activeView === 'chats' && <motion.div
-        custom={1}
-        variants={staggerItem}
-        initial="hidden"
-        animate="show"
-        style={{ padding: '8px 12px' }}
-      >
+      {/* Search */}
+      <div style={{ padding: '8px 12px' }}>
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
+            display: 'flex', alignItems: 'center', gap: 6,
             padding: '6px 10px',
             background: 'var(--glass-secondary)',
             borderRadius: 6,
@@ -275,43 +230,28 @@ export default function Sidebar({ onOpenSettings, activeView, onViewChange }: Pr
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar..."
-            aria-label="Buscar conversas"
             style={{
-              flex: 1,
-              background: 'transparent',
-              fontSize: 11,
-              color: 'var(--text-primary)',
-              outline: 'none',
-              border: 'none',
+              flex: 1, background: 'transparent', fontSize: 11,
+              color: 'var(--text-primary)', outline: 'none', border: 'none',
             }}
           />
           {searchQuery && (
-            <motion.button
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              whileTap={{ scale: 0.8 }}
+            <button
               onClick={() => setSearchQuery('')}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 color: 'var(--text-muted)', padding: 0, display: 'flex',
-                alignItems: 'center', fontSize: 11,
+                alignItems: 'center', fontSize: 12, lineHeight: 1,
               }}
             >
-              <span style={{ fontSize: 12, lineHeight: 1 }}>✕</span>
-            </motion.button>
+              ✕
+            </button>
           )}
         </div>
-      </motion.div>}
+      </div>
 
-      {/* Conversations (chats view only) */}
-      {activeView === 'chats' && <motion.div
-        custom={2}
-        variants={staggerItem}
-        initial="hidden"
-        animate="show"
-        style={{ flex: 1, overflowY: 'auto' }}
-      >
-        {/* Pinned section */}
+      {/* Conversations list */}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
         {pinned.length > 0 && (
           <>
             <SectionHeader label="Fixadas" count={pinned.length} />
@@ -319,43 +259,27 @@ export default function Sidebar({ onOpenSettings, activeView, onViewChange }: Pr
           </>
         )}
 
-        {/* Recent grouped by date */}
         {recentGrouped.size > 0 && (
-          <>
-            {Array.from(recentGrouped.entries()).map(([group, convs]) => (
-              <div key={group}>
-                <SectionHeader label={group} count={convs.length} />
-                {convs.map(renderConversation)}
-              </div>
-            ))}
-          </>
+          Array.from(recentGrouped.entries()).map(([group, convs]) => (
+            <div key={group}>
+              <SectionHeader label={group} count={convs.length} />
+              {convs.map(renderConversation)}
+            </div>
+          ))
         )}
 
         {filtered.length === 0 && (
-          <p
-            style={{
-              padding: '32px 14px',
-              fontSize: 11,
-              color: 'var(--text-muted)',
-              textAlign: 'center',
-            }}
-          >
+          <p style={{
+            padding: '32px 14px', fontSize: 11,
+            color: 'var(--text-muted)', textAlign: 'center',
+          }}>
             {searchQuery ? `Nenhum resultado para "${searchQuery}"` : 'Nenhuma conversa'}
           </p>
         )}
-      </motion.div>}
+      </div>
 
-      {/* Clipboard view takes over the middle area */}
-      {activeView === 'clipboard' && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px' }}>
-          <p style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.5 }}>
-            O histórico de clipboard é exibido no painel principal
-          </p>
-        </div>
-      )}
-
-      {/* Storage info (chats only) */}
-      {activeView === 'chats' && <AnimatePresence>
+      {/* Storage info */}
+      <AnimatePresence>
         {showStorageInfo && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
@@ -365,10 +289,7 @@ export default function Sidebar({ onOpenSettings, activeView, onViewChange }: Pr
             style={{ overflow: 'hidden', borderTop: '0.5px solid var(--border-subtle)' }}
           >
             <div style={{
-              padding: '8px 12px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
+              padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 4,
               background: 'color-mix(in srgb, var(--color-accent) 3%, transparent)',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)' }}>
@@ -383,7 +304,6 @@ export default function Sidebar({ onOpenSettings, activeView, onViewChange }: Pr
                 <span>Armazenamento</span>
                 <span style={{ color: 'var(--text-secondary)' }}>{formatStorageSize(storageStats.estimatedSizeKB)}</span>
               </div>
-              {/* Storage bar */}
               <div style={{
                 width: '100%', height: 3, background: 'rgba(255,255,255,0.06)',
                 borderRadius: 2, overflow: 'hidden', marginTop: 2,
@@ -391,147 +311,90 @@ export default function Sidebar({ onOpenSettings, activeView, onViewChange }: Pr
                 <div style={{
                   width: `${Math.min((storageStats.totalConversations / 50) * 100, 100)}%`,
                   height: '100%',
-                  background: storageStats.totalConversations > 40
-                    ? 'var(--warning)' : 'var(--color-accent)',
-                  borderRadius: 2,
-                  transition: 'width 0.3s ease',
+                  background: storageStats.totalConversations > 40 ? 'var(--warning)' : 'var(--color-accent)',
+                  borderRadius: 2, transition: 'width 0.3s ease',
                 }} />
               </div>
               {conversations.length > 0 && (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   onClick={handleClearAll}
                   style={{
-                    marginTop: 4,
-                    padding: '4px 8px',
-                    borderRadius: 4,
-                    fontSize: 10,
-                    fontWeight: confirmClearAll ? 600 : 400,
-                    background: confirmClearAll
-                      ? 'color-mix(in srgb, var(--error) 15%, transparent)'
-                      : 'rgba(255,255,255,0.04)',
+                    marginTop: 4, padding: '4px 8px', borderRadius: 4,
+                    fontSize: 10, fontWeight: confirmClearAll ? 600 : 400,
+                    background: confirmClearAll ? 'color-mix(in srgb, var(--error) 15%, transparent)' : 'rgba(255,255,255,0.04)',
                     color: confirmClearAll ? 'var(--error)' : 'var(--text-muted)',
-                    border: confirmClearAll
-                      ? '1px solid color-mix(in srgb, var(--error) 25%, transparent)'
-                      : '1px solid rgba(255,255,255,0.06)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
+                    border: confirmClearAll ? '1px solid color-mix(in srgb, var(--error) 25%, transparent)' : '1px solid rgba(255,255,255,0.06)',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
                   }}
                 >
                   <Trash2 size={9} />
                   {confirmClearAll ? 'Tem certeza? Clique novamente' : 'Limpar todas as conversas'}
-                </motion.button>
+                </button>
               )}
             </div>
           </motion.div>
         )}
-      </AnimatePresence>}
+      </AnimatePresence>
 
       {/* Footer */}
-      <motion.div
-        custom={3}
-        variants={staggerItem}
-        initial="hidden"
-        animate="show"
+      <div
         style={{
           borderTop: '0.5px solid var(--border-subtle)',
           padding: '10px 12px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           background: 'linear-gradient(to top, color-mix(in srgb, var(--color-accent) 3%, transparent), transparent 40%)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
-          <motion.button
-            whileHover={{ scale: 1.05, backgroundColor: 'var(--surface-hover)' }}
-            whileTap={{ scale: 0.97 }}
+          <button
             onClick={onOpenSettings}
-            aria-label="Configurações"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              flex: 1,
-              padding: '6px 8px',
-              borderRadius: 8,
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              fontSize: 11,
+              display: 'flex', alignItems: 'center', gap: 8, flex: 1,
+              padding: '6px 8px', borderRadius: 8,
+              background: 'transparent', border: 'none',
+              color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 11,
             }}
           >
             <Settings size={12} />
             <span>Configurações</span>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.1, color: 'var(--text-secondary)' }}
-            whileTap={{ scale: 0.9 }}
+          </button>
+          <button
             onClick={() => setShowStorageInfo(!showStorageInfo)}
             title="Info de armazenamento"
-            aria-label="Info de armazenamento"
             style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
+              background: 'none', border: 'none', cursor: 'pointer',
               color: showStorageInfo ? 'var(--color-accent)' : 'var(--text-muted)',
-              padding: 4,
-              display: 'flex',
-              alignItems: 'center',
-              borderRadius: 4,
-              transition: 'color 0.15s ease',
+              padding: 4, display: 'flex', alignItems: 'center', borderRadius: 4,
             }}
           >
             <HardDrive size={11} />
-          </motion.button>
+          </button>
         </div>
         <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>
           {appVersion ? `v${appVersion}` : ''}
         </span>
-      </motion.div>
+      </div>
     </div>
   );
 }
 
-// --- Section Header subcomponent ---
-
 function SectionHeader({ label, count }: { label: string; count: number }) {
   return (
-    <div
-      style={{
-        padding: '8px 14px 4px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}
-    >
-      <p
-        style={{
-          fontSize: 10,
-          fontWeight: 600,
-          color: 'var(--text-muted)',
-          textTransform: 'uppercase',
-          letterSpacing: 0.8,
-          margin: 0,
-        }}
-      >
+    <div style={{
+      padding: '8px 14px 4px', display: 'flex',
+      alignItems: 'center', justifyContent: 'space-between',
+    }}>
+      <p style={{
+        fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
+        textTransform: 'uppercase', letterSpacing: 0.8, margin: 0,
+      }}>
         {label}
       </p>
-      <span
-        style={{
-          fontSize: 9,
-          color: 'var(--text-dim)',
-          background: 'rgba(255,255,255,0.04)',
-          padding: '1px 5px',
-          borderRadius: 4,
-          fontWeight: 500,
-        }}
-      >
+      <span style={{
+        fontSize: 9, color: 'var(--text-dim)',
+        background: 'rgba(255,255,255,0.04)',
+        padding: '1px 5px', borderRadius: 4, fontWeight: 500,
+      }}>
         {count}
       </span>
     </div>
