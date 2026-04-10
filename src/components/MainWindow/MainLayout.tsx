@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PanelLeftOpen } from 'lucide-react';
 import Sidebar, { type SidebarView } from './Sidebar';
 import ChatWindow from '../Chat/ChatWindow';
 import ClipboardHistory from '../Clipboard/ClipboardHistory';
@@ -38,29 +39,23 @@ export default function MainLayout() {
   const [activeView, setActiveView] = useState<SidebarView>('chats');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Load conversation messages when active conversation changes
   useEffect(() => {
     if (activeConversationId) {
       loadFromConversation(activeConversationId);
     }
   }, [activeConversationId, loadFromConversation]);
 
-  // Selecting a conversation closes settings and returns to chats
   const handleSelectConversation = useCallback((id: string) => {
     useConversationStore.getState().setActiveConversation(id);
     if (showSettings) setShowSettings(false);
     if (activeView !== 'chats') setActiveView('chats');
   }, [showSettings, setShowSettings, activeView]);
 
-  // Switching to clipboard auto-collapses sidebar
   const handleViewChange = useCallback((view: SidebarView) => {
     setActiveView(view);
-    if (view === 'clipboard') {
-      setSidebarCollapsed(true);
-    }
+    if (view === 'clipboard') setSidebarCollapsed(true);
   }, []);
 
-  // Back from clipboard: restore sidebar and switch to chats
   const handleBackFromClipboard = useCallback(() => {
     setActiveView('chats');
     setSidebarCollapsed(false);
@@ -93,6 +88,43 @@ export default function MainLayout() {
         />
       </motion.div>
 
+      {/* Expand sidebar strip — thin left-edge hover zone */}
+      <AnimatePresence>
+        {sidebarCollapsed && activeView === 'chats' && (
+          <motion.div
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -8 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            style={{
+              position: 'relative', zIndex: 2,
+              display: 'flex', alignItems: 'center',
+              borderRight: '0.5px solid var(--border-subtle)',
+            }}
+          >
+            <motion.button
+              whileHover={{ backgroundColor: 'var(--surface-hover)' }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setSidebarCollapsed(false)}
+              title="Expandir sidebar"
+              style={{
+                width: 28, height: '100%',
+                background: 'color-mix(in srgb, var(--bg-secondary) 60%, transparent)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--text-muted)',
+                transition: 'color 0.15s ease',
+              }}
+            >
+              <PanelLeftOpen size={14} />
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main content area */}
       <motion.div variants={itemVariants} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
         {/* Titlebar drag region + window controls */}
@@ -101,40 +133,11 @@ export default function MainLayout() {
           style={{
             position: 'absolute', top: 0, left: 0, right: 0, height: 38,
             zIndex: 50, display: 'flex', alignItems: 'center',
-            justifyContent: sidebarCollapsed ? 'space-between' : 'flex-end',
+            justifyContent: 'flex-end',
             padding: '0 4px',
             pointerEvents: 'auto',
           }}
         >
-          {/* Show expand button when sidebar is collapsed */}
-          {sidebarCollapsed && (
-            <motion.button
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={activeView === 'clipboard' ? handleBackFromClipboard : () => setSidebarCollapsed(false)}
-              data-no-drag
-              style={{
-                padding: '4px 8px', borderRadius: 6,
-                background: 'var(--glass-secondary)',
-                border: '0.5px solid var(--glass-border-subtle)',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                fontSize: 10, fontWeight: 500,
-                marginLeft: platform === 'macos' ? 72 : 4,
-              }}
-            >
-              {activeView === 'clipboard' ? (
-                <>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                  Voltar
-                </>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
-              )}
-            </motion.button>
-          )}
           {platform !== 'macos' && <WindowControls variant="header" />}
         </div>
 
