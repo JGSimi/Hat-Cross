@@ -498,6 +498,14 @@ function ClipboardTab({
         <SettingRow label="Clipboard Processing ativo">
           <Toggle checked={clip.enabled} onChange={(v) => update({ enabled: v })} />
         </SettingRow>
+        <SettingRow label="Capturar imagens do clipboard">
+          <Toggle checked={clip.captureImages} onChange={(v) => update({ captureImages: v })} />
+        </SettingRow>
+        {clip.captureImages && (
+          <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+            Quando ativo, imagens copiadas (screenshots, prints) também são enviadas para a IA junto com o texto.
+          </p>
+        )}
         <SettingRow label="Som ao completar">
           <Toggle checked={clip.soundOnComplete} onChange={(v) => update({ soundOnComplete: v })} />
         </SettingRow>

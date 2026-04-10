@@ -34,6 +34,7 @@ export interface ClipboardEntry {
   timestamp: number;
   provider: string;
   model: string;
+  images?: string[]; // base64 images captured from clipboard
 }
 
 // === AI Models ===
@@ -200,6 +201,7 @@ export interface ClipboardSettings {
   maxResponseLength: number;
   appendMode: boolean; // append response below original text
   soundOnComplete: boolean;
+  captureImages: boolean; // also read images from clipboard
 }
 
 export interface NotificationSettings {
@@ -296,6 +298,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     maxResponseLength: 4096,
     appendMode: false,
     soundOnComplete: true,
+    captureImages: true,
   },
   notifications: {
     enabled: true,

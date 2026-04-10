@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clipboard, Copy, Check, MessageSquarePlus, Trash2, Clock, Cpu, X, ArrowLeft } from 'lucide-react';
+import { Clipboard, Copy, Check, MessageSquarePlus, Trash2, Clock, Cpu, X, ArrowLeft, ImageIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -86,7 +86,10 @@ function ClipboardCard({ entry, onOpenInChat, onDelete }: {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <Clipboard size={11} style={{ color: 'var(--color-accent)' }} />
+            {entry.images && entry.images.length > 0
+              ? <ImageIcon size={11} style={{ color: 'var(--color-accent)' }} />
+              : <Clipboard size={11} style={{ color: 'var(--color-accent)' }} />
+            }
           </div>
           <p style={{
             fontSize: 11, color: 'var(--text-secondary)', margin: 0,
@@ -135,15 +138,37 @@ function ClipboardCard({ entry, onOpenInChat, onDelete }: {
                 fontSize: 9, fontWeight: 600, color: 'var(--text-dim)',
                 textTransform: 'uppercase', letterSpacing: 0.8, margin: '0 0 6px',
               }}>
-                Texto original
+                {entry.images && entry.images.length > 0 ? 'Conteúdo original' : 'Texto original'}
               </p>
-              <p style={{
-                fontSize: 11.5, color: 'var(--text-muted)', margin: 0,
-                lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                maxHeight: 120, overflowY: 'auto',
-              }}>
-                {entry.originalText}
-              </p>
+              {entry.images && entry.images.length > 0 && (
+                <div style={{
+                  display: 'flex', gap: 6, marginBottom: entry.originalText && entry.originalText !== '(imagem)' ? 8 : 0,
+                  flexWrap: 'wrap',
+                }}>
+                  {entry.images.map((img, i) => (
+                    <img
+                      key={i}
+                      src={`data:image/png;base64,${img}`}
+                      alt={`Clipboard imagem ${i + 1}`}
+                      style={{
+                        maxWidth: 180, maxHeight: 120,
+                        borderRadius: 8,
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        objectFit: 'contain',
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+              {entry.originalText && entry.originalText !== '(imagem)' && (
+                <p style={{
+                  fontSize: 11.5, color: 'var(--text-muted)', margin: 0,
+                  lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  maxHeight: 120, overflowY: 'auto',
+                }}>
+                  {entry.originalText}
+                </p>
+              )}
             </div>
 
             {/* AI Response */}
@@ -322,7 +347,7 @@ export default function ClipboardHistory({ onBack }: { onBack?: () => void }) {
             Nenhum clipboard processado
           </p>
           <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, maxWidth: 220 }}>
-            Copie um texto e pressione o atalho de clipboard para processar com a IA
+            Copie um texto ou imagem e pressione o atalho de clipboard para processar com a IA
           </p>
         </motion.div>
       </div>
