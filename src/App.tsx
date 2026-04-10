@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { listen, emit } from '@tauri-apps/api/event';
-import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { readText, writeText, readImage } from '@tauri-apps/plugin-clipboard-manager';
 import { invoke } from '@tauri-apps/api/core';
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -213,9 +213,27 @@ function App() {
   }, [rebuildTrayMenu]);
 
   // Clipboard processing — core feature
-  // Flow: user copies text → presses shortcut → AI processes → notification with response
+  // Flow: user copies text/image → presses shortcut → AI processes → notification with response
   useEffect(() => {
     let isProcessing = false;
+
+    // Convert RGBA Image to base64 PNG via OffscreenCanvas
+    async function imageToBase64(image: Awaited<ReturnType<typeof readImage>>): Promise<string> {
+      const rgba = await image.rgba();
+      const { width, height } = await image.size();
+      const canvas = new OffscreenCanvas(width, height);
+      const ctx = canvas.getContext('2d')!;
+      const imageData = new ImageData(new Uint8ClampedArray(rgba), width, height);
+      ctx.putImageData(imageData, 0, 0);
+      const blob = await canvas.convertToBlob({ type: 'image/png' });
+      const buffer = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    }
 
     const unlisten = listen('process-clipboard', async () => {
       if (isProcessing) return;
@@ -229,8 +247,30 @@ function App() {
 
         if (!clip.enabled) { isProcessing = false; return; }
 
-        const clipText = await readText();
-        if (!clipText) {
+        // Read text and (optionally) image from clipboard
+        let clipText = '';
+        const clipImages: string[] = [];
+
+        try {
+          clipText = await readText() || '';
+        } catch {
+          // readText can throw if clipboard has non-text content
+        }
+
+        if (clip.captureImages) {
+          try {
+            const clipImage = await readImage();
+            if (clipImage) {
+              const base64 = await imageToBase64(clipImage);
+              if (base64) clipImages.push(base64);
+            }
+          } catch {
+            // No image in clipboard — that's fine
+          }
+        }
+
+        // Need at least text or image
+        if (!clipText && clipImages.length === 0) {
           if (settings.notifications.enabled && settings.notifications.showClipboardEmptyNotification) {
             invoke('send_notification', { title: 'Hat', body: 'Clipboard vazio.' }).catch(() => {});
           }
@@ -240,8 +280,14 @@ function App() {
 
         // Notify processing started
         if (settings.notifications.enabled && settings.notifications.showProcessingNotification) {
-          const preview = clipText.length > 80 ? clipText.slice(0, 80) + '...' : clipText;
-          invoke('send_notification', { title: 'Hat — Processando', body: preview }).catch(() => {});
+          const hasImage = clipImages.length > 0;
+          const preview = clipText
+            ? (clipText.length > 80 ? clipText.slice(0, 80) + '...' : clipText)
+            : '(imagem)';
+          const title = hasImage && clipText ? 'Hat — Processando texto + imagem' :
+                        hasImage ? 'Hat — Processando imagem' :
+                        'Hat — Processando';
+          invoke('send_notification', { title, body: preview }).catch(() => {});
         }
 
         const isLocal = settings.inferenceMode === 'local';
@@ -253,6 +299,9 @@ function App() {
         const systemPrompt = clip.useCustomPrompt && clip.customPrompt
           ? clip.customPrompt
           : settings.systemPrompt;
+
+        // If only image and no text, provide a default prompt
+        const messageText = clipText || 'Descreva e analise esta imagem.';
 
         let response = '';
         let hasReceivedContent = false;
@@ -270,9 +319,9 @@ function App() {
                 const maxLen = clip.maxResponseLength || 4096;
                 const finalResponse = response.length > maxLen ? response.slice(0, maxLen) + '...' : response;
 
-                // Copy to clipboard
+                // Copy to clipboard (text response only)
                 if (clip.copyResponseToClipboard) {
-                  const textToWrite = clip.appendMode
+                  const textToWrite = clip.appendMode && clipText
                     ? `${clipText}\n\n---\n\n${finalResponse}`
                     : finalResponse;
                   writeText(textToWrite).catch(() => {});
@@ -290,14 +339,15 @@ function App() {
                   }).catch(() => {});
                 }
 
-                // Save to clipboard history
+                // Save to clipboard history (with images if present)
                 useClipboardStore.getState().addEntry({
                   id: crypto.randomUUID(),
-                  originalText: clipText,
+                  originalText: clipText || '(imagem)',
                   response: finalResponse,
                   timestamp: Date.now(),
                   provider,
                   model,
+                  ...(clipImages.length > 0 ? { images: clipImages } : {}),
                 });
 
                 // Sound
@@ -328,12 +378,12 @@ function App() {
         );
 
         await invoke('stream_chat', {
-          messages: [{ role: 'user', textContent: clipText }],
+          messages: [{ role: 'user', textContent: messageText }],
           systemPrompt,
           provider, endpoint, model,
           temperature: settings.temperature,
           maxTokens: clip.maxResponseLength || settings.maxTokens,
-          images: [],
+          images: clipImages,
         });
       } catch (e) {
         console.error('Clipboard processing failed:', e);
