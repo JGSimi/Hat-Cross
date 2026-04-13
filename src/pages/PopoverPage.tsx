@@ -59,7 +59,7 @@ export default function PopoverPage() {
             transition={springTransition}
             style={{ width: '100%', height: '100%' }}
           >
-            <PopoverChat />
+            <PopoverChat onBack={toggleRevealed} />
           </motion.div>
         )}
       </AnimatePresence>
