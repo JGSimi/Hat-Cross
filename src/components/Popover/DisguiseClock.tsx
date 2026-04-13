@@ -12,7 +12,11 @@ function formatDate(date: Date): string {
   return `${weekday}, ${day} ${month}`;
 }
 
-export default function DisguiseClock() {
+interface DisguiseClockProps {
+  onReveal?: () => void;
+}
+
+export default function DisguiseClock({ onReveal }: DisguiseClockProps) {
   const reducedMotion = useSettingsStore((s) => s.settings.performance.reducedMotion);
   const [now, setNow] = useState(() => new Date());
   const [colonVisible, setColonVisible] = useState(true);
@@ -36,6 +40,8 @@ export default function DisguiseClock() {
   return (
     <motion.div
       {...animationProps}
+      data-tauri-drag-region
+      onClick={onReveal}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -46,6 +52,7 @@ export default function DisguiseClock() {
         background: 'var(--bg-primary)',
         borderRadius: 12,
         userSelect: 'none',
+        cursor: 'pointer',
       }}
     >
       {/* Time display */}

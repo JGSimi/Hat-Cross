@@ -56,7 +56,7 @@ export default function PopoverPage() {
             transition={springTransition}
             style={{ width: '100%', height: '100%' }}
           >
-            <DisguiseClock />
+            <DisguiseClock onReveal={toggleRevealed} />
           </motion.div>
         ) : (
           <motion.div
