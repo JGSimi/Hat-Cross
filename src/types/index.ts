@@ -189,8 +189,6 @@ export interface PopoverSettings {
   stealthHoverOpacity: number;
   disguiseMode: boolean;
   disguiseWidget: 'clock';
-  knockPattern: number[];    // inter-click intervals in ms, e.g. [200, 200, 600]
-  knockTolerance: number;    // ms tolerance, default 150
   rememberPosition: boolean;
 }
 
@@ -283,8 +281,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
     stealthHoverOpacity: 0.4,
     disguiseMode: true,
     disguiseWidget: 'clock',
-    knockPattern: [200, 200, 600],
-    knockTolerance: 150,
     rememberPosition: true,
   },
   inferenceMode: 'api',
