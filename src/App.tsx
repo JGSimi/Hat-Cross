@@ -10,7 +10,7 @@ import AnalysisPage from './pages/AnalysisPage';
 import PopoverPage from './pages/PopoverPage';
 import HorseLogo from './components/Shared/HorseLogo';
 import ToastContainer from './components/Shared/ToastContainer';
-import { useSettingsStore } from './stores/settingsStore';
+import { useSettingsStore, setupSettingsSync } from './stores/settingsStore';
 import { useChatStore } from './stores/chatStore';
 import { useConversationStore } from './stores/conversationStore';
 import { useClipboardStore } from './stores/clipboardStore';
@@ -42,6 +42,7 @@ function App() {
 
   useEffect(() => {
     loadSettings();
+    setupSettingsSync();
     useConversationStore.getState().loadConversations();
     useClipboardStore.getState().loadEntries();
   }, [loadSettings]);

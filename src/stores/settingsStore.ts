@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { LazyStore } from '@tauri-apps/plugin-store';
 import { invoke } from '@tauri-apps/api/core';
+import { emit, listen } from '@tauri-apps/api/event';
 import {
   type AppSettings,
   type AppTheme,
@@ -228,8 +229,20 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       const { settings, providerConfigs } = get();
       await tauriStore.set('hat-settings', { settings, providerConfigs });
       await tauriStore.save();
+      // Notify other windows to reload settings
+      emit('settings-changed').catch(() => {});
     } catch (err) {
       console.error('[SettingsStore] Failed to save settings:', err);
     }
   },
 }));
+
+// Cross-window settings sync: reload when another window saves
+let _syncListenerSetup = false;
+export function setupSettingsSync() {
+  if (_syncListenerSetup) return;
+  _syncListenerSetup = true;
+  listen('settings-changed', () => {
+    useSettingsStore.getState().loadSettings();
+  });
+}
