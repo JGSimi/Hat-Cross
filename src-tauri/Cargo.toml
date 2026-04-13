@@ -1,6 +1,6 @@
 [package]
 name = "hat-cross"
-version = "2.22.5"
+version = "2.22.6"
 description = "Hat — AI Assistant"
 authors = ["JGSimi"]
 edition = "2021"
