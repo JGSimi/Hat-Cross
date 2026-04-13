@@ -237,12 +237,16 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
 }));
 
-// Cross-window settings sync: reload when another window saves
+// Cross-window settings sync: reload when another window saves (debounced)
 let _syncListenerSetup = false;
 export function setupSettingsSync() {
   if (_syncListenerSetup) return;
   _syncListenerSetup = true;
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   listen('settings-changed', () => {
-    useSettingsStore.getState().loadSettings();
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      useSettingsStore.getState().loadSettings();
+    }, 300);
   });
 }

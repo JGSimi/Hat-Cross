@@ -20,15 +20,15 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
 
   // Scroll on new messages only
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    bottomRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages.length]);
 
-  // Separate throttled scroll for streaming (max 3 times/sec)
+  // Throttled scroll for streaming
   useEffect(() => {
     if (!isStreaming) return;
     const interval = setInterval(() => {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 300);
+      bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+    }, 800);
     return () => clearInterval(interval);
   }, [isStreaming]);
 
