@@ -23,6 +23,7 @@ pub fn show_window(app: &AppHandle, label: &str) {
                 .resizable(true)
                 .decorations(false)
                 .shadow(false)
+                .transparent(true)
                 .skip_taskbar(true)
                 .always_on_top(true),
             "main" => builder
