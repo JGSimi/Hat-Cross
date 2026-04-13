@@ -119,11 +119,18 @@ function App() {
         }
       }
 
-      // Register floating chat shortcut
+      // Register floating chat shortcut (toggle — must debounce auto-repeat)
       if (floatingChatShortcut && floatingChatShortcut !== prev.floatingChat) {
+        let lastToggleTime = 0;
         try {
-          await register(floatingChatShortcut, () => {
-            invoke('toggle_popover_window').catch(() => {});
+          await register(floatingChatShortcut, (event) => {
+            if (event.state === 'Pressed') {
+              const now = Date.now();
+              if (now - lastToggleTime > 400) {
+                lastToggleTime = now;
+                invoke('toggle_popover_window').catch(() => {});
+              }
+            }
           });
           prev.floatingChat = floatingChatShortcut;
         } catch (e) {

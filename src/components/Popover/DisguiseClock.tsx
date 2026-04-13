@@ -43,9 +43,8 @@ export default function DisguiseClock() {
         justifyContent: 'center',
         height: '100%',
         width: '100%',
-        background: 'var(--glass-primary)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+        background: 'var(--bg-primary)',
+        borderRadius: 12,
         userSelect: 'none',
       }}
     >

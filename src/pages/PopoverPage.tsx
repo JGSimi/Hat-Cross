@@ -40,6 +40,7 @@ export default function PopoverPage() {
         width: '100%',
         height: '100%',
         overflow: 'hidden',
+        background: 'var(--bg-primary)',
         ['--stealth-hover-opacity' as string]: popoverSettings.stealthHoverOpacity,
       }}
       onMouseEnter={() => setHovered(true)}
