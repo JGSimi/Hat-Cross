@@ -22,11 +22,24 @@ export default function DisguiseClock({ onReveal }: DisguiseClockProps) {
   const [colonVisible, setColonVisible] = useState(true);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(new Date());
-      setColonVisible((v) => !v);
-    }, 1000);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (interval) return;
+      interval = setInterval(() => {
+        setNow(new Date());
+        setColonVisible((v) => !v);
+      }, 1000);
+    };
+    const stop = () => {
+      if (interval) { clearInterval(interval); interval = null; }
+    };
+    const onVisibility = () => document.hidden ? stop() : start();
+    start();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   const hours = String(now.getHours()).padStart(2, '0');

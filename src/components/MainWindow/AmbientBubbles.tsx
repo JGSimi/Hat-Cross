@@ -26,17 +26,11 @@ interface BubbleConfig {
 
 const BUBBLES: BubbleConfig[] = [
   // Large — top-left area
-  { id: 1, size: 450, x: 12, y: -8, blur: 120, opacity: 0.12, duration: 28, delay: 0, driftX: 8, driftY: 6, scale: [1, 1.06] },
+  { id: 1, size: 400, x: 12, y: -8, blur: 80, opacity: 0.10, duration: 28, delay: 0, driftX: 8, driftY: 6, scale: [1, 1.04] },
   // Medium — center-right
-  { id: 2, size: 320, x: 72, y: 22, blur: 100, opacity: 0.10, duration: 24, delay: -6, driftX: 10, driftY: 8, scale: [0.95, 1.05] },
-  // Small — bottom-left
-  { id: 3, size: 220, x: 8, y: 68, blur: 80, opacity: 0.13, duration: 20, delay: -10, driftX: 6, driftY: 10, scale: [1, 1.08] },
+  { id: 2, size: 280, x: 72, y: 35, blur: 60, opacity: 0.08, duration: 24, delay: -6, driftX: 8, driftY: 6, scale: [0.97, 1.03] },
   // Large — bottom-right corner
-  { id: 4, size: 400, x: 82, y: 78, blur: 110, opacity: 0.09, duration: 32, delay: -4, driftX: 7, driftY: 5, scale: [0.96, 1.04] },
-  // Small vibrant — top-right
-  { id: 5, size: 180, x: 88, y: 2, blur: 70, opacity: 0.14, duration: 18, delay: -8, driftX: 12, driftY: 8, scale: [1, 1.10] },
-  // Medium — center
-  { id: 6, size: 260, x: 38, y: 42, blur: 90, opacity: 0.08, duration: 26, delay: -14, driftX: 9, driftY: 7, scale: [0.98, 1.06] },
+  { id: 3, size: 350, x: 82, y: 78, blur: 70, opacity: 0.08, duration: 32, delay: -4, driftX: 6, driftY: 4, scale: [0.98, 1.03] },
 ];
 
 function Bubble({ config }: { config: BubbleConfig }) {
