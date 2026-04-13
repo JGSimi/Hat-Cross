@@ -737,6 +737,11 @@ code {
   transition: opacity 0.3s ease-in-out, filter 0.3s ease-in-out;
 }
 
+/* Popover ghost transition */
+.popover-ghost {
+  transition: opacity 0.3s ease-in-out, filter 0.3s ease-in-out;
+}
+
 /* ==========================================================================
    Animations — CSS Keyframes
    ========================================================================== */

@@ -143,7 +143,7 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     tray.set_menu(Some(menu))?;
 
-    // Left click: toggle main window
+    // Left click: emit tray-click for knock detection + toggle main window
     let app_handle = app.handle().clone();
     tray.on_tray_icon_event(move |_tray, event| {
         if let TrayIconEvent::Click {
@@ -151,10 +151,20 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             ..
         } = event
         {
-            if windows::is_window_visible(&app_handle, "main") {
-                windows::hide_window(&app_handle, "main");
-            } else {
-                windows::show_window(&app_handle, "main");
+            // Emit timestamp for secret knock detection in frontend
+            let timestamp_ms = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64;
+            let _ = app_handle.emit("tray-click", timestamp_ms);
+
+            // Only toggle main window if popover is not visible
+            if !windows::is_window_visible(&app_handle, "popover") {
+                if windows::is_window_visible(&app_handle, "main") {
+                    windows::hide_window(&app_handle, "main");
+                } else {
+                    windows::show_window(&app_handle, "main");
+                }
             }
         }
     });
