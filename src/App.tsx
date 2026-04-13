@@ -7,6 +7,7 @@ import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
 import { AnimatePresence, motion } from 'framer-motion';
 import MainPage from './pages/MainPage';
 import AnalysisPage from './pages/AnalysisPage';
+import PopoverPage from './pages/PopoverPage';
 import HorseLogo from './components/Shared/HorseLogo';
 import ToastContainer from './components/Shared/ToastContainer';
 import { useSettingsStore } from './stores/settingsStore';
@@ -72,13 +73,14 @@ function App() {
   }, [appearance, performance]);
 
   // Global shortcut registration via JS API (handles CommandOrControl correctly per platform)
-  const registeredShortcuts = useRef<{ clipboard: string; screenCapture: string }>({ clipboard: '', screenCapture: '' });
+  const registeredShortcuts = useRef<{ clipboard: string; screenCapture: string; floatingChat: string }>({ clipboard: '', screenCapture: '', floatingChat: '' });
   useEffect(() => {
     const prev = registeredShortcuts.current;
 
     async function registerShortcuts() {
       const clipShortcut = normalizeShortcut(shortcuts.clipboard);
       const captureShortcut = normalizeShortcut(shortcuts.screenCapture);
+      const floatingChatShortcut = normalizeShortcut(shortcuts.floatingChat);
 
       // Unregister old shortcuts if they changed
       if (prev.clipboard && prev.clipboard !== clipShortcut) {
@@ -86,6 +88,9 @@ function App() {
       }
       if (prev.screenCapture && prev.screenCapture !== captureShortcut) {
         try { await unregister(prev.screenCapture); } catch {}
+      }
+      if (prev.floatingChat && prev.floatingChat !== floatingChatShortcut) {
+        try { await unregister(prev.floatingChat); } catch {}
       }
 
       // Register clipboard shortcut
@@ -113,6 +118,19 @@ function App() {
           prev.screenCapture = '';
         }
       }
+
+      // Register floating chat shortcut
+      if (floatingChatShortcut && floatingChatShortcut !== prev.floatingChat) {
+        try {
+          await register(floatingChatShortcut, () => {
+            invoke('toggle_popover_window').catch(() => {});
+          });
+          prev.floatingChat = floatingChatShortcut;
+        } catch (e) {
+          console.error('Failed to register floating chat shortcut:', e);
+          prev.floatingChat = '';
+        }
+      }
     }
 
     registerShortcuts();
@@ -120,8 +138,9 @@ function App() {
     return () => {
       if (prev.clipboard) { unregister(prev.clipboard).catch(() => {}); prev.clipboard = ''; }
       if (prev.screenCapture) { unregister(prev.screenCapture).catch(() => {}); prev.screenCapture = ''; }
+      if (prev.floatingChat) { unregister(prev.floatingChat).catch(() => {}); prev.floatingChat = ''; }
     };
-  }, [shortcuts.clipboard, shortcuts.screenCapture]);
+  }, [shortcuts.clipboard, shortcuts.screenCapture, shortcuts.floatingChat]);
 
   // Tray menu events
   useEffect(() => {
@@ -510,6 +529,7 @@ function App() {
       <Routes>
         <Route path="/main" element={<MainPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />
+        <Route path="/popover" element={<PopoverPage />} />
         <Route path="*" element={<Navigate to="/main" replace />} />
       </Routes>
 

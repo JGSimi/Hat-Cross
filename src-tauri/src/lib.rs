@@ -23,6 +23,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![
             commands::open_main_window,
+            commands::toggle_popover_window,
             commands::close_window,
             commands::capture_screen,
             commands::set_autostart,

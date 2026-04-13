@@ -14,7 +14,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'general' | 'notifications' | 'clipboard' | 'appearance' | 'models' | 'behavior' | 'shortcuts';
+type Tab = 'general' | 'notifications' | 'clipboard' | 'appearance' | 'models' | 'behavior' | 'shortcuts' | 'popover';
 
 const tabContentVariants = {
   initial: { opacity: 0, y: 8 },
@@ -45,6 +45,7 @@ export default function SettingsPanel({ onClose }: Props) {
     { id: 'clipboard', label: 'Clipboard' },
     { id: 'notifications', label: 'Notificações' },
     { id: 'shortcuts', label: 'Atalhos' },
+    { id: 'popover', label: 'Chat Flutuante' },
   ];
 
   return (
@@ -167,6 +168,9 @@ export default function SettingsPanel({ onClose }: Props) {
               )}
               {activeTab === 'shortcuts' && (
                 <ShortcutsTab settings={settings} updateSettings={updateSettings} />
+              )}
+              {activeTab === 'popover' && (
+                <PopoverTab settings={settings} updateSettings={updateSettings} />
               )}
             </motion.div>
           </AnimatePresence>
@@ -1470,10 +1474,288 @@ function ShortcutsTab({
             onChange={(v) => updateSettings({ shortcuts: { ...settings.shortcuts, screenCapture: v } })}
           />
         </SettingRow>
+        <SettingRow label="Chat Flutuante">
+          <ShortcutRecorder
+            value={settings.shortcuts.floatingChat}
+            onChange={(v) => updateSettings({ shortcuts: { ...settings.shortcuts, floatingChat: v } })}
+          />
+        </SettingRow>
       </GlassCard>
       <div style={{ marginTop: 8, padding: '0 4px', fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.5 }}>
         Clique no atalho e pressione a nova combinação de teclas. Esc para cancelar, Backspace para limpar.
       </div>
+    </>
+  );
+}
+
+function PopoverTab({
+  settings,
+  updateSettings,
+}: {
+  settings: ReturnType<typeof useSettingsStore.getState>['settings'];
+  updateSettings: ReturnType<typeof useSettingsStore.getState>['updateSettings'];
+}) {
+  const [recording, setRecording] = useState(false);
+  const [knockClicks, setKnockClicks] = useState<number[]>([]);
+  const [testResult, setTestResult] = useState<'match' | 'no-match' | null>(null);
+  const knockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const popover = settings.popover;
+
+  const handleStartRecordKnock = () => {
+    setRecording(true);
+    setKnockClicks([]);
+    setTestResult(null);
+  };
+
+  const handleKnockClick = () => {
+    if (!recording) return;
+    const now = Date.now();
+    const next = [...knockClicks, now];
+    setKnockClicks(next);
+
+    // Reset auto-stop timer
+    if (knockTimerRef.current) clearTimeout(knockTimerRef.current);
+    knockTimerRef.current = setTimeout(() => {
+      // Finished recording
+      if (next.length >= 2) {
+        const intervals: number[] = [];
+        for (let i = 1; i < next.length; i++) {
+          intervals.push(next[i] - next[i - 1]);
+        }
+        updateSettings({
+          popover: { ...popover, knockPattern: intervals },
+        });
+      }
+      setRecording(false);
+      setKnockClicks([]);
+    }, 2000);
+
+    // Auto-finish after 4 clicks (3 intervals)
+    if (next.length >= 4) {
+      if (knockTimerRef.current) clearTimeout(knockTimerRef.current);
+      const intervals: number[] = [];
+      for (let i = 1; i < next.length; i++) {
+        intervals.push(next[i] - next[i - 1]);
+      }
+      updateSettings({
+        popover: { ...popover, knockPattern: intervals },
+      });
+      setRecording(false);
+      setKnockClicks([]);
+    }
+  };
+
+  const handleTestKnock = () => {
+    // Simple visual feedback — test button just shows current pattern info
+    setTestResult(popover.knockPattern.length > 0 ? 'match' : 'no-match');
+    setTimeout(() => setTestResult(null), 2000);
+  };
+
+  // Visualize pattern as proportionally spaced dots
+  const maxInterval = Math.max(...popover.knockPattern, 1);
+  const patternDots = [0, ...popover.knockPattern];
+
+  return (
+    <>
+      <SectionTitle>Atalho</SectionTitle>
+      <GlassCard>
+        <SettingRow label="Abrir Chat Flutuante">
+          <ShortcutRecorder
+            value={settings.shortcuts.floatingChat}
+            onChange={(v) =>
+              updateSettings({ shortcuts: { ...settings.shortcuts, floatingChat: v } })
+            }
+          />
+        </SettingRow>
+      </GlassCard>
+
+      <SectionTitle>Modo Fantasma</SectionTitle>
+      <GlassCard>
+        <SettingRow label="Modo furtivo">
+          <Toggle
+            checked={popover.stealthMode}
+            onChange={(v) => updateSettings({ popover: { ...popover, stealthMode: v } })}
+          />
+        </SettingRow>
+        {popover.stealthMode && (
+          <SettingRow label={`Opacidade ao passar mouse (${Math.round(popover.stealthHoverOpacity * 100)}%)`}>
+            <CustomSlider
+              min={0.1}
+              max={1}
+              step={0.05}
+              value={popover.stealthHoverOpacity}
+              onChange={(v) => updateSettings({ popover: { ...popover, stealthHoverOpacity: v } })}
+            />
+          </SettingRow>
+        )}
+      </GlassCard>
+
+      <SectionTitle>Modo Disfarce</SectionTitle>
+      <GlassCard>
+        <SettingRow label="Mostrar relógio como disfarce">
+          <Toggle
+            checked={popover.disguiseMode}
+            onChange={(v) => updateSettings({ popover: { ...popover, disguiseMode: v } })}
+          />
+        </SettingRow>
+        {popover.disguiseMode && (
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '4px 0 0', lineHeight: 1.5 }}>
+            O chat aparecerá como um widget de relógio. Use a batida secreta no ícone da bandeja para revelar.
+          </div>
+        )}
+      </GlassCard>
+
+      {popover.disguiseMode && (
+        <>
+          <SectionTitle>Batida Secreta</SectionTitle>
+          <GlassCard>
+            {/* Pattern visualization */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8 }}>
+                Padrão atual ({popover.knockPattern.length} intervalos):
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0,
+                  padding: '8px 12px',
+                  background: 'var(--input-bg)',
+                  borderRadius: 8,
+                  border: '0.5px solid var(--border-subtle)',
+                  minHeight: 32,
+                }}
+              >
+                {patternDots.map((_, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
+                    <div
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: 'var(--color-accent)',
+                        flexShrink: 0,
+                      }}
+                    />
+                    {i < popover.knockPattern.length && (
+                      <div
+                        style={{
+                          width: Math.max(12, (popover.knockPattern[i] / maxInterval) * 60),
+                          height: 2,
+                          background: 'var(--border-subtle)',
+                          margin: '0 2px',
+                        }}
+                      />
+                    )}
+                  </div>
+                ))}
+                <span style={{ fontSize: 9, color: 'var(--text-muted)', marginLeft: 8 }}>
+                  {popover.knockPattern.map((ms) => `${ms}ms`).join(' → ')}
+                </span>
+              </div>
+            </div>
+
+            {/* Record button */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              {recording ? (
+                <button
+                  onClick={handleKnockClick}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    background: 'var(--color-accent)',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Toque aqui ({knockClicks.length}/4)
+                </button>
+              ) : (
+                <button
+                  onClick={handleStartRecordKnock}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    fontSize: 11,
+                    fontWeight: 500,
+                    background: 'var(--surface-secondary)',
+                    color: 'var(--text-secondary)',
+                    border: '0.5px solid var(--border-subtle)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Gravar novo padrão
+                </button>
+              )}
+              <button
+                onClick={handleTestKnock}
+                disabled={recording}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  background: testResult === 'match'
+                    ? 'color-mix(in srgb, var(--color-accent) 20%, transparent)'
+                    : testResult === 'no-match'
+                      ? 'color-mix(in srgb, var(--error) 20%, transparent)'
+                      : 'var(--surface-secondary)',
+                  color: testResult === 'match'
+                    ? 'var(--color-accent)'
+                    : testResult === 'no-match'
+                      ? 'var(--error)'
+                      : 'var(--text-secondary)',
+                  border: '0.5px solid var(--border-subtle)',
+                  cursor: recording ? 'not-allowed' : 'pointer',
+                  opacity: recording ? 0.5 : 1,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {testResult === 'match' ? 'Padrão OK' : testResult === 'no-match' ? 'Sem padrão' : 'Testar'}
+              </button>
+            </div>
+
+            {/* Tolerance slider */}
+            <SettingRow label={`Tolerância (${popover.knockTolerance}ms)`}>
+              <CustomSlider
+                min={50}
+                max={500}
+                step={25}
+                value={popover.knockTolerance}
+                onChange={(v) => updateSettings({ popover: { ...popover, knockTolerance: v } })}
+              />
+            </SettingRow>
+          </GlassCard>
+        </>
+      )}
+
+      <SectionTitle>Tamanho</SectionTitle>
+      <GlassCard>
+        <SettingRow label={`Largura (${popover.width}px)`}>
+          <CustomSlider
+            min={300}
+            max={800}
+            step={10}
+            value={popover.width}
+            onChange={(v) => updateSettings({ popover: { ...popover, width: v } })}
+          />
+        </SettingRow>
+        <SettingRow label={`Altura (${popover.height}px)`}>
+          <CustomSlider
+            min={350}
+            max={900}
+            step={10}
+            value={popover.height}
+            onChange={(v) => updateSettings({ popover: { ...popover, height: v } })}
+          />
+        </SettingRow>
+      </GlassCard>
     </>
   );
 }

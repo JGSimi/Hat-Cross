@@ -187,11 +187,17 @@ export interface PopoverSettings {
   vibrancy: boolean;
   stealthMode: boolean;
   stealthHoverOpacity: number;
+  disguiseMode: boolean;
+  disguiseWidget: 'clock';
+  knockPattern: number[];    // inter-click intervals in ms, e.g. [200, 200, 600]
+  knockTolerance: number;    // ms tolerance, default 150
+  rememberPosition: boolean;
 }
 
 export interface ShortcutSettings {
   clipboard: string;
   screenCapture: string;
+  floatingChat: string;
 }
 
 export interface ClipboardSettings {
@@ -275,6 +281,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
     vibrancy: false,
     stealthMode: false,
     stealthHoverOpacity: 0.4,
+    disguiseMode: true,
+    disguiseWidget: 'clock',
+    knockPattern: [200, 200, 600],
+    knockTolerance: 150,
+    rememberPosition: true,
   },
   inferenceMode: 'api',
   cloudProvider: 'google',
@@ -285,6 +296,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   shortcuts: {
     clipboard: 'CommandOrControl+Shift+X',
     screenCapture: 'CommandOrControl+Shift+Z',
+    floatingChat: 'CommandOrControl+Shift+C',
   },
   tokenStats: {
     inputTokens: 0,

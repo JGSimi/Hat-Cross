@@ -90,6 +90,15 @@ pub fn open_main_window(app: AppHandle) {
 }
 
 #[tauri::command]
+pub fn toggle_popover_window(app: AppHandle) {
+    if windows::is_window_visible(&app, "popover") {
+        windows::hide_window(&app, "popover");
+    } else {
+        windows::show_window(&app, "popover");
+    }
+}
+
+#[tauri::command]
 pub fn close_window(app: AppHandle, label: String) {
     windows::hide_window(&app, &label);
 }
