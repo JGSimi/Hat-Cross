@@ -1,15 +1,14 @@
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
-import { invoke } from '@tauri-apps/api/core';
 import ChatWindow from '../Chat/ChatWindow';
 import { useSettingsStore } from '../../stores/settingsStore';
 
-export default function PopoverChat() {
-  const reducedMotion = useSettingsStore((s) => s.settings.performance.reducedMotion);
+interface PopoverChatProps {
+  onBack?: () => void;
+}
 
-  const handleClose = () => {
-    invoke('close_window', { label: 'popover' }).catch(() => {});
-  };
+export default function PopoverChat({ onBack }: PopoverChatProps) {
+  const reducedMotion = useSettingsStore((s) => s.settings.performance.reducedMotion);
 
   const animationProps = reducedMotion
     ? { initial: { opacity: 1 }, animate: { opacity: 1 }, transition: { duration: 0.01 } }
@@ -28,7 +27,7 @@ export default function PopoverChat() {
         overflow: 'hidden',
       }}
     >
-      {/* Drag region + close */}
+      {/* Drag region + back to clock */}
       <div
         data-tauri-drag-region
         style={{
@@ -44,8 +43,8 @@ export default function PopoverChat() {
         <motion.button
           whileHover={{ scale: 1.15 }}
           whileTap={{ scale: 0.9 }}
-          onClick={handleClose}
-          aria-label="Fechar"
+          onClick={onBack}
+          aria-label="Voltar ao relógio"
           style={{
             width: 18,
             height: 18,
