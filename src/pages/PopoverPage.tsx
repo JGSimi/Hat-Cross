@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSettingsStore } from '../stores/settingsStore';
-import { useSecretKnock } from '../hooks/useSecretKnock';
 import DisguiseClock from '../components/Popover/DisguiseClock';
 import PopoverChat from '../components/Popover/PopoverChat';
 
@@ -14,13 +13,6 @@ export default function PopoverPage() {
   const toggleRevealed = useCallback(() => {
     setRevealed((r) => !r);
   }, []);
-
-  useSecretKnock({
-    pattern: popoverSettings.knockPattern,
-    tolerance: popoverSettings.knockTolerance,
-    enabled: popoverSettings.disguiseMode,
-    onKnockMatch: toggleRevealed,
-  });
 
   // Ghost mode class
   const ghostClass = popoverSettings.stealthMode
