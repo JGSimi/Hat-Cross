@@ -21,6 +21,31 @@ function normalizeShortcut(s: string): string {
   return s.replace(/CmdOrCtrl/g, 'CommandOrControl');
 }
 
+/**
+ * Read clipboard text with short retry/backoff to beat the Windows
+ * clipboard-ownership race. When the global shortcut fires microseconds after
+ * Ctrl+C, the source application may still own the clipboard — OpenClipboard()
+ * fails under the hood and readText() returns empty or throws. The tray-menu
+ * path doesn't hit this because human reaction time (~200ms) already gives the
+ * OS time to release ownership. This helper replicates that grace period.
+ */
+async function readClipboardTextWithRetry(attempts = 3, delayMs = 60): Promise<string> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const text = await readText();
+      if (text) return text;
+    } catch (e) {
+      // readText throws on non-text clipboard content (e.g. image-only) — the
+      // retry is cheap and harmless; we'll return '' if it keeps throwing.
+      if (i === attempts - 1) console.warn('[clipboard] readText failed after retries:', e);
+    }
+    if (i < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  return '';
+}
+
 function App() {
   const location = useLocation();
   const isMainWindow = location.pathname === '/main' || location.pathname === '/';
@@ -172,7 +197,8 @@ function App() {
         } else {
           const { notifications } = useSettingsStore.getState().settings;
           if (notifications.enabled && notifications.showUpdateNotification) {
-            invoke('send_notification', { title: 'Hat', body: 'Você já está na versão mais recente!' }).catch(() => {});
+            invoke('send_notification', { title: 'Hat', body: 'Você já está na versão mais recente!' })
+              .catch((e) => console.error('[notification] update-check failed:', e));
           }
         }
       } catch (e) {
@@ -275,15 +301,11 @@ function App() {
 
         if (!clip.enabled) { isProcessing = false; return; }
 
-        // Read text and (optionally) image from clipboard
-        let clipText = '';
+        // Read text and (optionally) image from clipboard.
+        // readClipboardTextWithRetry handles the Windows ownership race where the
+        // source app may still hold the clipboard when a global shortcut fires.
+        let clipText = await readClipboardTextWithRetry();
         const clipImages: string[] = [];
-
-        try {
-          clipText = await readText() || '';
-        } catch {
-          // readText can throw if clipboard has non-text content
-        }
 
         if (clip.captureImages) {
           try {
@@ -300,7 +322,8 @@ function App() {
         // Need at least text or image
         if (!clipText && clipImages.length === 0) {
           if (settings.notifications.enabled && settings.notifications.showClipboardEmptyNotification) {
-            invoke('send_notification', { title: 'Hat', body: 'Clipboard vazio.' }).catch(() => {});
+            invoke('send_notification', { title: 'Hat', body: 'Clipboard vazio.' })
+              .catch((e) => console.error('[notification] clipboard-empty failed:', e));
           }
           isProcessing = false;
           return;
@@ -315,7 +338,8 @@ function App() {
           const title = hasImage && clipText ? 'Hat — Processando texto + imagem' :
                         hasImage ? 'Hat — Processando imagem' :
                         'Hat — Processando';
-          invoke('send_notification', { title, body: preview }).catch(() => {});
+          invoke('send_notification', { title, body: preview })
+            .catch((e) => console.error('[notification] processing-started failed:', e));
         }
 
         const isLocal = settings.inferenceMode === 'local';
@@ -355,7 +379,8 @@ function App() {
                   const textToWrite = clip.appendMode && clipText
                     ? `${clipText}\n\n---\n\n${finalResponse}`
                     : finalResponse;
-                  writeText(textToWrite).catch(() => {});
+                  writeText(textToWrite)
+                    .catch((e) => console.error('[clipboard] writeText failed:', e));
                 }
 
                 // Notification with full response text
@@ -367,7 +392,7 @@ function App() {
                   invoke('send_notification', {
                     title: clip.copyResponseToClipboard ? 'Hat — Copiado para clipboard' : 'Hat — Resposta',
                     body: notifBody,
-                  }).catch(() => {});
+                  }).catch((e) => console.error('[notification] response failed:', e));
                 }
 
                 // Save to clipboard history (with images if present)
@@ -397,7 +422,8 @@ function App() {
                 const errorNotif = useSettingsStore.getState().settings.notifications;
                 if (errorNotif.enabled && errorNotif.showErrorNotification) {
                   const errorMsg = event.payload.text || 'Erro desconhecido';
-                  invoke('send_notification', { title: 'Hat — Erro', body: errorMsg }).catch(() => {});
+                  invoke('send_notification', { title: 'Hat — Erro', body: errorMsg })
+                    .catch((e) => console.error('[notification] stream-error failed:', e));
                 }
               }
 
@@ -425,7 +451,8 @@ function App() {
         }
         const catchNotif = useSettingsStore.getState().settings.notifications;
         if (catchNotif.enabled && catchNotif.showErrorNotification) {
-          invoke('send_notification', { title: 'Hat — Erro', body: 'Falha ao processar clipboard.' }).catch(() => {});
+          invoke('send_notification', { title: 'Hat — Erro', body: 'Falha ao processar clipboard.' })
+            .catch((e) => console.error('[notification] processing-error failed:', e));
         }
         isProcessing = false;
       }
