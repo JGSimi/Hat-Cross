@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { invoke } from '@tauri-apps/api/core';
 import { X, Copy, Check, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -37,7 +39,20 @@ export default function RechargeModal({ open, onClose }: Props) {
     }
   };
 
-  return (
+  // Tauri's webview swallows target="_blank" / href-to-http-scheme clicks
+  // silently because there's no OS default handler for the in-app webview.
+  // Route through the Rust `open_external_url` command instead so the URL
+  // reliably opens in the user's default browser.
+  const openWhatsApp = () => {
+    invoke('open_external_url', { url: WHATSAPP_URL }).catch((e) => {
+      console.error('[recharge] whatsapp open failed:', e);
+    });
+  };
+
+  // Render through a portal so the modal escapes any ancestor stacking
+  // context (e.g. the Settings sidebar's transform/z-index) and always
+  // sits above the rest of the UI.
+  const content = (
     <AnimatePresence>
       {open && (
         <motion.div
@@ -53,7 +68,7 @@ export default function RechargeModal({ open, onClose }: Props) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 200,
+            zIndex: 9999,
             padding: 20,
           }}
         >
@@ -145,10 +160,8 @@ export default function RechargeModal({ open, onClose }: Props) {
                 </span>
                 {copied === 'uid' ? <Check size={12} /> : <Copy size={12} />}
               </button>
-              <a
-                href={WHATSAPP_URL}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                onClick={openWhatsApp}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -160,12 +173,13 @@ export default function RechargeModal({ open, onClose }: Props) {
                   color: 'var(--color-accent)',
                   fontSize: 11,
                   fontWeight: 600,
-                  textDecoration: 'none',
                   border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
                 }}
               >
                 <MessageCircle size={12} /> Abrir WhatsApp
-              </a>
+              </button>
             </Section>
 
             <p style={{ fontSize: 10, color: 'var(--text-dim)', lineHeight: 1.5, marginTop: 18, marginBottom: 0, textAlign: 'center' }}>
@@ -176,6 +190,8 @@ export default function RechargeModal({ open, onClose }: Props) {
       )}
     </AnimatePresence>
   );
+
+  return createPortal(content, document.body);
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
