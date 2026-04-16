@@ -21,6 +21,7 @@ export default function ChatWindow({ showScreenCapture = true }: Props) {
   const { pendingAttachments, removeAttachment, addAttachment, error } = useChatStore();
   const { captureScreen } = useScreenCapture();
   const createConversation = useConversationStore((s) => s.createConversation);
+  const activeConversationId = useConversationStore((s) => s.activeConversationId);
 
   const handleScreenCapture = async () => {
     const base64 = await captureScreen();
@@ -219,6 +220,7 @@ export default function ChatWindow({ showScreenCapture = true }: Props) {
         attachments={pendingAttachments}
         onRemoveAttachment={removeAttachment}
         onAddAttachment={addAttachment}
+        conversationId={activeConversationId}
       />
     </div>
   );

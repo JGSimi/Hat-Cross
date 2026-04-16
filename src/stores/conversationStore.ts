@@ -1,11 +1,27 @@
 import { create } from 'zustand';
 import { readTextFile, writeTextFile, mkdir, exists } from '@tauri-apps/plugin-fs';
 import { appDataDir, join } from '@tauri-apps/api/path';
+import { LazyStore } from '@tauri-apps/plugin-store';
 import type { Conversation, Message } from '../types';
 import { useSettingsStore } from './settingsStore';
+import { useDraftsStore } from './draftsStore';
 
 const CONVERSATIONS_FILE = 'conversations.json';
 const SAVE_DEBOUNCE_MS = 500;
+
+// Persists the currently-active conversation id across app restarts.
+const activeIdStore = new LazyStore('conversation-state.json');
+
+function persistActiveId(id: string | null): void {
+  activeIdStore
+    .set('activeId', id)
+    .then(() => activeIdStore.save())
+    .catch((err) => console.error('Failed to persist activeId', err));
+}
+
+function pruneDraftOrphans(validIds: string[]): void {
+  useDraftsStore.getState().pruneOrphans(new Set(validIds));
+}
 
 // --- Helpers ---
 
@@ -101,6 +117,7 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       };
     });
 
+    persistActiveId(conversation.id);
     debouncedSave(() => get().saveConversations());
     return conversation;
   },
@@ -115,11 +132,16 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       return { conversations, activeConversationId };
     });
     debouncedSave(() => get().saveConversations());
+    const newConversations = get().conversations;
+    persistActiveId(get().activeConversationId);
+    pruneDraftOrphans(newConversations.map((c) => c.id));
   },
 
   clearAllConversations: () => {
     set({ conversations: [], activeConversationId: null });
     debouncedSave(() => get().saveConversations());
+    persistActiveId(null);
+    pruneDraftOrphans([]);
   },
 
   clearOldConversations: (keepCount: number) => {
@@ -141,6 +163,8 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
           : activeId,
       });
       debouncedSave(() => get().saveConversations());
+      persistActiveId(get().activeConversationId);
+      pruneDraftOrphans(newConversations.map((c) => c.id));
     }
 
     return removed;
@@ -168,6 +192,7 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
 
   setActiveConversation: (id) => {
     set({ activeConversationId: id });
+    persistActiveId(id);
   },
 
   addMessageToConversation: (conversationId, message) => {
@@ -241,7 +266,24 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
         conversations = [...pinned, ...unpinned.slice(0, maxConv - pinned.length)];
       }
 
-      set({ conversations: sortConversations(conversations), loaded: true });
+      const sorted = sortConversations(conversations);
+
+      let persistedActiveId: string | null = null;
+      try {
+        persistedActiveId = (await activeIdStore.get<string | null>('activeId')) ?? null;
+      } catch (err) {
+        console.error('Failed to read activeId', err);
+      }
+      const validatedActiveId =
+        persistedActiveId && sorted.some((c) => c.id === persistedActiveId)
+          ? persistedActiveId
+          : sorted[0]?.id ?? null;
+
+      set({
+        conversations: sorted,
+        activeConversationId: validatedActiveId,
+        loaded: true,
+      });
     } catch (err) {
       console.error('[ConversationStore] Failed to load conversations:', err);
       set({ conversations: [], loaded: true });

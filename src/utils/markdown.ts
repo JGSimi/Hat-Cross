@@ -32,3 +32,15 @@ export function formatTimestamp(ts: number): string {
 
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
+
+export function formatDraftAge(updatedAt: number): string | null {
+  const now = Date.now();
+  const diffMs = now - updatedAt;
+  const ONE_DAY = 24 * 60 * 60 * 1000;
+  const SEVEN_DAYS = 7 * ONE_DAY;
+  if (diffMs < ONE_DAY) return null;
+  if (diffMs > SEVEN_DAYS) return null;
+  const days = Math.floor(diffMs / ONE_DAY);
+  if (days === 1) return 'rascunho de ontem';
+  return `rascunho de ${days} dias`;
+}
