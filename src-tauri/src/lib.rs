@@ -1,4 +1,5 @@
 mod commands;
+mod oauth;
 mod streaming;
 mod tray;
 mod windows;
@@ -35,6 +36,8 @@ pub fn run() {
             streaming::stream_chat,
             streaming::cancel_stream,
             streaming::fetch_models,
+            oauth::oauth_start_server,
+            oauth::open_external_url,
             tray::rebuild_tray_menu,
             tray::set_tray_icon,
         ])

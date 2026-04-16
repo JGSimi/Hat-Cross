@@ -12,6 +12,7 @@ import { useChatStore } from '../../stores/chatStore';
 import MouseReactiveBackground from './MouseReactiveBackground';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useAuthStore } from '../../stores/authStore';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -37,14 +38,18 @@ export default function MainLayout() {
   const activeConversationId = useConversationStore((s) => s.activeConversationId);
   const loadFromConversation = useChatStore((s) => s.loadFromConversation);
 
-  // Onboarding: show wizard if no API key configured (Hat credits coming in Phase 2)
+  // Onboarding: show wizard if user isn't signed in AND has no BYOK key.
+  // Either path (Hat credits via Google login OR a manual API key) satisfies
+  // the "can actually call an LLM" requirement.
   const hydrated = useSettingsStore((s) => s._hydrated);
   const cloudProvider = useSettingsStore((s) => s.settings.cloudProvider);
   const providerConfigs = useSettingsStore((s) => s.providerConfigs);
+  const authHydrated = useAuthStore((s) => s.isHydrated);
+  const isSignedIn = useAuthStore((s) => s.user !== null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
 
-  const needsOnboarding = hydrated && !onboardingDismissed &&
-    !providerConfigs[cloudProvider]?.apiKey;
+  const needsOnboarding = hydrated && authHydrated && !onboardingDismissed &&
+    !isSignedIn && !providerConfigs[cloudProvider]?.apiKey;
 
   const [activeView, setActiveView] = useState<SidebarView>('chats');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

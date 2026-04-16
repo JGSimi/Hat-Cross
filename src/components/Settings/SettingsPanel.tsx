@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import ThemePicker from './ThemePicker';
 import WindowControls from '../Shared/WindowControls';
+import AccountTab from '../Account/AccountTab';
 import { usePlatform } from '../../hooks/usePlatform';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { PROVIDER_DEFAULTS, type CloudProvider } from '../../types';
@@ -14,7 +15,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'general' | 'notifications' | 'clipboard' | 'appearance' | 'models' | 'behavior' | 'shortcuts' | 'popover';
+type Tab = 'account' | 'general' | 'notifications' | 'clipboard' | 'appearance' | 'models' | 'behavior' | 'shortcuts' | 'popover';
 
 const tabContentVariants = {
   initial: { opacity: 0, y: 8 },
@@ -23,7 +24,7 @@ const tabContentVariants = {
 };
 
 export default function SettingsPanel({ onClose }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('models');
+  const [activeTab, setActiveTab] = useState<Tab>('account');
   const platform = usePlatform();
   const {
     settings,
@@ -40,6 +41,7 @@ export default function SettingsPanel({ onClose }: Props) {
   } = useSettingsStore();
 
   const tabs: { id: Tab; label: string }[] = [
+    { id: 'account', label: 'Conta' },
     { id: 'models', label: 'Modelos & IA' },
     { id: 'general', label: 'Geral' },
     { id: 'appearance', label: 'Aparência' },
@@ -139,6 +141,7 @@ export default function SettingsPanel({ onClose }: Props) {
               exit="exit"
               transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
+              {activeTab === 'account' && <AccountTab />}
               {activeTab === 'general' && <GeneralTab />}
               {activeTab === 'notifications' && (
                 <NotificationsTab settings={settings} updateSettings={updateSettings} />
