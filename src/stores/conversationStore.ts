@@ -1,15 +1,14 @@
 import { create } from 'zustand';
-import { readTextFile, writeTextFile, mkdir, exists } from '@tauri-apps/plugin-fs';
-import { appDataDir, join } from '@tauri-apps/api/path';
 import { LazyStore } from '@tauri-apps/plugin-store';
 import type { Conversation, Message } from '../types';
 import { useSettingsStore } from './settingsStore';
 import { useDraftsStore } from './draftsStore';
 
-const CONVERSATIONS_FILE = 'conversations.json';
 const SAVE_DEBOUNCE_MS = 500;
 
-// Persists the currently-active conversation id across app restarts.
+// LazyStore is proven to work in this app (settings.json, conversation-state.json
+// both persist correctly). plugin-fs writeTextFile silently fails with $APPDATA scope.
+const conversationStore = new LazyStore('conversations-data.json');
 const activeIdStore = new LazyStore('conversation-state.json');
 
 function persistActiveId(id: string | null): void {
@@ -252,16 +251,7 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
 
   loadConversations: async () => {
     try {
-      const dataDir = await appDataDir();
-      const filePath = await join(dataDir, CONVERSATIONS_FILE);
-
-      if (!(await exists(filePath))) {
-        set({ conversations: [], loaded: true });
-        return;
-      }
-
-      const raw = await readTextFile(filePath);
-      const data = (raw.trim() ? JSON.parse(raw) : []) as Conversation[];
+      const data = (await conversationStore.get<Conversation[]>('conversations')) ?? [];
 
       const maxConv = getMaxConversations();
       let conversations = data;
@@ -297,14 +287,9 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
 
   saveConversations: async () => {
     try {
-      const dataDir = await appDataDir();
-      const dirExists = await exists(dataDir);
-      if (!dirExists) {
-        await mkdir(dataDir, { recursive: true });
-      }
-      const filePath = await join(dataDir, CONVERSATIONS_FILE);
       const { conversations } = get();
-      await writeTextFile(filePath, JSON.stringify(conversations));
+      await conversationStore.set('conversations', conversations);
+      await conversationStore.save();
     } catch (err) {
       console.error('[ConversationStore] Failed to save conversations:', err);
     }

@@ -1,19 +1,13 @@
 import { create } from 'zustand';
-import { readTextFile, writeTextFile, mkdir, exists } from '@tauri-apps/plugin-fs';
-import { appDataDir, join } from '@tauri-apps/api/path';
+import { LazyStore } from '@tauri-apps/plugin-store';
 import type { DraftEntry } from '../types';
 
-const DRAFTS_FILE = 'drafts.json';
 const SAVE_DEBOUNCE_MS = 500;
+const draftsStore = new LazyStore('drafts-data.json');
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * ONE_DAY_MS;
 
 // --- Store interface ---
-
-interface DraftsFileShape {
-  version: number;
-  drafts: Record<string, DraftEntry>;
-}
 
 interface DraftsState {
   drafts: Record<string, DraftEntry>;
@@ -44,25 +38,7 @@ export const useDraftsStore = create<DraftsState>()((set, get) => ({
 
   loadDrafts: async () => {
     try {
-      const dataDir = await appDataDir();
-      const filePath = await join(dataDir, DRAFTS_FILE);
-      const fileExists = await exists(filePath);
-
-      if (!fileExists) {
-        set({ drafts: {}, loaded: true });
-        return;
-      }
-
-      const raw = await readTextFile(filePath);
-      const parsed = JSON.parse(raw) as Partial<DraftsFileShape> | Record<string, DraftEntry>;
-
-      // If no `version` field, treat as v1 and accept either shape.
-      let drafts: Record<string, DraftEntry>;
-      if (parsed && typeof parsed === 'object' && 'drafts' in parsed && parsed.drafts) {
-        drafts = parsed.drafts as Record<string, DraftEntry>;
-      } else {
-        drafts = parsed as Record<string, DraftEntry>;
-      }
+      const drafts = (await draftsStore.get<Record<string, DraftEntry>>('drafts')) ?? {};
 
       const now = Date.now();
       let purged = false;
@@ -92,15 +68,9 @@ export const useDraftsStore = create<DraftsState>()((set, get) => ({
 
   saveDrafts: async () => {
     try {
-      const dataDir = await appDataDir();
-      const dirExists = await exists(dataDir);
-      if (!dirExists) {
-        await mkdir(dataDir, { recursive: true });
-      }
-      const filePath = await join(dataDir, DRAFTS_FILE);
       const { drafts } = get();
-      const payload: DraftsFileShape = { version: 1, drafts };
-      await writeTextFile(filePath, JSON.stringify(payload));
+      await draftsStore.set('drafts', drafts);
+      await draftsStore.save();
     } catch (err) {
       console.error('[DraftsStore] Failed to save drafts:', err);
     }

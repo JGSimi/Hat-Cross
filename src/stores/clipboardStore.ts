@@ -1,10 +1,9 @@
 import { create } from 'zustand';
-import { readTextFile, writeTextFile, mkdir, exists } from '@tauri-apps/plugin-fs';
-import { appDataDir, join } from '@tauri-apps/api/path';
+import { LazyStore } from '@tauri-apps/plugin-store';
 import type { ClipboardEntry } from '../types';
 
-const CLIPBOARD_FILE = 'clipboard-history.json';
 const MAX_ENTRIES = 100;
+const clipboardDataStore = new LazyStore('clipboard-data.json');
 const SAVE_DEBOUNCE_MS = 500;
 
 interface ClipboardState {
@@ -54,17 +53,7 @@ export const useClipboardStore = create<ClipboardState>()((set, get) => ({
 
   loadEntries: async () => {
     try {
-      const dataDir = await appDataDir();
-      const filePath = await join(dataDir, CLIPBOARD_FILE);
-      const fileExists = await exists(filePath);
-
-      if (!fileExists) {
-        set({ entries: [], loaded: true });
-        return;
-      }
-
-      const raw = await readTextFile(filePath);
-      const data = JSON.parse(raw) as ClipboardEntry[];
+      const data = (await clipboardDataStore.get<ClipboardEntry[]>('entries')) ?? [];
       set({ entries: data.slice(0, MAX_ENTRIES), loaded: true });
     } catch (err) {
       console.error('[ClipboardStore] Failed to load:', err);
@@ -74,12 +63,9 @@ export const useClipboardStore = create<ClipboardState>()((set, get) => ({
 
   saveEntries: async () => {
     try {
-      const dataDir = await appDataDir();
-      const dirExists = await exists(dataDir);
-      if (!dirExists) await mkdir(dataDir, { recursive: true });
-      const filePath = await join(dataDir, CLIPBOARD_FILE);
       const { entries } = get();
-      await writeTextFile(filePath, JSON.stringify(entries));
+      await clipboardDataStore.set('entries', entries);
+      await clipboardDataStore.save();
     } catch (err) {
       console.error('[ClipboardStore] Failed to save:', err);
     }
