@@ -47,6 +47,8 @@ export interface ProviderConfigEntry {
   apiKey: string;
   endpoint: string;
   model: string;
+  thinkingEnabled: boolean;
+  thinkingBudget: number;
 }
 
 function defaultProviderConfigs(): Record<CloudProvider, ProviderConfigEntry> {
@@ -64,6 +66,8 @@ function defaultProviderConfigs(): Record<CloudProvider, ProviderConfigEntry> {
       apiKey: '',
       endpoint: PROVIDER_DEFAULTS[p].defaultEndpoint,
       model: '',
+      thinkingEnabled: false,
+      thinkingBudget: 10000,
     };
   }
   return configs;
@@ -85,6 +89,8 @@ interface SettingsState {
   setApiKey: (provider: CloudProvider, key: string) => void;
   setModel: (provider: CloudProvider, model: string) => void;
   setEndpoint: (provider: CloudProvider, endpoint: string) => void;
+  setThinkingEnabled: (provider: CloudProvider, enabled: boolean) => void;
+  setThinkingBudget: (provider: CloudProvider, budget: number) => void;
   updateTokenStats: (usage: Partial<TokenUsage>) => void;
   resetTokenStats: () => void;
   loadSettings: () => Promise<void>;
@@ -148,6 +154,26 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       providerConfigs: {
         ...state.providerConfigs,
         [provider]: { ...state.providerConfigs[provider], model },
+      },
+    }));
+    get().saveSettings();
+  },
+
+  setThinkingEnabled: (provider, enabled) => {
+    set((state) => ({
+      providerConfigs: {
+        ...state.providerConfigs,
+        [provider]: { ...state.providerConfigs[provider], thinkingEnabled: enabled },
+      },
+    }));
+    get().saveSettings();
+  },
+
+  setThinkingBudget: (provider, budget) => {
+    set((state) => ({
+      providerConfigs: {
+        ...state.providerConfigs,
+        [provider]: { ...state.providerConfigs[provider], thinkingBudget: budget },
       },
     }));
     get().saveSettings();

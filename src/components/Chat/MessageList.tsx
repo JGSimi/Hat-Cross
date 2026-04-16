@@ -4,17 +4,19 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import MessageBubble from './MessageBubble';
+import ThinkingBlock from './ThinkingBlock';
 import type { Message } from '../../types';
 
 interface Props {
   messages: Message[];
   streamingContent: string;
+  streamingThinking: string;
   isStreaming: boolean;
 }
 
 const STAGGER_WINDOW = 6;
 
-export default function MessageList({ messages, streamingContent, isStreaming }: Props) {
+export default function MessageList({ messages, streamingContent, streamingThinking, isStreaming }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -116,29 +118,36 @@ export default function MessageList({ messages, streamingContent, isStreaming }:
         })}
 
         {/* Streaming message */}
-        {isStreaming && streamingContent && (
+        {isStreaming && (streamingContent || streamingThinking) && (
           <motion.div key="streaming" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="flex justify-start" style={{ marginTop: 12 }}>
-              <div
-                className="prose prose-invert prose-sm max-w-none"
-                style={{
-                  fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-normal)',
-                  wordBreak: 'break-word', maxWidth: '82%',
-                  borderLeft: '2px solid color-mix(in srgb, var(--color-accent) 20%, transparent)',
-                  paddingLeft: 14,
-                }}
-              >
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-                  {streamingContent}
-                </ReactMarkdown>
-                <span style={{ display: 'inline-block', width: 6, height: 14, background: 'var(--color-accent)', borderRadius: 1, marginLeft: 2, animation: 'blink 1s step-end infinite' }} />
+              <div style={{ maxWidth: '82%' }}>
+                {streamingThinking && (
+                  <ThinkingBlock thinking={streamingThinking} isStreaming={!streamingContent} />
+                )}
+                {streamingContent && (
+                  <div
+                    className="prose prose-invert prose-sm max-w-none"
+                    style={{
+                      fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-normal)',
+                      wordBreak: 'break-word',
+                      borderLeft: '2px solid color-mix(in srgb, var(--color-accent) 20%, transparent)',
+                      paddingLeft: 14,
+                    }}
+                  >
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                      {streamingContent}
+                    </ReactMarkdown>
+                    <span style={{ display: 'inline-block', width: 6, height: 14, background: 'var(--color-accent)', borderRadius: 1, marginLeft: 2, animation: 'blink 1s step-end infinite' }} />
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
         )}
 
         {/* Typing indicator */}
-        {isStreaming && !streamingContent && (
+        {isStreaming && !streamingContent && !streamingThinking && (
           <motion.div
             key="typing-indicator"
             initial={{ opacity: 0, y: 8 }}

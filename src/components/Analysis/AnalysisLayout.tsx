@@ -71,7 +71,7 @@ export default function AnalysisLayout() {
     const unlisten = await listen<StreamChunk>('chat-stream', (event) => {
       const chunk = event.payload;
       if (chunk.streamId !== streamId) return;
-      if (chunk.text) {
+      if (chunk.text && chunk.contentType !== 'thinking') {
         analysisRef.current += chunk.text;
         setAnalysis(analysisRef.current);
       }
@@ -95,6 +95,8 @@ export default function AnalysisLayout() {
         temperature: settings.temperature,
         maxTokens: settings.maxTokens,
         images: [imageBase64],
+        thinkingEnabled: false,
+        thinkingBudget: 10000,
       });
     } catch {
       setAnalysis('Erro ao analisar a tela.');
@@ -119,7 +121,7 @@ export default function AnalysisLayout() {
     const unlisten = await listen<StreamChunk>('chat-stream', (event) => {
       const chunk = event.payload;
       if (chunk.streamId !== streamId) return;
-      if (chunk.text) {
+      if (chunk.text && chunk.contentType !== 'thinking') {
         analysisRef.current += chunk.text;
         setAnalysis(analysisRef.current);
       }
@@ -144,6 +146,8 @@ export default function AnalysisLayout() {
         temperature: settings.temperature,
         maxTokens: settings.maxTokens,
         images: [screenshot],
+        thinkingEnabled: false,
+        thinkingBudget: 10000,
       });
     } catch {
       setAnalysis('Erro ao processar follow-up.');

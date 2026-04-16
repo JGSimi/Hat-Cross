@@ -15,7 +15,7 @@ interface Props {
 
 export default function ChatWindow({ showScreenCapture = true }: Props) {
   const {
-    messages, isStreaming, streamingContent, sendMessage, cancel,
+    messages, isStreaming, streamingContent, streamingThinking, sendMessage, cancel,
     isNearContextLimit, isAtContextLimit, contextUsage, maxContextMessages,
   } = useChat();
   const { pendingAttachments, removeAttachment, addAttachment, error } = useChatStore();
@@ -173,6 +173,7 @@ export default function ChatWindow({ showScreenCapture = true }: Props) {
             <MessageList
               messages={messages}
               streamingContent={streamingContent}
+              streamingThinking={streamingThinking}
               isStreaming={isStreaming}
             />
           </motion.div>
