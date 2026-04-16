@@ -11,12 +11,13 @@ interface Props {
 }
 
 // You receive the PIX from the user, then edit `credits` in the Firebase
-// Console to match the table below. Whole-real amounts × 1060 credits.
+// Console to match the table below. Whole-real amounts × 700 credits (60%
+// margin). Must mirror BRL_TO_CREDITS in hat-proxy/src/pricing.ts.
 const RECHARGE_TIERS = [
-  { brl: 5,  credits: 5_300,  label: '~1.000 mensagens Padrão' },
-  { brl: 10, credits: 10_600, label: '~2.000 mensagens Padrão' },
-  { brl: 20, credits: 21_200, label: '~4.000 mensagens Padrão' },
-  { brl: 50, credits: 53_000, label: '~10.000 mensagens Padrão' },
+  { brl: 5,  credits: 3_500,  label: '~350 mensagens Hat' },
+  { brl: 10, credits: 7_000,  label: '~700 mensagens Hat' },
+  { brl: 20, credits: 14_000, label: '~1.400 mensagens Hat' },
+  { brl: 50, credits: 35_000, label: '~3.500 mensagens Hat' },
 ];
 
 const PIX_KEY = 'joao02simi@gmail.com';
