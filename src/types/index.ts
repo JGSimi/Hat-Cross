@@ -68,7 +68,7 @@ export interface TokenUsage {
 
 // === Providers ===
 
-export type InferenceMode = 'local' | 'api';
+export type AISource = 'hat' | 'byok';
 
 export type CloudProvider =
   | 'google'
@@ -260,9 +260,8 @@ export interface AppSettings {
   soundEnabled: boolean;
   theme: AppTheme;
   popover: PopoverSettings;
-  inferenceMode: InferenceMode;
+  aiSource: AISource;
   cloudProvider: CloudProvider;
-  localModel: string;
   systemPrompt: string;
   temperature: number;
   maxTokens: number;
@@ -290,9 +289,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     disguiseWidget: 'clock',
     rememberPosition: true,
   },
-  inferenceMode: 'api',
+  aiSource: 'hat',
   cloudProvider: 'google',
-  localModel: 'gemma3:4b',
   systemPrompt: 'Você é um assistente de IA útil e conciso. Responda em português brasileiro.',
   temperature: 0.7,
   maxTokens: 4096,

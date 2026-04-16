@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Key, Gem, Bot, Brain, Zap, Shuffle, Globe, Check, Monitor } from 'lucide-react';
+import { ArrowRight, Key, Gem, Bot, Brain, Zap, Shuffle, Globe, Check, Loader2 } from 'lucide-react';
 import HorseLogo from './HorseLogo';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useAuthStore } from '../../stores/authStore';
 import { PROVIDER_DEFAULTS, type CloudProvider } from '../../types';
 import { fetchModels } from '../../services/ai';
 
@@ -24,9 +25,21 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
   const [showKey, setShowKey] = useState(false);
   const [validating, setValidating] = useState(false);
   const [keyStatus, setKeyStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
-  const [useLocal, setUseLocal] = useState(false);
 
-  const { setProvider, setApiKey: storeSetApiKey, updateSettings } = useSettingsStore();
+  const { setProvider, setApiKey: storeSetApiKey } = useSettingsStore();
+  const isSigningIn = useAuthStore((s) => s.isSigningIn);
+  const signInError = useAuthStore((s) => s.signInError);
+  const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+      // onAuthStateChanged → MainLayout hides wizard automatically.
+      onComplete();
+    } catch {
+      // Error shown inline via signInError; stay on welcome step.
+    }
+  };
 
   const handleValidateAndSave = async () => {
     if (!apiKey.trim()) return;
@@ -46,11 +59,6 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
       setKeyStatus('invalid');
     }
     setValidating(false);
-  };
-
-  const handleUseLocal = () => {
-    updateSettings({ inferenceMode: 'local' });
-    setStep('done');
   };
 
   const handleFinish = () => {
@@ -115,33 +123,72 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
 
               <p style={{
                 fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6,
-                margin: '0 0 32px',
+                margin: '0 0 28px',
               }}>
-                Seu assistente de IA no menu bar. Configure uma API para
-                comecar a conversar.
+                Entre com Google para usar <strong style={{ color: 'var(--text-secondary)' }}>créditos Hat</strong> e acessar os modelos top-tier sem configurar nada.
               </p>
 
               <motion.button
-                whileHover={{ scale: 1.03 }}
+                whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => setStep('provider')}
+                onClick={handleGoogleSignIn}
+                disabled={isSigningIn}
                 style={{
-                  padding: '10px 24px',
+                  padding: '11px 24px',
                   borderRadius: 10,
                   fontSize: 13,
                   fontWeight: 600,
                   background: 'var(--color-accent)',
                   color: 'white',
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: isSigningIn ? 'default' : 'pointer',
+                  opacity: isSigningIn ? 0.75 : 1,
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 8,
+                  justifyContent: 'center',
+                  gap: 10,
+                  minWidth: 220,
                   boxShadow: '0 2px 12px var(--accent-glow)',
                 }}
               >
-                Configurar <ArrowRight size={14} />
+                {isSigningIn ? (
+                  <>
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ display: 'flex' }}>
+                      <Loader2 size={14} />
+                    </motion.div>
+                    Abrindo navegador...
+                  </>
+                ) : (
+                  <>
+                    <WelcomeGoogleIcon size={14} /> Entrar com Google
+                  </>
+                )}
               </motion.button>
+
+              {signInError && (
+                <p style={{ marginTop: 14, fontSize: 11, color: 'var(--error)', maxWidth: 320, lineHeight: 1.5 }}>
+                  {signInError}
+                </p>
+              )}
+
+              <button
+                onClick={() => setStep('provider')}
+                style={{
+                  display: 'block',
+                  margin: '22px auto 0',
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  background: 'transparent',
+                  color: 'var(--text-dim)',
+                  border: 'none',
+                  fontSize: 10.5,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: 3,
+                }}
+              >
+                Sou dev: usar minha própria API key
+              </button>
             </motion.div>
           )}
 
@@ -227,26 +274,6 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
                 </motion.button>
               </div>
 
-              <button
-                onClick={() => { setUseLocal(true); handleUseLocal(); }}
-                style={{
-                  width: '100%',
-                  marginTop: 12,
-                  padding: '8px',
-                  borderRadius: 8,
-                  fontSize: 11,
-                  background: 'transparent',
-                  color: 'var(--text-muted)',
-                  border: '1px solid var(--border-subtle)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}
-              >
-                <Monitor size={12} /> Usar Ollama local (sem API key)
-              </button>
             </motion.div>
           )}
 
@@ -407,10 +434,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
               <p style={{
                 fontSize: 13, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.5,
               }}>
-                {useLocal
-                  ? 'Ollama local configurado. Certifique-se de que o Ollama esta rodando.'
-                  : `${PROVIDERS.find(p => p.id === selectedProvider)?.label} configurado com sucesso.`
-                }
+                {`${PROVIDERS.find(p => p.id === selectedProvider)?.label} configurado com sucesso.`}
               </p>
               <p style={{
                 fontSize: 11, color: 'var(--text-dim)', margin: '0 0 28px', lineHeight: 1.5,
@@ -441,5 +465,16 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
         </AnimatePresence>
       </div>
     </motion.div>
+  );
+}
+
+function WelcomeGoogleIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#FFC107" d="M43.6 20.5H42V20.5H24v7h11.3c-1.5 4.1-5.4 7-10.3 7-6.1 0-11-4.9-11-11s4.9-11 11-11c2.8 0 5.4 1.1 7.4 2.8l4.9-4.9C34.5 7.2 29.5 5 24 5 13.5 5 5 13.5 5 24s8.5 19 19 19c10.5 0 18.5-7.5 18.5-19 0-1.2-.1-2.3-.4-3.5z" />
+      <path fill="#FF3D00" d="M6.3 14.7l5.7 4.2C13.6 15.5 18.4 12 24 12c2.8 0 5.4 1.1 7.4 2.8l4.9-4.9C34.5 7.2 29.5 5 24 5c-7.1 0-13.2 4-16.4 9.7z" />
+      <path fill="#4CAF50" d="M24 43c5.4 0 10.3-2.1 14-5.5l-6.4-5.3c-2 1.3-4.6 2.1-7.6 2.1-4.8 0-8.8-3-10.3-7.1l-6 4.6C10.6 38.4 16.7 43 24 43z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20.5H24v7h11.3c-.7 2-2 3.8-3.8 5.1 0 0 0 0 0 0l6.4 5.3C38.8 34.2 43 29.6 43 24c0-1.2-.1-2.3-.4-3.5z" />
+    </svg>
   );
 }

@@ -12,6 +12,7 @@ import { useChatStore } from '../../stores/chatStore';
 import MouseReactiveBackground from './MouseReactiveBackground';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useAuthStore } from '../../stores/authStore';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -37,15 +38,16 @@ export default function MainLayout() {
   const activeConversationId = useConversationStore((s) => s.activeConversationId);
   const loadFromConversation = useChatStore((s) => s.loadFromConversation);
 
-  // Onboarding: show wizard if no API key configured for cloud mode
+  // Onboarding: show wizard whenever the user isn't signed in. Even if they
+  // already have a BYOK key configured, we still nudge them toward creating
+  // an account so they can use credits; the wizard has a discreet "sou dev:
+  // usar minha própria API key" escape hatch for devs who prefer BYOK.
   const hydrated = useSettingsStore((s) => s._hydrated);
-  const inferenceMode = useSettingsStore((s) => s.settings.inferenceMode);
-  const cloudProvider = useSettingsStore((s) => s.settings.cloudProvider);
-  const providerConfigs = useSettingsStore((s) => s.providerConfigs);
+  const authHydrated = useAuthStore((s) => s.isHydrated);
+  const isSignedIn = useAuthStore((s) => s.user !== null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
 
-  const needsOnboarding = hydrated && !onboardingDismissed &&
-    inferenceMode === 'api' && !providerConfigs[cloudProvider]?.apiKey;
+  const needsOnboarding = hydrated && authHydrated && !onboardingDismissed && !isSignedIn;
 
   const [activeView, setActiveView] = useState<SidebarView>('chats');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

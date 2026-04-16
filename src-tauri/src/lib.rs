@@ -1,4 +1,5 @@
 mod commands;
+mod oauth;
 mod streaming;
 mod tray;
 mod windows;
@@ -21,6 +22,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_deep_link::init())
         .invoke_handler(tauri::generate_handler![
             commands::open_main_window,
             commands::toggle_popover_window,
@@ -32,8 +34,11 @@ pub fn run() {
             commands::set_provider_key,
             commands::get_provider_key_cmd,
             streaming::stream_chat,
+            streaming::stream_chat_hat,
             streaming::cancel_stream,
             streaming::fetch_models,
+            oauth::oauth_start_server,
+            oauth::open_external_url,
             tray::rebuild_tray_menu,
             tray::set_tray_icon,
         ])

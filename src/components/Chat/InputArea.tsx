@@ -2,9 +2,11 @@ import { useState, useRef, useCallback, useEffect, type KeyboardEvent } from 're
 import { motion } from 'framer-motion';
 import { Camera, Send, Square } from 'lucide-react';
 import AttachmentPreview from './AttachmentPreview';
+import ModeSelector from './ModeSelector';
 import type { ChatAttachment } from '../../types';
 import { useDraftsStore } from '../../stores/draftsStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useAuthStore } from '../../stores/authStore';
 import { formatDraftAge } from '../../utils/markdown';
 
 interface Props {
@@ -32,6 +34,7 @@ export default function InputArea({
   const hydratedIds = useRef(new Set<string>());
   const hasContent = text.trim().length > 0 || attachments.length > 0;
   const reducedMotion = useSettingsStore((s) => s.settings.performance?.reducedMotion ?? false);
+  const isSignedIn = useAuthStore((s) => s.user !== null);
 
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -120,6 +123,11 @@ export default function InputArea({
       style={{ padding: '10px 16px 14px', flexShrink: 0 }}
     >
       <AttachmentPreview attachments={attachments} onRemove={onRemoveAttachment} />
+      {isSignedIn && (
+        <div style={{ marginBottom: 8 }}>
+          <ModeSelector />
+        </div>
+      )}
       {draftChipLabel && (
         <motion.div
           initial={{ opacity: 0, y: -2 }}

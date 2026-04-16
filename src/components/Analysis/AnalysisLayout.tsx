@@ -7,11 +7,70 @@ import rehypeHighlight from 'rehype-highlight';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useAuthStore } from '../../stores/authStore';
+import { useCreditsStore } from '../../stores/creditsStore';
 import { usePlatform } from '../../hooks/usePlatform';
 import WindowControls from '../Shared/WindowControls';
 import { PROVIDER_DEFAULTS } from '../../types';
-import type { StreamChunk } from '../../types';
+import type { StreamChunk, ConversationTurn } from '../../types';
 import { nextStreamId } from '../../services/ai';
+import { getIdToken } from '../../services/auth/firebase';
+
+// Screen analysis has its own listener+invoke pattern (no reuse of startStream),
+// so we can't call dispatchStream directly. This helper encapsulates the same
+// Hat-vs-BYOK decision the main chat makes, invoking the appropriate Rust
+// command and propagating errors to the caller via throw.
+async function invokeAnalysisStream(args: {
+  streamId: number;
+  messages: ConversationTurn[];
+  systemPrompt: string;
+  temperature: number;
+  maxTokens: number;
+  images: string[];
+}): Promise<void> {
+  const user = useAuthStore.getState().user;
+  if (user) {
+    const idToken = await getIdToken();
+    if (!idToken) {
+      throw new Error('Sessão expirada. Entre de novo na aba Conta.');
+    }
+    const mode = useCreditsStore.getState().selectedMode;
+    return invoke('stream_chat_hat', {
+      streamId: args.streamId,
+      messages: args.messages,
+      systemPrompt: args.systemPrompt,
+      mode,
+      temperature: args.temperature,
+      maxTokens: args.maxTokens,
+      images: args.images,
+      idToken,
+    });
+  }
+
+  // BYOK path — mirrors getProviderDetails() but reads stores via getState()
+  // so we don't depend on the component closure.
+  const { settings, providerConfigs } = useSettingsStore.getState();
+  const cfg = providerConfigs[settings.cloudProvider];
+  const apiKey = cfg?.apiKey?.trim() ?? '';
+  if (!apiKey) {
+    throw new Error('Sem API key. Entre no Hat (grátis) ou configure em Configurações > Modelos & IA.');
+  }
+  const endpoint = cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
+  const model = cfg?.model || '';
+  return invoke('stream_chat', {
+    streamId: args.streamId,
+    messages: args.messages,
+    systemPrompt: args.systemPrompt,
+    provider: settings.cloudProvider,
+    endpoint,
+    model,
+    temperature: args.temperature,
+    maxTokens: args.maxTokens,
+    images: args.images,
+    thinkingEnabled: false,
+    thinkingBudget: 10000,
+  });
+}
 
 function GradientSpinner() {
   return (
@@ -47,25 +106,12 @@ export default function AnalysisLayout() {
   const analysisRef = useRef('');
   const platform = usePlatform();
   const settings = useSettingsStore((s) => s.settings);
-  const providerConfigs = useSettingsStore((s) => s.providerConfigs);
-
-  const getProviderDetails = () => {
-    const isLocal = settings.inferenceMode === 'local';
-    const provider = isLocal ? 'ollama' : settings.cloudProvider;
-    const cfg = isLocal ? null : providerConfigs[settings.cloudProvider];
-    const endpoint = isLocal
-      ? 'http://localhost:11434'
-      : cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
-    const model = isLocal ? settings.localModel : cfg?.model || '';
-    return { provider, endpoint, model };
-  };
 
   const startAnalysis = async (imageBase64: string) => {
     setIsAnalyzing(true);
     setAnalysis('');
     analysisRef.current = '';
 
-    const { provider, endpoint, model } = getProviderDetails();
     const streamId = nextStreamId();
 
     const unlisten = await listen<StreamChunk>('chat-stream', (event) => {
@@ -82,24 +128,19 @@ export default function AnalysisLayout() {
     });
 
     try {
-      await invoke('stream_chat', {
+      await invokeAnalysisStream({
         streamId,
         messages: [{
           role: 'user',
-          textContent: 'Analise o que esta na minha tela e me ajude de forma proativa. Nao me pergunte o que fazer, apenas forneca a analise ou ajuda diretamente com base no contexto.',
+          textContent: 'Analise o que está na minha tela e me ajude de forma proativa. Não me pergunte o que fazer, apenas forneça a análise ou ajuda diretamente com base no contexto.',
         }],
         systemPrompt: settings.systemPrompt,
-        provider,
-        endpoint,
-        model,
         temperature: settings.temperature,
         maxTokens: settings.maxTokens,
         images: [imageBase64],
-        thinkingEnabled: false,
-        thinkingBudget: 10000,
       });
-    } catch {
-      setAnalysis('Erro ao analisar a tela.');
+    } catch (err) {
+      setAnalysis(err instanceof Error ? err.message : 'Erro ao analisar a tela.');
       setIsAnalyzing(false);
       unlisten();
     }
@@ -115,7 +156,6 @@ export default function AnalysisLayout() {
     setAnalysis('');
     analysisRef.current = '';
 
-    const { provider, endpoint, model } = getProviderDetails();
     const streamId = nextStreamId();
 
     const unlisten = await listen<StreamChunk>('chat-stream', (event) => {
@@ -132,25 +172,20 @@ export default function AnalysisLayout() {
     });
 
     try {
-      await invoke('stream_chat', {
+      await invokeAnalysisStream({
         streamId,
         messages: [
-          { role: 'user', textContent: 'Analise o que esta na minha tela.' },
+          { role: 'user', textContent: 'Analise o que está na minha tela.' },
           { role: 'assistant', textContent: prevAnalysis },
           { role: 'user', textContent: question },
         ],
         systemPrompt: settings.systemPrompt,
-        provider,
-        endpoint,
-        model,
         temperature: settings.temperature,
         maxTokens: settings.maxTokens,
         images: [screenshot],
-        thinkingEnabled: false,
-        thinkingBudget: 10000,
       });
-    } catch {
-      setAnalysis('Erro ao processar follow-up.');
+    } catch (err) {
+      setAnalysis(err instanceof Error ? err.message : 'Erro ao processar follow-up.');
       setIsAnalyzing(false);
       unlisten();
     }
