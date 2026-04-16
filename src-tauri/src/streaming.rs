@@ -273,6 +273,7 @@ async fn stream_openai_compatible(
     let mut stream = response.bytes_stream();
     let mut buffer: Vec<u8> = Vec::new();
     let mut finished = false;
+    let mut in_thoughts_block: bool = false;
 
     while let Some(chunk) = stream.next().await {
         if cancel_flag.load(Ordering::SeqCst) {
@@ -321,17 +322,73 @@ async fn stream_openai_compatible(
                         .unwrap_or("");
 
                     if !content.is_empty() {
-                        let _ = app.emit(
-                            "chat-stream",
-                            StreamChunkPayload {
-                                stream_id,
-                                text: content.to_string(),
-                                is_finished: false,
-                                input_tokens: None,
-                                output_tokens: None,
-                                content_type: "text".to_string(),
-                            },
-                        );
+                        // Parse <thoughts> tags (Gemini thinking) similar to Ollama <think> parsing
+                        let mut remaining = content.to_string();
+                        while !remaining.is_empty() {
+                            if in_thoughts_block {
+                                if let Some(end_pos) = remaining.find("</thoughts>") {
+                                    let before = &remaining[..end_pos];
+                                    if !before.is_empty() {
+                                        let _ = app.emit(
+                                            "chat-stream",
+                                            StreamChunkPayload {
+                                                stream_id,
+                                                text: before.to_string(),
+                                                is_finished: false,
+                                                input_tokens: None,
+                                                output_tokens: None,
+                                                content_type: "thinking".to_string(),
+                                            },
+                                        );
+                                    }
+                                    in_thoughts_block = false;
+                                    remaining = remaining[end_pos + "</thoughts>".len()..].to_string();
+                                } else {
+                                    let _ = app.emit(
+                                        "chat-stream",
+                                        StreamChunkPayload {
+                                            stream_id,
+                                            text: remaining.to_string(),
+                                            is_finished: false,
+                                            input_tokens: None,
+                                            output_tokens: None,
+                                            content_type: "thinking".to_string(),
+                                        },
+                                    );
+                                    remaining.clear();
+                                }
+                            } else if let Some(start_pos) = remaining.find("<thoughts>") {
+                                let before = &remaining[..start_pos];
+                                if !before.is_empty() {
+                                    let _ = app.emit(
+                                        "chat-stream",
+                                        StreamChunkPayload {
+                                            stream_id,
+                                            text: before.to_string(),
+                                            is_finished: false,
+                                            input_tokens: None,
+                                            output_tokens: None,
+                                            content_type: "text".to_string(),
+                                        },
+                                    );
+                                }
+                                in_thoughts_block = true;
+                                remaining = remaining[start_pos + "<thoughts>".len()..].to_string();
+                            } else {
+                                let _ = app.emit(
+                                    "chat-stream",
+                                    StreamChunkPayload {
+                                        stream_id,
+                                        text: remaining.to_string(),
+                                        is_finished: false,
+                                        input_tokens: None,
+                                        output_tokens: None,
+                                        content_type: "text".to_string(),
+                                    },
+                                );
+                                remaining.clear();
+                            }
+                        }
                     }
 
                     // Check for reasoning_content (OpenAI reasoning models)
