@@ -1,13 +1,28 @@
 import { initializeApp } from 'firebase/app';
 import {
-  getAuth,
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
   signOut as firebaseSignOut,
   type User,
 } from 'firebase/auth';
 import { FIREBASE_CONFIG } from '../config';
 
 export const firebaseApp = initializeApp(FIREBASE_CONFIG);
-export const firebaseAuth = getAuth(firebaseApp);
+
+// Persist the session across Tauri restarts. IndexedDB is the most durable
+// option (survives cache clears the OS might issue on WKWebView/WebView2),
+// with localStorage as fallback and session as last resort for edge cases
+// where neither is writable. Without this explicit list, Tauri webviews
+// occasionally wipe auth state between launches.
+export const firebaseAuth = initializeAuth(firebaseApp, {
+  persistence: [
+    indexedDBLocalPersistence,
+    browserLocalPersistence,
+    browserSessionPersistence,
+  ],
+});
 
 export async function signOut(): Promise<void> {
   await firebaseSignOut(firebaseAuth);

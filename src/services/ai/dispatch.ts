@@ -36,7 +36,7 @@ export async function dispatchStream(
   if (user) {
     const idToken = await getIdToken();
     if (!idToken) {
-      setError('Sessao expirada. Faca login de novo em Configuracoes > Conta.');
+      setError('Sessão expirada. Faça login de novo em Configurações > Conta.');
       return null;
     }
     const mode = useCreditsStore.getState().selectedMode;
@@ -63,7 +63,7 @@ export async function dispatchStream(
   const apiKey = cfg?.apiKey || '';
   if (!apiKey.trim()) {
     setError(
-      'Chave de API nao configurada. Entre no Hat (gratis) ou va em Configuracoes > Modelos & IA.',
+      'Chave de API não configurada. Entre no Hat (grátis) ou vá em Configurações > Modelos & IA.',
     );
     return null;
   }

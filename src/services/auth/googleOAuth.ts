@@ -41,7 +41,7 @@ async function sha256Base64Url(input: string): Promise<string> {
 export async function signInWithGoogle(): Promise<void> {
   if (!CLIENT_ID || !CLIENT_SECRET) {
     throw new Error(
-      'OAuth nao configurado. Preencha VITE_GOOGLE_OAUTH_CLIENT_ID e VITE_GOOGLE_OAUTH_CLIENT_SECRET em .env.local.',
+      'OAuth não configurado. Preencha VITE_GOOGLE_OAUTH_CLIENT_ID e VITE_GOOGLE_OAUTH_CLIENT_SECRET em .env.local.',
     );
   }
 
@@ -98,7 +98,7 @@ export async function signInWithGoogle(): Promise<void> {
       access_token?: string;
     };
     if (!tokens.id_token) {
-      throw new Error('Google nao retornou id_token');
+      throw new Error('Google não retornou id_token');
     }
 
     // Firebase accepts any id_token issued by a client in the same Google
@@ -132,7 +132,7 @@ function waitForCallback(expectedState: string): Promise<string> {
     listen<OAuthCallbackPayload>('oauth-callback', (event) => {
       if (event.payload.state !== expectedState) {
         cleanup();
-        reject(new Error('State mismatch (possivel CSRF)'));
+        reject(new Error('State mismatch (possível CSRF)'));
         return;
       }
       cleanup();

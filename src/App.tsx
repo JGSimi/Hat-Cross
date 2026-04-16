@@ -16,7 +16,11 @@ import { useChatStore } from './stores/chatStore';
 import { useConversationStore, flushPendingSave } from './stores/conversationStore';
 import { useClipboardStore } from './stores/clipboardStore';
 import { useDraftsStore } from './stores/draftsStore';
+import { useAuthStore } from './stores/authStore';
+import { useCreditsStore } from './stores/creditsStore';
 import { nextStreamId } from './services/ai';
+import { getIdToken } from './services/auth/firebase';
+import { AI_MODES } from './types/account';
 
 /** Normalize legacy shortcut format (CmdOrCtrl → CommandOrControl) */
 function normalizeShortcut(s: string): string {
@@ -359,10 +363,39 @@ function App() {
             .catch((e) => console.error('[notification] processing-started failed:', e));
         }
 
-        const provider = settings.cloudProvider;
-        const cfg = providerConfigs[settings.cloudProvider];
-        const endpoint = cfg?.endpoint || '';
-        const model = cfg?.model || '';
+        // Resolve which stream path to use (Hat credits vs BYOK) up front,
+        // so the chunk listener below can tag history entries with the right
+        // provider/model label.
+        const authUser = useAuthStore.getState().user;
+        const byokCfg = providerConfigs[settings.cloudProvider];
+        let provider: string;
+        let model: string;
+        let hatMode: typeof AI_MODES[number]['id'] | null = null;
+        let hatToken: string | null = null;
+
+        if (authUser) {
+          hatToken = await getIdToken();
+          if (!hatToken) {
+            invoke('send_notification', { title: 'Hat — Erro', body: 'Sessão expirada. Entre de novo na aba Conta.' }).catch(() => {});
+            isProcessing = false;
+            return;
+          }
+          hatMode = useCreditsStore.getState().selectedMode;
+          provider = 'Hat';
+          model = AI_MODES.find((m) => m.id === hatMode)?.label ?? 'Hat';
+        } else {
+          const apiKey = byokCfg?.apiKey?.trim() ?? '';
+          if (!apiKey) {
+            invoke('send_notification', {
+              title: 'Hat — Sem API',
+              body: 'Entre no Hat ou configure uma API key em Configurações > Modelos & IA.',
+            }).catch(() => {});
+            isProcessing = false;
+            return;
+          }
+          provider = settings.cloudProvider;
+          model = byokCfg?.model || '';
+        }
 
         const systemPrompt = clip.useCustomPrompt && clip.customPrompt
           ? clip.customPrompt
@@ -450,17 +483,34 @@ function App() {
           },
         );
 
-        await invoke('stream_chat', {
-          streamId,
-          messages: [{ role: 'user', textContent: messageText }],
-          systemPrompt,
-          provider, endpoint, model,
-          temperature: settings.temperature,
-          maxTokens: clip.maxResponseLength || settings.maxTokens,
-          images: clipImages,
-          thinkingEnabled: false,
-          thinkingBudget: 10000,
-        });
+        if (hatMode && hatToken) {
+          // Authenticated → Hat proxy (credits debited server-side)
+          await invoke('stream_chat_hat', {
+            streamId,
+            messages: [{ role: 'user', textContent: messageText }],
+            systemPrompt,
+            mode: hatMode,
+            temperature: settings.temperature,
+            maxTokens: clip.maxResponseLength || settings.maxTokens,
+            images: clipImages,
+            idToken: hatToken,
+          });
+        } else {
+          // BYOK → direct provider call
+          await invoke('stream_chat', {
+            streamId,
+            messages: [{ role: 'user', textContent: messageText }],
+            systemPrompt,
+            provider: settings.cloudProvider,
+            endpoint: byokCfg?.endpoint || '',
+            model,
+            temperature: settings.temperature,
+            maxTokens: clip.maxResponseLength || settings.maxTokens,
+            images: clipImages,
+            thinkingEnabled: false,
+            thinkingBudget: 10000,
+          });
+        }
       } catch (e) {
         console.error('Clipboard processing failed:', e);
         if (chunkUnlisten) {

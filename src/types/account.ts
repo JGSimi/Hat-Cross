@@ -10,7 +10,7 @@ export interface AIModeDefinition {
 }
 
 export const AI_MODES: readonly AIModeDefinition[] = [
-  { id: 'mini',     label: 'Hat Mini', description: 'Rapido e barato' },
+  { id: 'mini',     label: 'Hat Mini', description: 'Rápido e barato' },
   { id: 'standard', label: 'Hat',      description: 'Equilibrado' },
   { id: 'plus',     label: 'Hat Plus', description: 'Mais capaz, mais caro' },
 ] as const;

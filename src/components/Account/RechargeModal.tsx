@@ -11,16 +11,17 @@ interface Props {
 // You receive the PIX from the user, then edit `credits` in the Firebase
 // Console to match the table below. Whole-real amounts × 1060 credits.
 const RECHARGE_TIERS = [
-  { brl: 5,  credits: 5_300,  label: '~1.000 mensagens Padrao' },
-  { brl: 10, credits: 10_600, label: '~2.000 mensagens Padrao' },
-  { brl: 20, credits: 21_200, label: '~4.000 mensagens Padrao' },
-  { brl: 50, credits: 53_000, label: '~10.000 mensagens Padrao' },
+  { brl: 5,  credits: 5_300,  label: '~1.000 mensagens Padrão' },
+  { brl: 10, credits: 10_600, label: '~2.000 mensagens Padrão' },
+  { brl: 20, credits: 21_200, label: '~4.000 mensagens Padrão' },
+  { brl: 50, credits: 53_000, label: '~10.000 mensagens Padrão' },
 ];
 
-// TODO(joao): substitute with your real PIX key before shipping. Kept here
-// as a placeholder so the modal renders during dev.
 const PIX_KEY = 'joao02simi@gmail.com';
-const WHATSAPP_URL = 'https://wa.me/';  // fill the number when you have one
+// +55 45 98423-1720. Pre-fills a PT-BR greeting so the dev knows who to expect.
+const WHATSAPP_URL =
+  'https://wa.me/5545984231720?text=' +
+  encodeURIComponent('Oi João! Recarguei créditos Hat via PIX. Segue meu ID de usuário:');
 
 export default function RechargeModal({ open, onClose }: Props) {
   const user = useAuthStore((s) => s.user);
@@ -76,7 +77,7 @@ export default function RechargeModal({ open, onClose }: Props) {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-bright)' }}>
-                Recarregar creditos
+                Recarregar créditos
               </h2>
               <button
                 onClick={onClose}
@@ -88,7 +89,7 @@ export default function RechargeModal({ open, onClose }: Props) {
             </div>
 
             <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.55, margin: '0 0 18px' }}>
-              A recarga e manual: mande o PIX para o Joao, junto com seu ID de usuario. Ele libera os creditos na sua conta em minutos.
+              A recarga é manual: mande o PIX pra mim (João) pelo WhatsApp junto com seu ID de usuário. Libero os créditos na sua conta em minutos.
             </p>
 
             <Section title="1. Faça o PIX">
@@ -116,7 +117,7 @@ export default function RechargeModal({ open, onClose }: Props) {
                   >
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-bright)' }}>R$ {tier.brl}</div>
                     <div style={{ fontSize: 11, color: 'var(--color-accent)', fontWeight: 600, marginTop: 1 }}>
-                      {tier.credits.toLocaleString('pt-BR')} creditos
+                      {tier.credits.toLocaleString('pt-BR')} créditos
                     </div>
                     <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginTop: 2 }}>{tier.label}</div>
                   </div>
@@ -124,9 +125,9 @@ export default function RechargeModal({ open, onClose }: Props) {
               </div>
             </Section>
 
-            <Section title="2. Envie seu ID de usuario">
+            <Section title="2. Envie seu ID de usuário">
               <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 10px', lineHeight: 1.5 }}>
-                Mande o comprovante e seu ID pra essa conversa:
+                Mande o comprovante e seu ID pela conversa do WhatsApp:
               </p>
               <button
                 onClick={() => copy(user?.uid ?? '', 'uid')}
@@ -168,7 +169,7 @@ export default function RechargeModal({ open, onClose }: Props) {
             </Section>
 
             <p style={{ fontSize: 10, color: 'var(--text-dim)', lineHeight: 1.5, marginTop: 18, marginBottom: 0, textAlign: 'center' }}>
-              Os creditos aparecem automaticamente no seu saldo assim que o Joao confirmar o PIX.
+              Os créditos aparecem automaticamente no seu saldo assim que eu confirmar o PIX.
             </p>
           </motion.div>
         </motion.div>

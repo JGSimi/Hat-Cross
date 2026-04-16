@@ -27,7 +27,7 @@ const CALLBACK_HTML: &str = r#"<!DOCTYPE html>
   h1 { margin: 0 0 8px; font-size: 20px; font-weight: 600; }
   p { margin: 0; color: #9E9EA5; font-size: 13px; }
 </style></head>
-<body><div class="box"><h1>Login concluido &check;</h1><p>Pode fechar essa janela e voltar pro Hat.</p></div></body></html>"#;
+<body><div class="box"><h1>Login conclu&iacute;do &check;</h1><p>Pode fechar essa janela e voltar pro Hat.</p></div></body></html>"#;
 
 // Starts a one-shot loopback HTTP server on a random port, returns the port
 // immediately. When the Google OAuth redirect hits the listener with `code` and

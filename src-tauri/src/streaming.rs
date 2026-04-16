@@ -832,7 +832,7 @@ async fn stream_chat_hat_impl(
         .header(
             AUTHORIZATION,
             HeaderValue::from_str(&format!("Bearer {}", id_token))
-                .map_err(|e| format!("Token invalido: {}", e))?,
+                .map_err(|e| format!("Token inválido: {}", e))?,
         )
         .json(&body)
         .send()
@@ -861,9 +861,9 @@ fn map_hat_proxy_error(status: u16, body: &str) -> String {
         .unwrap_or_default();
 
     match status {
-        401 => "Sessao expirada. Faca login de novo para continuar.".to_string(),
-        402 => "Creditos insuficientes. Recarregue via PIX na aba Conta.".to_string(),
-        429 => "Muitas requisicoes em pouco tempo. Aguarde alguns segundos.".to_string(),
+        401 => "Sessão expirada. Faça login de novo para continuar.".to_string(),
+        402 => "Créditos insuficientes. Recarregue via PIX na aba Conta.".to_string(),
+        429 => "Muitas requisições em pouco tempo. Aguarde alguns segundos.".to_string(),
         500..=599 => format!("Erro no Hat ({}): {}", status, detail),
         _ => format!("Erro do Hat ({}): {}", status, detail),
     }

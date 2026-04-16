@@ -62,7 +62,7 @@ export default function AccountTab() {
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user.displayName ?? 'Usuario'}
+              {user.displayName ?? 'Usuário'}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {user.email}
@@ -132,7 +132,7 @@ export default function AccountTab() {
       <SectionTitle>Modelo preferido</SectionTitle>
       <GlassCard>
         <p style={{ fontSize: 10.5, color: 'var(--text-muted)', margin: '0 0 10px', lineHeight: 1.5 }}>
-          Modo usado por padrão em novas conversas. Voce pode trocar a qualquer momento no chat.
+          Modo usado por padrão em novas conversas. Você pode trocar a qualquer momento no chat.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
           {AI_MODES.map((m) => {
@@ -198,7 +198,7 @@ function SignedOutView({
         Entrar no Hat
       </h3>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, margin: '8px 0 20px', maxWidth: 300 }}>
-        Faça login com Google para usar <strong style={{ color: 'var(--text-secondary)' }}>creditos Hat</strong> e acessar os modelos top-tier sem configurar API key.
+        Faça login com Google para usar <strong style={{ color: 'var(--text-secondary)' }}>créditos Hat</strong> e acessar os modelos top-tier sem configurar API key.
       </p>
       <motion.button
         whileHover={{ scale: 1.02 }}
@@ -241,7 +241,7 @@ function SignedOutView({
         <p style={{ marginTop: 14, fontSize: 10.5, color: 'var(--error)', maxWidth: 300, lineHeight: 1.5 }}>{error}</p>
       )}
       <p style={{ marginTop: 24, fontSize: 10, color: 'var(--text-dim)', lineHeight: 1.5, maxWidth: 300 }}>
-        Se voce prefere usar sua propria API key, va em <strong style={{ color: 'var(--text-muted)' }}>Modelos & IA</strong>.
+        Se você prefere usar sua própria API key, vá em <strong style={{ color: 'var(--text-muted)' }}>Modelos & IA</strong>.
       </p>
     </div>
   );
