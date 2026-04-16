@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { formatTimestamp } from '../../utils/markdown';
 import { useSettingsStore } from '../../stores/settingsStore';
+import ThinkingBlock from './ThinkingBlock';
 import type { Message } from '../../types';
 
 interface Props {
@@ -19,7 +20,10 @@ function MessageBubble({ message, isGrouped }: Props) {
   const bubbleOpacity = useSettingsStore((s) => s.settings.appearance?.messageBubbleOpacity ?? 1);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(message.content);
+    const text = message.thinking
+      ? `<thinking>\n${message.thinking}\n</thinking>\n\n${message.content}`
+      : message.content;
+    navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -52,20 +56,25 @@ function MessageBubble({ message, isGrouped }: Props) {
             </p>
           </div>
         ) : (
-          <div
-            className="prose prose-invert prose-sm max-w-none"
-            style={{
-              fontSize: 13.5, lineHeight: 1.6,
-              color: 'var(--text-normal)',
-              wordBreak: 'break-word',
-              borderLeft: '2px solid color-mix(in srgb, var(--color-accent) 20%, transparent)',
-              paddingLeft: 14,
-            }}
-          >
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-              {message.content}
-            </ReactMarkdown>
-          </div>
+          <>
+            {message.thinking && (
+              <ThinkingBlock thinking={message.thinking} />
+            )}
+            <div
+              className="prose prose-invert prose-sm max-w-none"
+              style={{
+                fontSize: 13.5, lineHeight: 1.6,
+                color: 'var(--text-normal)',
+                wordBreak: 'break-word',
+                borderLeft: '2px solid color-mix(in srgb, var(--color-accent) 20%, transparent)',
+                paddingLeft: 14,
+              }}
+            >
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          </>
         )}
 
         <div
@@ -104,5 +113,6 @@ function MessageBubble({ message, isGrouped }: Props) {
 export default memo(MessageBubble, (prev, next) => {
   return prev.message.id === next.message.id &&
          prev.message.content === next.message.content &&
+         prev.message.thinking === next.message.thinking &&
          prev.isGrouped === next.isGrouped;
 });

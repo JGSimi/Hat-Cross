@@ -6,6 +6,7 @@ export interface Message {
   isUser: boolean;
   timestamp: number;
   source: 'chat' | 'screenAnalysis' | 'clipboard';
+  thinking?: string;
 }
 
 export interface ChatAttachment {
@@ -56,6 +57,7 @@ export interface StreamChunk {
   isFinished: boolean;
   inputTokens: number | null;
   outputTokens: number | null;
+  contentType: 'text' | 'thinking';
 }
 
 export interface TokenUsage {

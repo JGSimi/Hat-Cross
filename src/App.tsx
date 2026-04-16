@@ -377,12 +377,12 @@ function App() {
         let hasReceivedContent = false;
         const streamId = nextStreamId();
 
-        chunkUnlisten = await listen<{ streamId: number; text: string; isFinished: boolean }>(
+        chunkUnlisten = await listen<{ streamId: number; text: string; isFinished: boolean; contentType?: string }>(
           'chat-stream',
           (event) => {
             // Filter by streamId so we don't pick up chunks from other concurrent streams.
             if (event.payload.streamId !== streamId) return;
-            if (event.payload.text && !event.payload.isFinished) {
+            if (event.payload.text && !event.payload.isFinished && event.payload.contentType !== 'thinking') {
               response += event.payload.text;
               hasReceivedContent = true;
             }
@@ -460,6 +460,8 @@ function App() {
           temperature: settings.temperature,
           maxTokens: clip.maxResponseLength || settings.maxTokens,
           images: clipImages,
+          thinkingEnabled: false,
+          thinkingBudget: 10000,
         });
       } catch (e) {
         console.error('Clipboard processing failed:', e);

@@ -6,6 +6,7 @@ interface ChatState {
   messages: Message[];
   isStreaming: boolean;
   streamingContent: string;
+  streamingThinking: string;
   pendingAttachments: ChatAttachment[];
   error: string | null;
 
@@ -14,6 +15,7 @@ interface ChatState {
   clearMessages: () => void;
   setStreaming: (streaming: boolean) => void;
   appendStreamContent: (chunk: string) => void;
+  appendStreamThinking: (chunk: string) => void;
   finishStream: () => void;
   addAttachment: (attachment: ChatAttachment) => void;
   removeAttachment: (id: string) => void;
@@ -26,6 +28,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   messages: [],
   isStreaming: false,
   streamingContent: '',
+  streamingThinking: '',
   pendingAttachments: [],
   error: null,
 
@@ -37,13 +40,13 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   },
 
   clearMessages: () => {
-    set({ messages: [], error: null, streamingContent: '' });
+    set({ messages: [], error: null, streamingContent: '', streamingThinking: '' });
   },
 
   setStreaming: (streaming) => {
     set({
       isStreaming: streaming,
-      ...(streaming ? { streamingContent: '', error: null } : {}),
+      ...(streaming ? { streamingContent: '', streamingThinking: '', error: null } : {}),
     });
   },
 
@@ -53,8 +56,14 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     }));
   },
 
+  appendStreamThinking: (chunk) => {
+    set((state) => ({
+      streamingThinking: state.streamingThinking + chunk,
+    }));
+  },
+
   finishStream: () => {
-    const { streamingContent } = get();
+    const { streamingContent, streamingThinking } = get();
 
     if (streamingContent.length > 0) {
       const assistantMessage: Message = {
@@ -63,15 +72,17 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         isUser: false,
         timestamp: Date.now(),
         source: 'chat',
+        thinking: streamingThinking || undefined,
       };
 
       set((state) => ({
         messages: [...state.messages, assistantMessage],
         isStreaming: false,
         streamingContent: '',
+        streamingThinking: '',
       }));
     } else {
-      set({ isStreaming: false, streamingContent: '' });
+      set({ isStreaming: false, streamingContent: '', streamingThinking: '' });
     }
   },
 
@@ -99,7 +110,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     const convStore = useConversationStore.getState();
     const conversation = convStore.conversations.find((c) => c.id === conversationId);
     if (conversation) {
-      set({ messages: [...conversation.messages], error: null, streamingContent: '' });
+      set({ messages: [...conversation.messages], error: null, streamingContent: '', streamingThinking: '' });
     }
   },
 }));

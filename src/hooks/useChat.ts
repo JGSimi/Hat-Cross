@@ -17,11 +17,13 @@ export function useChat() {
     messages,
     isStreaming,
     streamingContent,
+    streamingThinking,
     pendingAttachments,
     addMessage,
     clearMessages,
     setStreaming,
     appendStreamContent,
+    appendStreamThinking,
     finishStream,
     clearAttachments,
     setError,
@@ -109,6 +111,11 @@ export function useChat() {
         setStreaming(true);
         setError(null);
 
+        const thinkingCfg = !isLocal ? providerConfigs[settings.cloudProvider] : null;
+        const thinkingEnabled1 = thinkingCfg?.thinkingEnabled ?? false;
+        const thinkingBudget1 = thinkingCfg?.thinkingBudget ?? 10000;
+        const effectiveTemp1 = (provider === 'anthropic' && thinkingEnabled1) ? 1.0 : settings.temperature;
+
         try {
           const cancel = await startStream({
             messages: history,
@@ -116,11 +123,19 @@ export function useChat() {
             provider,
             endpoint,
             model,
-            temperature: settings.temperature,
+            temperature: effectiveTemp1,
             maxTokens: settings.maxTokens,
             images: allImages,
+            thinkingEnabled: thinkingEnabled1,
+            thinkingBudget: thinkingBudget1,
             onChunk: (chunk) => {
-              if (chunk.text) appendStreamContent(chunk.text);
+              if (chunk.text) {
+                if (chunk.contentType === 'thinking') {
+                  appendStreamThinking(chunk.text);
+                } else {
+                  appendStreamContent(chunk.text);
+                }
+              }
               if (chunk.isFinished && (chunk.inputTokens || chunk.outputTokens)) {
                 updateTokenStats({
                   inputTokens: chunk.inputTokens ?? 0,
@@ -206,6 +221,11 @@ export function useChat() {
       setStreaming(true);
       setError(null);
 
+      const thinkingCfg2 = !isLocal ? providerConfigs[settings.cloudProvider] : null;
+      const thinkingEnabled2 = thinkingCfg2?.thinkingEnabled ?? false;
+      const thinkingBudget2 = thinkingCfg2?.thinkingBudget ?? 10000;
+      const effectiveTemp2 = (provider === 'anthropic' && thinkingEnabled2) ? 1.0 : settings.temperature;
+
       try {
         const cancel = await startStream({
           messages: history,
@@ -213,12 +233,18 @@ export function useChat() {
           provider,
           endpoint,
           model,
-          temperature: settings.temperature,
+          temperature: effectiveTemp2,
           maxTokens: settings.maxTokens,
           images: allImages,
+          thinkingEnabled: thinkingEnabled2,
+          thinkingBudget: thinkingBudget2,
           onChunk: (chunk) => {
             if (chunk.text) {
-              appendStreamContent(chunk.text);
+              if (chunk.contentType === 'thinking') {
+                appendStreamThinking(chunk.text);
+              } else {
+                appendStreamContent(chunk.text);
+              }
             }
             if (chunk.isFinished && (chunk.inputTokens || chunk.outputTokens)) {
               updateTokenStats({
@@ -262,6 +288,7 @@ export function useChat() {
       cancelRef.current = null;
     }
     const content = useChatStore.getState().streamingContent;
+    const thinking = useChatStore.getState().streamingThinking;
     if (content) {
       const aiMsg: Message = {
         id: generateId(),
@@ -269,8 +296,9 @@ export function useChat() {
         isUser: false,
         timestamp: Date.now(),
         source: 'chat',
+        thinking: thinking || undefined,
       };
-      useChatStore.setState({ streamingContent: '', isStreaming: false });
+      useChatStore.setState({ streamingContent: '', streamingThinking: '', isStreaming: false });
       addMessage(aiMsg);
     }
     setStreaming(false);
@@ -280,6 +308,7 @@ export function useChat() {
     messages,
     isStreaming,
     streamingContent,
+    streamingThinking,
     pendingAttachments,
     sendMessage,
     cancel,

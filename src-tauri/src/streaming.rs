@@ -44,6 +44,7 @@ pub struct StreamChunkPayload {
     pub is_finished: bool,
     pub input_tokens: Option<u32>,
     pub output_tokens: Option<u32>,
+    pub content_type: String, // "text" | "thinking"
 }
 
 // ----- Commands -----
@@ -60,6 +61,8 @@ pub async fn stream_chat(
     temperature: f64,
     max_tokens: u32,
     images: Vec<String>,
+    thinking_enabled: bool,
+    thinking_budget: u32,
 ) -> Result<(), String> {
     let cancel_flag = register_stream(stream_id);
 
@@ -77,14 +80,14 @@ pub async fn stream_chat(
         "anthropic" => {
             stream_anthropic(
                 &app, stream_id, &cancel_flag, &messages, &system_prompt, &endpoint, &api_key,
-                &model, temperature, max_tokens, &images,
+                &model, temperature, max_tokens, &images, thinking_enabled, thinking_budget,
             )
             .await
         }
         "ollama" => {
             stream_ollama(
                 &app, stream_id, &cancel_flag, &messages, &system_prompt, &endpoint, &model,
-                temperature, &images,
+                temperature, &images, thinking_enabled,
             )
             .await
         }
@@ -92,7 +95,7 @@ pub async fn stream_chat(
         _ => {
             stream_openai_compatible(
                 &app, stream_id, &cancel_flag, &messages, &system_prompt, &endpoint, &api_key,
-                &model, temperature, max_tokens, &images,
+                &model, temperature, max_tokens, &images, thinking_enabled,
             )
             .await
         }
@@ -109,6 +112,7 @@ pub async fn stream_chat(
                 is_finished: true,
                 input_tokens: None,
                 output_tokens: None,
+                content_type: "text".to_string(),
             },
         );
         return Err(e);
@@ -175,6 +179,7 @@ async fn stream_openai_compatible(
     temperature: f64,
     max_tokens: u32,
     images: &[String],
+    _thinking_enabled: bool,
 ) -> Result<(), String> {
     let url = format!("{}/chat/completions", endpoint.trim_end_matches('/'));
 
@@ -279,6 +284,7 @@ async fn stream_openai_compatible(
                     is_finished: true,
                     input_tokens: None,
                     output_tokens: None,
+                    content_type: "text".to_string(),
                 },
             );
             return Ok(());
@@ -302,6 +308,7 @@ async fn stream_openai_compatible(
                             is_finished: true,
                             input_tokens: None,
                             output_tokens: None,
+                            content_type: "text".to_string(),
                         },
                     );
                     finished = true;
@@ -322,6 +329,25 @@ async fn stream_openai_compatible(
                                 is_finished: false,
                                 input_tokens: None,
                                 output_tokens: None,
+                                content_type: "text".to_string(),
+                            },
+                        );
+                    }
+
+                    // Check for reasoning_content (OpenAI reasoning models)
+                    let reasoning = json["choices"][0]["delta"]["reasoning_content"]
+                        .as_str()
+                        .unwrap_or("");
+                    if !reasoning.is_empty() {
+                        let _ = app.emit(
+                            "chat-stream",
+                            StreamChunkPayload {
+                                stream_id,
+                                text: reasoning.to_string(),
+                                is_finished: false,
+                                input_tokens: None,
+                                output_tokens: None,
+                                content_type: "thinking".to_string(),
                             },
                         );
                     }
@@ -339,6 +365,7 @@ async fn stream_openai_compatible(
                                     is_finished: false,
                                     input_tokens,
                                     output_tokens,
+                                    content_type: "text".to_string(),
                                 },
                             );
                         }
@@ -361,6 +388,7 @@ async fn stream_openai_compatible(
             is_finished: true,
             input_tokens: None,
             output_tokens: None,
+            content_type: "text".to_string(),
         },
     );
 
@@ -381,6 +409,8 @@ async fn stream_anthropic(
     temperature: f64,
     max_tokens: u32,
     images: &[String],
+    thinking_enabled: bool,
+    thinking_budget: u32,
 ) -> Result<(), String> {
     let url = format!("{}/messages", endpoint.trim_end_matches('/'));
 
@@ -438,13 +468,27 @@ async fn stream_anthropic(
         }
     }
 
+    let effective_temperature = if thinking_enabled { 1.0 } else { temperature };
+    let effective_max_tokens = if thinking_enabled && max_tokens < thinking_budget + 1 {
+        thinking_budget + 1
+    } else {
+        max_tokens
+    };
+
     let mut body = serde_json::json!({
         "model": model,
         "messages": api_messages,
-        "max_tokens": max_tokens,
-        "temperature": temperature,
+        "max_tokens": effective_max_tokens,
+        "temperature": effective_temperature,
         "stream": true
     });
+
+    if thinking_enabled {
+        body["thinking"] = serde_json::json!({
+            "type": "enabled",
+            "budget_tokens": thinking_budget
+        });
+    }
 
     if !system_prompt.is_empty() {
         body["system"] = serde_json::json!(system_prompt);
@@ -472,6 +516,8 @@ async fn stream_anthropic(
     let mut input_tokens: Option<u32> = None;
     let mut output_tokens: Option<u32> = None;
     let mut finished = false;
+    let mut current_event_name = String::new();
+    let mut current_block_type = "text".to_string();
 
     while let Some(chunk) = stream.next().await {
         if cancel_flag.load(Ordering::SeqCst) {
@@ -483,6 +529,7 @@ async fn stream_anthropic(
                     is_finished: true,
                     input_tokens,
                     output_tokens,
+                    content_type: "text".to_string(),
                 },
             );
             return Ok(());
@@ -492,7 +539,13 @@ async fn stream_anthropic(
         buffer.extend_from_slice(&chunk);
 
         drain_lines(&mut buffer, |line| {
-            if finished || line.is_empty() || line.starts_with("event:") {
+            if finished || line.is_empty() {
+                return;
+            }
+
+            // Capture event: lines instead of skipping them
+            if let Some(event_name) = line.strip_prefix("event:") {
+                current_event_name = event_name.trim().to_string();
                 return;
             }
 
@@ -501,20 +554,49 @@ async fn stream_anthropic(
                     let event_type = json["type"].as_str().unwrap_or("");
 
                     match event_type {
+                        "content_block_start" => {
+                            let block_type = json["content_block"]["type"]
+                                .as_str()
+                                .unwrap_or("text");
+                            current_block_type = block_type.to_string();
+                        }
                         "content_block_delta" => {
-                            let text = json["delta"]["text"].as_str().unwrap_or("");
-                            if !text.is_empty() {
-                                let _ = app.emit(
-                                    "chat-stream",
-                                    StreamChunkPayload {
-                                        stream_id,
-                                        text: text.to_string(),
-                                        is_finished: false,
-                                        input_tokens: None,
-                                        output_tokens: None,
-                                    },
-                                );
+                            if current_block_type == "thinking" {
+                                let thinking_text = json["delta"]["thinking"]
+                                    .as_str()
+                                    .unwrap_or("");
+                                if !thinking_text.is_empty() {
+                                    let _ = app.emit(
+                                        "chat-stream",
+                                        StreamChunkPayload {
+                                            stream_id,
+                                            text: thinking_text.to_string(),
+                                            is_finished: false,
+                                            input_tokens: None,
+                                            output_tokens: None,
+                                            content_type: "thinking".to_string(),
+                                        },
+                                    );
+                                }
+                            } else {
+                                let text = json["delta"]["text"].as_str().unwrap_or("");
+                                if !text.is_empty() {
+                                    let _ = app.emit(
+                                        "chat-stream",
+                                        StreamChunkPayload {
+                                            stream_id,
+                                            text: text.to_string(),
+                                            is_finished: false,
+                                            input_tokens: None,
+                                            output_tokens: None,
+                                            content_type: "text".to_string(),
+                                        },
+                                    );
+                                }
                             }
+                        }
+                        "content_block_stop" => {
+                            current_block_type = "text".to_string();
                         }
                         "message_start" => {
                             if let Some(usage) = json["message"].get("usage") {
@@ -537,6 +619,7 @@ async fn stream_anthropic(
                                     is_finished: true,
                                     input_tokens,
                                     output_tokens,
+                                    content_type: "text".to_string(),
                                 },
                             );
                             finished = true;
@@ -545,6 +628,8 @@ async fn stream_anthropic(
                     }
                 }
             }
+            // Suppress unused variable warning
+            let _ = &current_event_name;
         });
 
         if finished {
@@ -561,6 +646,7 @@ async fn stream_anthropic(
             is_finished: true,
             input_tokens,
             output_tokens,
+            content_type: "text".to_string(),
         },
     );
 
@@ -579,6 +665,7 @@ async fn stream_ollama(
     model: &str,
     temperature: f64,
     images: &[String],
+    _thinking_enabled: bool,
 ) -> Result<(), String> {
     // Respect the caller-supplied endpoint instead of hardcoding localhost.
     // Falls back to the default Ollama port if the caller passes an empty string.
@@ -666,6 +753,7 @@ async fn stream_ollama(
     let mut stream = response.bytes_stream();
     let mut buffer: Vec<u8> = Vec::new();
     let mut finished = false;
+    let mut in_think_block: bool = false;
 
     while let Some(chunk) = stream.next().await {
         if cancel_flag.load(Ordering::SeqCst) {
@@ -677,6 +765,7 @@ async fn stream_ollama(
                     is_finished: true,
                     input_tokens: None,
                     output_tokens: None,
+                    content_type: "text".to_string(),
                 },
             );
             return Ok(());
@@ -704,6 +793,7 @@ async fn stream_ollama(
                             is_finished: true,
                             input_tokens,
                             output_tokens,
+                            content_type: "text".to_string(),
                         },
                     );
                     finished = true;
@@ -712,16 +802,78 @@ async fn stream_ollama(
 
                 let content = json["message"]["content"].as_str().unwrap_or("");
                 if !content.is_empty() {
-                    let _ = app.emit(
-                        "chat-stream",
-                        StreamChunkPayload {
-                            stream_id,
-                            text: content.to_string(),
-                            is_finished: false,
-                            input_tokens: None,
-                            output_tokens: None,
-                        },
-                    );
+                    // Parse <think> tags for Ollama reasoning models
+                    let mut remaining = content.to_string();
+
+                    while !remaining.is_empty() {
+                        if in_think_block {
+                            if let Some(end_pos) = remaining.find("</think>") {
+                                let before = &remaining[..end_pos];
+                                if !before.is_empty() {
+                                    let _ = app.emit(
+                                        "chat-stream",
+                                        StreamChunkPayload {
+                                            stream_id,
+                                            text: before.to_string(),
+                                            is_finished: false,
+                                            input_tokens: None,
+                                            output_tokens: None,
+                                            content_type: "thinking".to_string(),
+                                        },
+                                    );
+                                }
+                                in_think_block = false;
+                                remaining = remaining[end_pos + "</think>".len()..].to_string();
+                            } else {
+                                // Entire remaining is thinking
+                                let _ = app.emit(
+                                    "chat-stream",
+                                    StreamChunkPayload {
+                                        stream_id,
+                                        text: remaining.clone(),
+                                        is_finished: false,
+                                        input_tokens: None,
+                                        output_tokens: None,
+                                        content_type: "thinking".to_string(),
+                                    },
+                                );
+                                remaining.clear();
+                            }
+                        } else {
+                            if let Some(start_pos) = remaining.find("<think>") {
+                                let before = &remaining[..start_pos];
+                                if !before.is_empty() {
+                                    let _ = app.emit(
+                                        "chat-stream",
+                                        StreamChunkPayload {
+                                            stream_id,
+                                            text: before.to_string(),
+                                            is_finished: false,
+                                            input_tokens: None,
+                                            output_tokens: None,
+                                            content_type: "text".to_string(),
+                                        },
+                                    );
+                                }
+                                in_think_block = true;
+                                remaining = remaining[start_pos + "<think>".len()..].to_string();
+                            } else {
+                                // Entire remaining is text
+                                let _ = app.emit(
+                                    "chat-stream",
+                                    StreamChunkPayload {
+                                        stream_id,
+                                        text: remaining.clone(),
+                                        is_finished: false,
+                                        input_tokens: None,
+                                        output_tokens: None,
+                                        content_type: "text".to_string(),
+                                    },
+                                );
+                                remaining.clear();
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -740,6 +892,7 @@ async fn stream_ollama(
             is_finished: true,
             input_tokens: None,
             output_tokens: None,
+            content_type: "text".to_string(),
         },
     );
 

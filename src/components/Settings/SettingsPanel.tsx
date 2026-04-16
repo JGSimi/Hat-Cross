@@ -34,6 +34,8 @@ export default function SettingsPanel({ onClose }: Props) {
     setApiKey,
     setModel,
     setEndpoint,
+    setThinkingEnabled,
+    setThinkingBudget,
     resetTokenStats,
   } = useSettingsStore();
 
@@ -160,6 +162,8 @@ export default function SettingsPanel({ onClose }: Props) {
                   setApiKey={setApiKey}
                   setModel={setModel}
                   setEndpoint={setEndpoint}
+                  setThinkingEnabled={setThinkingEnabled}
+                  setThinkingBudget={setThinkingBudget}
                   resetTokenStats={resetTokenStats}
                 />
               )}
@@ -899,6 +903,8 @@ function ModelsTab({
   setApiKey,
   setModel,
   setEndpoint,
+  setThinkingEnabled,
+  setThinkingBudget,
   resetTokenStats,
 }: {
   settings: ReturnType<typeof useSettingsStore.getState>['settings'];
@@ -908,6 +914,8 @@ function ModelsTab({
   setApiKey: ReturnType<typeof useSettingsStore.getState>['setApiKey'];
   setModel: ReturnType<typeof useSettingsStore.getState>['setModel'];
   setEndpoint: ReturnType<typeof useSettingsStore.getState>['setEndpoint'];
+  setThinkingEnabled: ReturnType<typeof useSettingsStore.getState>['setThinkingEnabled'];
+  setThinkingBudget: ReturnType<typeof useSettingsStore.getState>['setThinkingBudget'];
   resetTokenStats: ReturnType<typeof useSettingsStore.getState>['resetTokenStats'];
 }) {
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
@@ -1149,6 +1157,38 @@ function ModelsTab({
                 <RefreshCw size={10} className={loadingModels ? 'animate-spin' : ''} />
                 Atualizar lista de modelos
               </motion.button>
+            )}
+          </GlassCard>
+
+          {/* Thinking / Extended Thinking */}
+          <SectionTitle>
+            Cadeia de Pensamento
+            <span style={{ fontSize: 9, color: 'var(--text-muted)', marginLeft: 6, fontWeight: 400, textTransform: 'none' }}>
+              (Extended Thinking)
+            </span>
+          </SectionTitle>
+          <GlassCard>
+            <SettingRow label="Ativar pensamento estendido">
+              <Toggle
+                checked={currentConfig?.thinkingEnabled ?? false}
+                onChange={(v) => setThinkingEnabled(currentProvider, v)}
+              />
+            </SettingRow>
+            {currentConfig?.thinkingEnabled && (
+              <>
+                <SettingRow label={`Budget de tokens: ${currentConfig.thinkingBudget ?? 10000}`}>
+                  <CustomSlider
+                    min={1024} max={100000} step={1024}
+                    value={currentConfig?.thinkingBudget ?? 10000}
+                    onChange={(v) => setThinkingBudget(currentProvider, v)}
+                  />
+                </SettingRow>
+                {currentProvider === 'anthropic' && (
+                  <p style={{ fontSize: 10, color: 'var(--warning)', marginTop: 4, lineHeight: 1.5 }}>
+                    A Anthropic exige temperature = 1 com pensamento ativo. O valor sera ajustado automaticamente.
+                  </p>
+                )}
+              </>
             )}
           </GlassCard>
 

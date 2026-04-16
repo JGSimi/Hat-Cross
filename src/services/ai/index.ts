@@ -11,6 +11,8 @@ export interface StreamOptions {
   temperature: number;
   maxTokens: number;
   images?: string[];
+  thinkingEnabled?: boolean;
+  thinkingBudget?: number;
   onChunk: (chunk: StreamChunk) => void;
   onError: (error: string) => void;
   onDone: () => void;
@@ -80,6 +82,8 @@ export async function startStream(options: StreamOptions): Promise<() => void> {
     temperature,
     maxTokens,
     images,
+    thinkingEnabled: options.thinkingEnabled ?? false,
+    thinkingBudget: options.thinkingBudget ?? 10000,
   }).catch((e) => {
     // Backend error (connection, HTTP status, etc.) — surface to caller.
     if (done) return;
