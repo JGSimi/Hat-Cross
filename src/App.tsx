@@ -20,6 +20,7 @@ import { useAuthStore } from './stores/authStore';
 import { useCreditsStore } from './stores/creditsStore';
 import { nextStreamId } from './services/ai';
 import { getIdToken } from './services/auth/firebase';
+import { startAutoUpdater } from './services/autoUpdater';
 import { AI_MODES } from './types/account';
 
 /** Normalize legacy shortcut format (CmdOrCtrl → CommandOrControl) */
@@ -81,6 +82,13 @@ function App() {
     })();
     setupSettingsSync();
     useClipboardStore.getState().loadEntries();
+
+    // Auto-updater: initial check 30s after launch, then every 5 min.
+    // Only arm it on the main window so multi-window scenarios don't run
+    // the 5-min cycle N times in parallel.
+    if (getCurrentWindow().label === 'main') {
+      startAutoUpdater();
+    }
 
     // Flush pending saves on window close to prevent data loss
     let unlistenClose: (() => void) | undefined;
