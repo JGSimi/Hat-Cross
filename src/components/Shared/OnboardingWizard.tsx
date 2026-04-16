@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Key, Gem, Bot, Brain, Zap, Shuffle, Globe, Check, Monitor } from 'lucide-react';
+import { ArrowRight, Key, Gem, Bot, Brain, Zap, Shuffle, Globe, Check } from 'lucide-react';
 import HorseLogo from './HorseLogo';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { PROVIDER_DEFAULTS, type CloudProvider } from '../../types';
@@ -24,9 +24,8 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
   const [showKey, setShowKey] = useState(false);
   const [validating, setValidating] = useState(false);
   const [keyStatus, setKeyStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
-  const [useLocal, setUseLocal] = useState(false);
 
-  const { setProvider, setApiKey: storeSetApiKey, updateSettings } = useSettingsStore();
+  const { setProvider, setApiKey: storeSetApiKey } = useSettingsStore();
 
   const handleValidateAndSave = async () => {
     if (!apiKey.trim()) return;
@@ -46,11 +45,6 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
       setKeyStatus('invalid');
     }
     setValidating(false);
-  };
-
-  const handleUseLocal = () => {
-    updateSettings({ inferenceMode: 'local' });
-    setStep('done');
   };
 
   const handleFinish = () => {
@@ -227,26 +221,6 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
                 </motion.button>
               </div>
 
-              <button
-                onClick={() => { setUseLocal(true); handleUseLocal(); }}
-                style={{
-                  width: '100%',
-                  marginTop: 12,
-                  padding: '8px',
-                  borderRadius: 8,
-                  fontSize: 11,
-                  background: 'transparent',
-                  color: 'var(--text-muted)',
-                  border: '1px solid var(--border-subtle)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}
-              >
-                <Monitor size={12} /> Usar Ollama local (sem API key)
-              </button>
             </motion.div>
           )}
 
@@ -407,10 +381,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
               <p style={{
                 fontSize: 13, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.5,
               }}>
-                {useLocal
-                  ? 'Ollama local configurado. Certifique-se de que o Ollama esta rodando.'
-                  : `${PROVIDERS.find(p => p.id === selectedProvider)?.label} configurado com sucesso.`
-                }
+                {`${PROVIDERS.find(p => p.id === selectedProvider)?.label} configurado com sucesso.`}
               </p>
               <p style={{
                 fontSize: 11, color: 'var(--text-dim)', margin: '0 0 28px', lineHeight: 1.5,

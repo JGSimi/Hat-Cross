@@ -92,28 +92,22 @@ export function useChat() {
         ];
         clearAttachments();
 
-        const isLocal = settings.inferenceMode === 'local';
-        const provider = isLocal ? 'ollama' : settings.cloudProvider;
-        const cfg = isLocal ? null : providerConfigs[settings.cloudProvider];
-        const endpoint = isLocal
-          ? 'http://localhost:11434'
-          : cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
-        const model = isLocal ? settings.localModel : cfg?.model || '';
+        const provider = settings.cloudProvider;
+        const cfg = providerConfigs[settings.cloudProvider];
+        const endpoint = cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
+        const model = cfg?.model || '';
 
-        if (!isLocal && provider !== 'ollama') {
-          const apiKey = cfg?.apiKey || '';
-          if (!apiKey.trim()) {
-            setError('Chave de API não configurada. Vá em Configurações > Modelos & IA para adicionar sua chave.');
-            return;
-          }
+        const apiKey = cfg?.apiKey || '';
+        if (!apiKey.trim()) {
+          setError('Chave de API não configurada. Vá em Configurações > Modelos & IA para adicionar sua chave.');
+          return;
         }
 
         setStreaming(true);
         setError(null);
 
-        const thinkingCfg = !isLocal ? providerConfigs[settings.cloudProvider] : null;
-        const thinkingEnabled1 = thinkingCfg?.thinkingEnabled ?? false;
-        const thinkingBudget1 = thinkingCfg?.thinkingBudget ?? 10000;
+        const thinkingEnabled1 = cfg?.thinkingEnabled ?? false;
+        const thinkingBudget1 = cfg?.thinkingBudget ?? 10000;
         const effectiveTemp1 = (provider === 'anthropic' && thinkingEnabled1) ? 1.0 : settings.temperature;
 
         try {
@@ -200,30 +194,24 @@ export function useChat() {
         textContent: m.content,
       }));
 
-      const isLocal = settings.inferenceMode === 'local';
-      const provider = isLocal ? 'ollama' : settings.cloudProvider;
-      const cfg = isLocal ? null : providerConfigs[settings.cloudProvider];
-      const endpoint = isLocal
-        ? 'http://localhost:11434'
-        : cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
-      const model = isLocal ? settings.localModel : cfg?.model || '';
+      const provider = settings.cloudProvider;
+      const cfg = providerConfigs[settings.cloudProvider];
+      const endpoint = cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
+      const model = cfg?.model || '';
 
-      if (!isLocal && provider !== 'ollama') {
-        const apiKey = cfg?.apiKey || '';
-        if (!apiKey.trim()) {
-          setError(
-            'Chave de API não configurada. Vá em Configurações > Modelos & IA para adicionar sua chave.'
-          );
-          return;
-        }
+      const apiKey = cfg?.apiKey || '';
+      if (!apiKey.trim()) {
+        setError(
+          'Chave de API não configurada. Vá em Configurações > Modelos & IA para adicionar sua chave.'
+        );
+        return;
       }
 
       setStreaming(true);
       setError(null);
 
-      const thinkingCfg2 = !isLocal ? providerConfigs[settings.cloudProvider] : null;
-      const thinkingEnabled2 = thinkingCfg2?.thinkingEnabled ?? false;
-      const thinkingBudget2 = thinkingCfg2?.thinkingBudget ?? 10000;
+      const thinkingEnabled2 = cfg?.thinkingEnabled ?? false;
+      const thinkingBudget2 = cfg?.thinkingBudget ?? 10000;
       const effectiveTemp2 = (provider === 'anthropic' && thinkingEnabled2) ? 1.0 : settings.temperature;
 
       try {

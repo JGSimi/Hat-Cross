@@ -240,10 +240,9 @@ function App() {
     if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current);
     rebuildTimerRef.current = setTimeout(() => {
       const { settings, providerConfigs } = useSettingsStore.getState();
-      const isLocal = settings.inferenceMode === 'local';
-      const provider = isLocal ? 'Ollama' : settings.cloudProvider.charAt(0).toUpperCase() + settings.cloudProvider.slice(1);
-      const cfg = isLocal ? null : providerConfigs[settings.cloudProvider];
-      const model = isLocal ? (settings.localModel || 'local') : (cfg?.model || '');
+      const provider = settings.cloudProvider.charAt(0).toUpperCase() + settings.cloudProvider.slice(1);
+      const cfg = providerConfigs[settings.cloudProvider];
+      const model = cfg?.model || '';
       const providerLabel = `${provider} — ${model}`;
 
       const conversations = useConversationStore.getState().conversations;
@@ -360,11 +359,10 @@ function App() {
             .catch((e) => console.error('[notification] processing-started failed:', e));
         }
 
-        const isLocal = settings.inferenceMode === 'local';
-        const provider = isLocal ? 'ollama' : settings.cloudProvider;
-        const cfg = isLocal ? null : providerConfigs[settings.cloudProvider];
-        const endpoint = isLocal ? 'http://localhost:11434' : cfg?.endpoint || '';
-        const model = isLocal ? settings.localModel : cfg?.model || '';
+        const provider = settings.cloudProvider;
+        const cfg = providerConfigs[settings.cloudProvider];
+        const endpoint = cfg?.endpoint || '';
+        const model = cfg?.model || '';
 
         const systemPrompt = clip.useCustomPrompt && clip.customPrompt
           ? clip.customPrompt

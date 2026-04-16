@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, RefreshCw, Eye, EyeOff, Bot, Brain, Zap, Shuffle, Globe, Monitor, Cloud, Gem } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Eye, EyeOff, Bot, Brain, Zap, Shuffle, Globe, Gem } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import ThemePicker from './ThemePicker';
@@ -898,7 +898,6 @@ function ProviderIcon({ provider, size = 14 }: { provider: string; size?: number
 function ModelsTab({
   settings,
   providerConfigs,
-  updateSettings,
   setProvider,
   setApiKey,
   setModel,
@@ -931,7 +930,6 @@ function ModelsTab({
 
   // Auto-fetch models when provider changes or API key is set
   useEffect(() => {
-    if (settings.inferenceMode !== 'api') return;
     if (!hasApiKey) {
       setFetchedModels([]);
       setApiKeyStatus('idle');
@@ -952,7 +950,7 @@ function ModelsTab({
     // Debounce to avoid fetching on every keystroke of API key
     const timer = setTimeout(doFetch, 800);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [currentProvider, hasApiKey, currentConfig?.apiKey, currentConfig?.endpoint, settings.inferenceMode]);
+  }, [currentProvider, hasApiKey, currentConfig?.apiKey, currentConfig?.endpoint]);
 
   // Combine fetched models with popular defaults
   const allModels = fetchedModels.length > 0
@@ -976,48 +974,6 @@ function ModelsTab({
 
   return (
     <>
-      {/* Inference mode toggle */}
-      <SectionTitle>Modo de Inferência</SectionTitle>
-      <GlassCard>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {(['api', 'local'] as const).map((mode) => (
-            <motion.button
-              key={mode}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => updateSettings({ inferenceMode: mode })}
-              style={{
-                flex: 1, padding: '9px 0', borderRadius: 8,
-                fontSize: 12, fontWeight: 500,
-                background: settings.inferenceMode === mode ? 'var(--color-accent)' : 'var(--surface-secondary)',
-                color: settings.inferenceMode === mode ? 'white' : 'var(--text-muted)',
-                border: settings.inferenceMode === mode ? 'none' : '1px solid var(--border-subtle)',
-                cursor: 'pointer', transition: 'all 0.15s ease',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
-            >
-              {mode === 'local' ? <><Monitor size={13} /> Local (Ollama)</> : <><Cloud size={13} /> API na Nuvem</>}
-            </motion.button>
-          ))}
-        </div>
-      </GlassCard>
-
-      {settings.inferenceMode === 'local' ? (
-        <>
-          <SectionTitle>Ollama</SectionTitle>
-          <GlassCard>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
-              Certifique-se que o Ollama está rodando em localhost:11434
-            </p>
-            <input
-              value={settings.localModel}
-              onChange={(e) => updateSettings({ localModel: e.target.value })}
-              placeholder="gemma3:4b"
-              style={inputStyle}
-            />
-          </GlassCard>
-        </>
-      ) : (
-        <>
           {/* Provider selector */}
           <SectionTitle>Provedor</SectionTitle>
           <GlassCard>
@@ -1223,8 +1179,6 @@ function ModelsTab({
               </motion.div>
             )}
           </AnimatePresence>
-        </>
-      )}
 
       {/* Token stats */}
       <SectionTitle>Uso de Tokens</SectionTitle>

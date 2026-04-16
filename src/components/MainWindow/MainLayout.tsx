@@ -37,15 +37,14 @@ export default function MainLayout() {
   const activeConversationId = useConversationStore((s) => s.activeConversationId);
   const loadFromConversation = useChatStore((s) => s.loadFromConversation);
 
-  // Onboarding: show wizard if no API key configured for cloud mode
+  // Onboarding: show wizard if no API key configured (Hat credits coming in Phase 2)
   const hydrated = useSettingsStore((s) => s._hydrated);
-  const inferenceMode = useSettingsStore((s) => s.settings.inferenceMode);
   const cloudProvider = useSettingsStore((s) => s.settings.cloudProvider);
   const providerConfigs = useSettingsStore((s) => s.providerConfigs);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
 
   const needsOnboarding = hydrated && !onboardingDismissed &&
-    inferenceMode === 'api' && !providerConfigs[cloudProvider]?.apiKey;
+    !providerConfigs[cloudProvider]?.apiKey;
 
   const [activeView, setActiveView] = useState<SidebarView>('chats');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

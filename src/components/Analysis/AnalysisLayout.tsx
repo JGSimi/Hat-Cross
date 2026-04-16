@@ -50,13 +50,10 @@ export default function AnalysisLayout() {
   const providerConfigs = useSettingsStore((s) => s.providerConfigs);
 
   const getProviderDetails = () => {
-    const isLocal = settings.inferenceMode === 'local';
-    const provider = isLocal ? 'ollama' : settings.cloudProvider;
-    const cfg = isLocal ? null : providerConfigs[settings.cloudProvider];
-    const endpoint = isLocal
-      ? 'http://localhost:11434'
-      : cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
-    const model = isLocal ? settings.localModel : cfg?.model || '';
+    const provider = settings.cloudProvider;
+    const cfg = providerConfigs[settings.cloudProvider];
+    const endpoint = cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
+    const model = cfg?.model || '';
     return { provider, endpoint, model };
   };
 

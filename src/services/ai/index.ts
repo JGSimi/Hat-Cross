@@ -5,7 +5,7 @@ import type { ConversationTurn, StreamChunk, CloudProvider } from '../../types';
 export interface StreamOptions {
   messages: ConversationTurn[];
   systemPrompt: string;
-  provider: CloudProvider | 'ollama';
+  provider: CloudProvider;
   endpoint: string;
   model: string;
   temperature: number;

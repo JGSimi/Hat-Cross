@@ -41,7 +41,7 @@
       "tooltip": "Hat — AI Assistant"
     },
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://api.inceptionlabs.ai https://openrouter.ai http://localhost:11434; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-ancestors 'none';"
+      "csp": "default-src 'self'; script-src 'self'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://api.inceptionlabs.ai https://openrouter.ai; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-ancestors 'none';"
     }
   },
   "bundle": {

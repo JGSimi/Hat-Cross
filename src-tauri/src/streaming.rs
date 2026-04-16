@@ -84,14 +84,7 @@ pub async fn stream_chat(
             )
             .await
         }
-        "ollama" => {
-            stream_ollama(
-                &app, stream_id, &cancel_flag, &messages, &system_prompt, &endpoint, &model,
-                temperature, &images, thinking_enabled,
-            )
-            .await
-        }
-        // openai, google, inception, openrouter, custom -> all OpenAI-compatible
+        // google, openai, inception, openrouter, custom -> all OpenAI-compatible
         _ => {
             stream_openai_compatible(
                 &app, stream_id, &cancel_flag, &messages, &system_prompt, &endpoint, &api_key,
@@ -710,252 +703,6 @@ async fn stream_anthropic(
     Ok(())
 }
 
-// ----- Ollama streaming -----
-
-async fn stream_ollama(
-    app: &AppHandle,
-    stream_id: u64,
-    cancel_flag: &Arc<AtomicBool>,
-    messages: &[ConversationTurn],
-    system_prompt: &str,
-    endpoint: &str,
-    model: &str,
-    temperature: f64,
-    images: &[String],
-    _thinking_enabled: bool,
-) -> Result<(), String> {
-    // Respect the caller-supplied endpoint instead of hardcoding localhost.
-    // Falls back to the default Ollama port if the caller passes an empty string.
-    let base = if endpoint.is_empty() {
-        "http://localhost:11434"
-    } else {
-        endpoint.trim_end_matches('/')
-    };
-    let url = format!("{}/api/chat", base);
-
-    let mut api_messages = Vec::new();
-
-    if !system_prompt.is_empty() {
-        api_messages.push(serde_json::json!({
-            "role": "system",
-            "content": system_prompt
-        }));
-    }
-
-    for (i, turn) in messages.iter().enumerate() {
-        let turn_images = turn.images.as_deref().unwrap_or(&[]);
-        let is_last = i == messages.len() - 1;
-        let combined_images: Vec<&str> = if is_last {
-            turn_images
-                .iter()
-                .chain(images.iter())
-                .map(|s| s.as_str())
-                .collect()
-        } else {
-            turn_images.iter().map(|s| s.as_str()).collect()
-        };
-
-        let mut msg = serde_json::json!({
-            "role": turn.role,
-            "content": turn.text_content
-        });
-
-        if !combined_images.is_empty() {
-            // Ollama expects base64 strings directly (no data URI prefix)
-            let clean_images: Vec<String> = combined_images
-                .iter()
-                .map(|img| {
-                    if img.contains(",") {
-                        img.split(',').nth(1).unwrap_or(img).to_string()
-                    } else {
-                        img.to_string()
-                    }
-                })
-                .collect();
-            msg["images"] = serde_json::json!(clean_images);
-        }
-
-        api_messages.push(msg);
-    }
-
-    let body = serde_json::json!({
-        "model": model,
-        "messages": api_messages,
-        "stream": true,
-        "options": {
-            "temperature": temperature
-        }
-    });
-
-    let client = reqwest::Client::new();
-    let response = client
-        .post(&url)
-        .header(CONTENT_TYPE, "application/json")
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| {
-            format!(
-                "Erro ao conectar ao Ollama. Verifique se o Ollama esta rodando: {}",
-                e
-            )
-        })?;
-
-    let status = response.status();
-    if !status.is_success() {
-        let error_text = response.text().await.unwrap_or_default();
-        return Err(map_http_error(status.as_u16(), &error_text));
-    }
-
-    let mut stream = response.bytes_stream();
-    let mut buffer: Vec<u8> = Vec::new();
-    let mut finished = false;
-    let mut in_think_block: bool = false;
-
-    while let Some(chunk) = stream.next().await {
-        if cancel_flag.load(Ordering::SeqCst) {
-            let _ = app.emit(
-                "chat-stream",
-                StreamChunkPayload {
-                    stream_id,
-                    text: String::new(),
-                    is_finished: true,
-                    input_tokens: None,
-                    output_tokens: None,
-                    content_type: "text".to_string(),
-                },
-            );
-            return Ok(());
-        }
-
-        let chunk = chunk.map_err(|e| format!("Erro no stream: {}", e))?;
-        buffer.extend_from_slice(&chunk);
-
-        drain_lines(&mut buffer, |line| {
-            if finished || line.is_empty() {
-                return;
-            }
-
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
-                let done = json["done"].as_bool().unwrap_or(false);
-
-                if done {
-                    let input_tokens = json["prompt_eval_count"].as_u64().map(|v| v as u32);
-                    let output_tokens = json["eval_count"].as_u64().map(|v| v as u32);
-                    let _ = app.emit(
-                        "chat-stream",
-                        StreamChunkPayload {
-                            stream_id,
-                            text: String::new(),
-                            is_finished: true,
-                            input_tokens,
-                            output_tokens,
-                            content_type: "text".to_string(),
-                        },
-                    );
-                    finished = true;
-                    return;
-                }
-
-                let content = json["message"]["content"].as_str().unwrap_or("");
-                if !content.is_empty() {
-                    // Parse <think> tags for Ollama reasoning models
-                    let mut remaining = content.to_string();
-
-                    while !remaining.is_empty() {
-                        if in_think_block {
-                            if let Some(end_pos) = remaining.find("</think>") {
-                                let before = &remaining[..end_pos];
-                                if !before.is_empty() {
-                                    let _ = app.emit(
-                                        "chat-stream",
-                                        StreamChunkPayload {
-                                            stream_id,
-                                            text: before.to_string(),
-                                            is_finished: false,
-                                            input_tokens: None,
-                                            output_tokens: None,
-                                            content_type: "thinking".to_string(),
-                                        },
-                                    );
-                                }
-                                in_think_block = false;
-                                remaining = remaining[end_pos + "</think>".len()..].to_string();
-                            } else {
-                                // Entire remaining is thinking
-                                let _ = app.emit(
-                                    "chat-stream",
-                                    StreamChunkPayload {
-                                        stream_id,
-                                        text: remaining.clone(),
-                                        is_finished: false,
-                                        input_tokens: None,
-                                        output_tokens: None,
-                                        content_type: "thinking".to_string(),
-                                    },
-                                );
-                                remaining.clear();
-                            }
-                        } else {
-                            if let Some(start_pos) = remaining.find("<think>") {
-                                let before = &remaining[..start_pos];
-                                if !before.is_empty() {
-                                    let _ = app.emit(
-                                        "chat-stream",
-                                        StreamChunkPayload {
-                                            stream_id,
-                                            text: before.to_string(),
-                                            is_finished: false,
-                                            input_tokens: None,
-                                            output_tokens: None,
-                                            content_type: "text".to_string(),
-                                        },
-                                    );
-                                }
-                                in_think_block = true;
-                                remaining = remaining[start_pos + "<think>".len()..].to_string();
-                            } else {
-                                // Entire remaining is text
-                                let _ = app.emit(
-                                    "chat-stream",
-                                    StreamChunkPayload {
-                                        stream_id,
-                                        text: remaining.clone(),
-                                        is_finished: false,
-                                        input_tokens: None,
-                                        output_tokens: None,
-                                        content_type: "text".to_string(),
-                                    },
-                                );
-                                remaining.clear();
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        if finished {
-            return Ok(());
-        }
-    }
-
-    // Stream ended
-    let _ = app.emit(
-        "chat-stream",
-        StreamChunkPayload {
-            stream_id,
-            text: String::new(),
-            is_finished: true,
-            input_tokens: None,
-            output_tokens: None,
-            content_type: "text".to_string(),
-        },
-    );
-
-    Ok(())
-}
-
 // ----- Fetch models -----
 
 #[tauri::command]
@@ -975,14 +722,6 @@ pub async fn fetch_models(
                 "claude-3-5-haiku-20241022".to_string(),
             ]);
         }
-        "ollama" => {
-            let base = if endpoint.is_empty() {
-                "http://localhost:11434"
-            } else {
-                endpoint.trim_end_matches('/')
-            };
-            format!("{}/api/tags", base)
-        }
         _ => format!("{}/models", endpoint.trim_end_matches('/')),
     };
 
@@ -990,11 +729,7 @@ pub async fn fetch_models(
     let mut req = client.get(&url);
 
     if !api_key.is_empty() {
-        if provider == "ollama" {
-            // No auth needed for Ollama
-        } else {
-            req = req.header("Authorization", format!("Bearer {}", api_key));
-        }
+        req = req.header("Authorization", format!("Bearer {}", api_key));
     }
 
     let response = req
@@ -1011,37 +746,15 @@ pub async fn fetch_models(
         .await
         .map_err(|e| format!("Erro ao parsear resposta: {}", e))?;
 
-    let models = if provider == "ollama" {
-        // Ollama format: { "models": [{ "name": "..." }] }
-        json["models"]
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|m| m["name"].as_str().map(|s| s.to_string()))
-                    .collect()
-            })
-            .unwrap_or_default()
-    } else if provider == "openrouter" {
-        // OpenRouter format: { "data": [{ "id": "..." }] }
-        json["data"]
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|m| m["id"].as_str().map(|s| s.to_string()))
-                    .collect()
-            })
-            .unwrap_or_default()
-    } else {
-        // OpenAI-compatible format: { "data": [{ "id": "..." }] }
-        json["data"]
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|m| m["id"].as_str().map(|s| s.to_string()))
-                    .collect()
-            })
-            .unwrap_or_default()
-    };
+    // Both OpenAI-compatible and OpenRouter return { "data": [{ "id": "..." }] }
+    let models = json["data"]
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|m| m["id"].as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
 
     Ok(models)
 }
