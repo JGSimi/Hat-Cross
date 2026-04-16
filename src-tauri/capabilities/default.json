@@ -45,6 +45,7 @@
     "autostart:allow-is-enabled",
     "notification:default",
     "http:default",
+    "deep-link:default",
     "core:window:allow-close",
     "core:window:allow-minimize",
     "core:window:allow-toggle-maximize",
