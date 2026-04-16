@@ -1,32 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Key, Gem, Bot, Brain, Zap, Shuffle, Globe, Check, Loader2 } from 'lucide-react';
+import { ArrowRight, Check, Loader2 } from 'lucide-react';
 import HorseLogo from './HorseLogo';
-import { useSettingsStore } from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
-import { PROVIDER_DEFAULTS, type CloudProvider } from '../../types';
-import { fetchModels } from '../../services/ai';
 
-const PROVIDERS: { id: CloudProvider; label: string; icon: React.ReactNode }[] = [
-  { id: 'google', label: 'Google Gemini', icon: <Gem size={16} /> },
-  { id: 'openai', label: 'OpenAI', icon: <Bot size={16} /> },
-  { id: 'anthropic', label: 'Anthropic Claude', icon: <Brain size={16} /> },
-  { id: 'openrouter', label: 'OpenRouter', icon: <Shuffle size={16} /> },
-  { id: 'inception', label: 'Inception', icon: <Zap size={16} /> },
-  { id: 'custom', label: 'Custom', icon: <Globe size={16} /> },
-];
-
-type Step = 'welcome' | 'provider' | 'apikey' | 'done';
+type Step = 'welcome' | 'done';
 
 export default function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState<Step>('welcome');
-  const [selectedProvider, setSelectedProvider] = useState<CloudProvider>('google');
-  const [apiKey, setApiKey] = useState('');
-  const [showKey, setShowKey] = useState(false);
-  const [validating, setValidating] = useState(false);
-  const [keyStatus, setKeyStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
-
-  const { setProvider, setApiKey: storeSetApiKey } = useSettingsStore();
   const isSigningIn = useAuthStore((s) => s.isSigningIn);
   const signInError = useAuthStore((s) => s.signInError);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
@@ -34,35 +15,12 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogle();
-      // onAuthStateChanged → MainLayout hides wizard automatically.
-      onComplete();
+      // onAuthStateChanged fires, MainLayout's needsOnboarding turns false,
+      // but we also flip to the "done" step for a friendly hand-off.
+      setStep('done');
     } catch {
-      // Error shown inline via signInError; stay on welcome step.
+      // Error is surfaced via signInError; stay on welcome.
     }
-  };
-
-  const handleValidateAndSave = async () => {
-    if (!apiKey.trim()) return;
-    setValidating(true);
-    setKeyStatus('idle');
-
-    storeSetApiKey(selectedProvider, apiKey.trim());
-    setProvider(selectedProvider);
-
-    const defaults = PROVIDER_DEFAULTS[selectedProvider];
-    const result = await fetchModels(selectedProvider, defaults.defaultEndpoint);
-
-    if (result.length > 0) {
-      setKeyStatus('valid');
-      setTimeout(() => setStep('done'), 600);
-    } else {
-      setKeyStatus('invalid');
-    }
-    setValidating(false);
-  };
-
-  const handleFinish = () => {
-    onComplete();
   };
 
   const slideVariants = {
@@ -87,14 +45,8 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
         backdropFilter: 'blur(30px)',
       }}
     >
-      <div style={{
-        width: 400,
-        maxHeight: '80vh',
-        overflow: 'auto',
-        padding: 32,
-      }}>
+      <div style={{ width: 400, maxHeight: '80vh', overflow: 'auto', padding: 32 }}>
         <AnimatePresence mode="wait">
-          {/* Step 1: Welcome */}
           {step === 'welcome' && (
             <motion.div
               key="welcome"
@@ -125,7 +77,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
                 fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6,
                 margin: '0 0 28px',
               }}>
-                Entre com Google para usar <strong style={{ color: 'var(--text-secondary)' }}>créditos Hat</strong> e acessar os modelos top-tier sem configurar nada.
+                Entre com Google para usar <strong style={{ color: 'var(--text-secondary)' }}>créditos Hat</strong> e acessar modelos top-tier sem configurar nada.
               </p>
 
               <motion.button
@@ -160,7 +112,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
                   </>
                 ) : (
                   <>
-                    <WelcomeGoogleIcon size={14} /> Entrar com Google
+                    <GoogleIcon size={14} /> Entrar com Google
                   </>
                 )}
               </motion.button>
@@ -170,237 +122,9 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
                   {signInError}
                 </p>
               )}
-
-              <button
-                onClick={() => setStep('provider')}
-                style={{
-                  display: 'block',
-                  margin: '22px auto 0',
-                  padding: '6px 10px',
-                  borderRadius: 6,
-                  background: 'transparent',
-                  color: 'var(--text-dim)',
-                  border: 'none',
-                  fontSize: 10.5,
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  textUnderlineOffset: 3,
-                }}
-              >
-                Sou dev: usar minha própria API key
-              </button>
             </motion.div>
           )}
 
-          {/* Step 2: Choose Provider */}
-          {step === 'provider' && (
-            <motion.div
-              key="provider"
-              variants={slideVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-            >
-              <h2 style={{
-                fontSize: 18, fontWeight: 700, color: 'var(--text-bright)',
-                margin: '0 0 6px', letterSpacing: -0.3,
-              }}>
-                Escolha o provedor
-              </h2>
-              <p style={{
-                fontSize: 12, color: 'var(--text-muted)', margin: '0 0 20px',
-              }}>
-                Selecione a API de IA que deseja usar.
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-                {PROVIDERS.map((p) => (
-                  <motion.button
-                    key={p.id}
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => setSelectedProvider(p.id)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '10px 14px',
-                      borderRadius: 10,
-                      fontSize: 12,
-                      fontWeight: selectedProvider === p.id ? 600 : 400,
-                      background: selectedProvider === p.id
-                        ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)'
-                        : 'var(--surface-secondary)',
-                      color: selectedProvider === p.id ? 'var(--color-accent)' : 'var(--text-secondary)',
-                      border: selectedProvider === p.id
-                        ? '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)'
-                        : '1px solid var(--border-subtle)',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
-                  >
-                    {p.icon}
-                    {p.label}
-                    {selectedProvider === p.id && (
-                      <Check size={14} style={{ marginLeft: 'auto', color: 'var(--color-accent)' }} />
-                    )}
-                  </motion.button>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setStep('apikey')}
-                  style={{
-                    flex: 1,
-                    padding: '10px 20px',
-                    borderRadius: 10,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    background: 'var(--color-accent)',
-                    color: 'white',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                  }}
-                >
-                  Continuar <ArrowRight size={14} />
-                </motion.button>
-              </div>
-
-            </motion.div>
-          )}
-
-          {/* Step 3: API Key */}
-          {step === 'apikey' && (
-            <motion.div
-              key="apikey"
-              variants={slideVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-            >
-              <h2 style={{
-                fontSize: 18, fontWeight: 700, color: 'var(--text-bright)',
-                margin: '0 0 6px', letterSpacing: -0.3,
-              }}>
-                <Key size={16} style={{ verticalAlign: 'middle', marginRight: 8 }} />
-                Chave de API
-              </h2>
-              <p style={{
-                fontSize: 12, color: 'var(--text-muted)', margin: '0 0 20px', lineHeight: 1.5,
-              }}>
-                Insira sua API key do {PROVIDERS.find(p => p.id === selectedProvider)?.label}.
-                Sua chave e armazenada localmente e nunca compartilhada.
-              </p>
-
-              <div style={{ position: 'relative', marginBottom: 12 }}>
-                <input
-                  type={showKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={(e) => { setApiKey(e.target.value); setKeyStatus('idle'); }}
-                  placeholder="sk-..."
-                  autoFocus
-                  aria-label="Chave de API"
-                  style={{
-                    width: '100%',
-                    background: 'var(--input-bg)',
-                    color: 'var(--text-primary)',
-                    borderRadius: 10,
-                    padding: '10px 40px 10px 14px',
-                    fontSize: 13,
-                    border: keyStatus === 'valid'
-                      ? '1px solid var(--success)'
-                      : keyStatus === 'invalid'
-                      ? '1px solid var(--error)'
-                      : '1px solid var(--border-subtle)',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    transition: 'border-color 0.15s ease',
-                  }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleValidateAndSave(); }}
-                />
-                <button
-                  onClick={() => setShowKey(!showKey)}
-                  aria-label={showKey ? 'Ocultar chave' : 'Mostrar chave'}
-                  style={{
-                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'var(--text-muted)', padding: 4, display: 'flex',
-                  }}
-                >
-                  {showKey ? '🙈' : '👁'}
-                </button>
-              </div>
-
-              {keyStatus === 'invalid' && (
-                <p style={{
-                  fontSize: 11, color: 'var(--error)', margin: '0 0 12px',
-                }}>
-                  Nao foi possivel validar a chave. Verifique e tente novamente.
-                </p>
-              )}
-              {keyStatus === 'valid' && (
-                <p style={{
-                  fontSize: 11, color: 'var(--success)', margin: '0 0 12px',
-                  display: 'flex', alignItems: 'center', gap: 4,
-                }}>
-                  <Check size={12} /> Chave validada com sucesso!
-                </p>
-              )}
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={() => setStep('provider')}
-                  style={{
-                    padding: '10px 16px',
-                    borderRadius: 10,
-                    fontSize: 12,
-                    background: 'var(--surface-secondary)',
-                    color: 'var(--text-secondary)',
-                    border: '1px solid var(--border-subtle)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Voltar
-                </button>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={handleValidateAndSave}
-                  disabled={!apiKey.trim() || validating}
-                  style={{
-                    flex: 1,
-                    padding: '10px 20px',
-                    borderRadius: 10,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    background: !apiKey.trim() ? 'var(--surface-secondary)' : 'var(--color-accent)',
-                    color: !apiKey.trim() ? 'var(--text-muted)' : 'white',
-                    border: 'none',
-                    cursor: !apiKey.trim() || validating ? 'default' : 'pointer',
-                    opacity: validating ? 0.7 : 1,
-                  }}
-                >
-                  {validating ? 'Validando...' : 'Salvar e continuar'}
-                </motion.button>
-              </div>
-
-              <p style={{
-                fontSize: 10, color: 'var(--text-dim)', marginTop: 16, lineHeight: 1.5, textAlign: 'center',
-              }}>
-                Voce pode alterar o provedor e a chave a qualquer momento em Configuracoes.
-              </p>
-            </motion.div>
-          )}
-
-          {/* Step 4: Done */}
           {step === 'done' && (
             <motion.div
               key="done"
@@ -434,19 +158,15 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
               <p style={{
                 fontSize: 13, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.5,
               }}>
-                {`${PROVIDERS.find(p => p.id === selectedProvider)?.label} configurado com sucesso.`}
-              </p>
-              <p style={{
-                fontSize: 11, color: 'var(--text-dim)', margin: '0 0 28px', lineHeight: 1.5,
-              }}>
-                Comece a conversar ou use os atalhos globais para processar o clipboard.
+                Você já pode conversar com o Hat. Para recarregar créditos, vá em Configurações → Conta.
               </p>
 
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={handleFinish}
+                onClick={onComplete}
                 style={{
+                  marginTop: 20,
                   padding: '10px 28px',
                   borderRadius: 10,
                   fontSize: 14,
@@ -455,10 +175,13 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
                   color: 'white',
                   border: 'none',
                   cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
                   boxShadow: '0 2px 12px var(--accent-glow)',
                 }}
               >
-                Comecar a usar
+                Começar a usar <ArrowRight size={14} />
               </motion.button>
             </motion.div>
           )}
@@ -468,7 +191,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
   );
 }
 
-function WelcomeGoogleIcon({ size }: { size: number }) {
+function GoogleIcon({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
       <path fill="#FFC107" d="M43.6 20.5H42V20.5H24v7h11.3c-1.5 4.1-5.4 7-10.3 7-6.1 0-11-4.9-11-11s4.9-11 11-11c2.8 0 5.4 1.1 7.4 2.8l4.9-4.9C34.5 7.2 29.5 5 24 5 13.5 5 5 13.5 5 24s8.5 19 19 19c10.5 0 18.5-7.5 18.5-19 0-1.2-.1-2.3-.4-3.5z" />

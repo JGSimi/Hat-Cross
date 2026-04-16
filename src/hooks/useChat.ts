@@ -28,7 +28,6 @@ export function useChat() {
     setError,
   } = useChatStore();
   const settings = useSettingsStore((s) => s.settings);
-  const providerConfigs = useSettingsStore((s) => s.providerConfigs);
   const updateTokenStats = useSettingsStore((s) => s.updateTokenStats);
   const { activeConversationId, addMessageToConversation } = useConversationStore();
 
@@ -234,7 +233,7 @@ export function useChat() {
         setStreaming(false);
       }
     },
-    [messages, isStreaming, pendingAttachments, settings, providerConfigs, activeConversationId]
+    [messages, isStreaming, pendingAttachments, settings, activeConversationId]
   );
 
   const cancel = useCallback(() => {

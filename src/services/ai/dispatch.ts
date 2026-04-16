@@ -1,9 +1,7 @@
-import { startStream, startHatStream } from '.';
+import { startHatStream } from '.';
 import type { ConversationTurn, StreamChunk } from '../../types';
-import { PROVIDER_DEFAULTS } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
 import { useCreditsStore } from '../../stores/creditsStore';
-import { useSettingsStore } from '../../stores/settingsStore';
 import { getIdToken } from '../auth/firebase';
 
 export interface DispatchOptions {
@@ -17,75 +15,37 @@ export interface DispatchOptions {
   onDone: () => void;
 }
 
-// Decides whether to route the request through the Hat proxy Worker
-// (credits-backed, requires Firebase sign-in) or the direct BYOK path
-// (user-supplied API key + direct provider call). The caller doesn't need
-// to know which leg is active — it gets the same onChunk/onDone events.
-//
-// Returns a cancel function, or null when the call couldn't even be kicked
-// off (missing API key on BYOK, expired token on Hat). In the null case the
-// error message has already been surfaced via setError, so the caller just
-// aborts the streaming UI transition.
+// Central entry point for every chat request. Since the BYOK path is gone,
+// dispatchStream just gates on "is the user signed in?": if yes, call the
+// Hat proxy Worker with the selected mode + Firebase ID token; if no, emit
+// a setup-required error and abort. Returns a cancel fn or null when the
+// call couldn't be kicked off.
 export async function dispatchStream(
   options: DispatchOptions,
   setError: (message: string) => void,
 ): Promise<(() => void) | null> {
   const { user } = useAuthStore.getState();
-  const { settings, providerConfigs } = useSettingsStore.getState();
 
-  if (user) {
-    const idToken = await getIdToken();
-    if (!idToken) {
-      setError('Sessão expirada. Faça login de novo em Configurações > Conta.');
-      return null;
-    }
-    const mode = useCreditsStore.getState().selectedMode;
-    return startHatStream({
-      messages: options.messages,
-      systemPrompt: options.systemPrompt,
-      mode,
-      temperature: options.temperature,
-      maxTokens: options.maxTokens,
-      images: options.images,
-      idToken,
-      onChunk: options.onChunk,
-      onError: options.onError,
-      onDone: options.onDone,
-    });
-  }
-
-  // BYOK path — same branch as before the credits system landed.
-  const provider = settings.cloudProvider;
-  const cfg = providerConfigs[provider];
-  const endpoint =
-    cfg?.endpoint || PROVIDER_DEFAULTS[provider]?.defaultEndpoint || '';
-  const model = cfg?.model || '';
-  const apiKey = cfg?.apiKey || '';
-  if (!apiKey.trim()) {
-    setError(
-      'Chave de API não configurada. Entre no Hat (grátis) ou vá em Configurações > Modelos & IA.',
-    );
+  if (!user) {
+    setError('Entre no Hat com sua conta Google para usar a IA.');
     return null;
   }
 
-  const thinkingEnabled = cfg?.thinkingEnabled ?? false;
-  const thinkingBudget = cfg?.thinkingBudget ?? 10000;
-  // Anthropic requires temperature=1 when extended thinking is on; other
-  // providers accept whatever the user configured.
-  const effectiveTemp =
-    provider === 'anthropic' && thinkingEnabled ? 1.0 : options.temperature;
+  const idToken = await getIdToken();
+  if (!idToken) {
+    setError('Sessão expirada. Faça login de novo em Configurações > Conta.');
+    return null;
+  }
 
-  return startStream({
+  const mode = useCreditsStore.getState().selectedMode;
+  return startHatStream({
     messages: options.messages,
     systemPrompt: options.systemPrompt,
-    provider,
-    endpoint,
-    model,
-    temperature: effectiveTemp,
+    mode,
+    temperature: options.temperature,
     maxTokens: options.maxTokens,
     images: options.images,
-    thinkingEnabled,
-    thinkingBudget,
+    idToken,
     onChunk: options.onChunk,
     onError: options.onError,
     onDone: options.onDone,
