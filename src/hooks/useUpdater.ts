@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useConversationStore } from '../stores/conversationStore';
 
 export type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
 
@@ -65,8 +66,9 @@ export function useUpdater() {
       });
 
       setStatus('ready');
-      // Flush settings to disk before relaunching to preserve API keys
+      // Flush ALL stores before relaunching to prevent data loss
       await useSettingsStore.getState().saveSettings();
+      await useConversationStore.getState().saveConversations();
       await relaunch();
     } catch (e) {
       setError(String(e));

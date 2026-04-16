@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { readTextFile, writeTextFile, mkdir, exists } from '@tauri-apps/plugin-fs';
+import { readTextFile, writeTextFile, mkdir, exists, rename } from '@tauri-apps/plugin-fs';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { LazyStore } from '@tauri-apps/plugin-store';
 import type { Conversation, Message } from '../types';
@@ -86,6 +86,13 @@ function debouncedSave(saveFn: () => Promise<void>) {
   }, SAVE_DEBOUNCE_MS);
 }
 
+export function flushPendingSave(): void {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+}
+
 export const useConversationStore = create<ConversationState>()((set, get) => ({
   conversations: [],
   activeConversationId: null,
@@ -118,7 +125,7 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
     });
 
     persistActiveId(conversation.id);
-    debouncedSave(() => get().saveConversations());
+    get().saveConversations();
     return conversation;
   },
 
@@ -218,7 +225,7 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
 
       return { conversations: sortConversations(conversations) };
     });
-    debouncedSave(() => get().saveConversations());
+    get().saveConversations();
   },
 
   getStorageStats: () => {
@@ -247,17 +254,41 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
     try {
       const dataDir = await appDataDir();
       const filePath = await join(dataDir, CONVERSATIONS_FILE);
-      const fileExists = await exists(filePath);
+      const bakPath = await join(dataDir, CONVERSATIONS_FILE + '.bak');
 
-      if (!fileExists) {
-        set({ conversations: [], loaded: true });
-        return;
+      let data: Conversation[] = [];
+      let loaded = false;
+
+      // Try main file
+      try {
+        if (await exists(filePath)) {
+          const raw = await readTextFile(filePath);
+          if (raw.trim()) {
+            data = JSON.parse(raw) as Conversation[];
+            loaded = true;
+          }
+        }
+      } catch (err) {
+        console.error('[ConversationStore] Main file corrupt, trying backup:', err);
       }
 
-      const raw = await readTextFile(filePath);
-      const data = JSON.parse(raw) as Conversation[];
+      // Fallback to backup if main file failed
+      if (!loaded) {
+        try {
+          if (await exists(bakPath)) {
+            const raw = await readTextFile(bakPath);
+            if (raw.trim()) {
+              data = JSON.parse(raw) as Conversation[];
+              loaded = true;
+              console.warn('[ConversationStore] Recovered conversations from backup file');
+            }
+          }
+        } catch (err) {
+          console.error('[ConversationStore] Backup also corrupt:', err);
+        }
+      }
 
-      // Enforce limits on load (in case settings changed)
+      // Enforce limits on load
       const maxConv = getMaxConversations();
       let conversations = data;
       if (conversations.length > maxConv) {
@@ -298,8 +329,38 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
         await mkdir(dataDir, { recursive: true });
       }
       const filePath = await join(dataDir, CONVERSATIONS_FILE);
+      const tmpPath = await join(dataDir, CONVERSATIONS_FILE + '.tmp');
+      const bakPath = await join(dataDir, CONVERSATIONS_FILE + '.bak');
       const { conversations } = get();
-      await writeTextFile(filePath, JSON.stringify(conversations));
+
+      // Guard: refuse to overwrite non-empty file with empty array (race condition protection)
+      if (conversations.length === 0) {
+        try {
+          if (await exists(filePath)) {
+            const existing = await readTextFile(filePath);
+            const parsed = JSON.parse(existing);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              console.warn('[ConversationStore] Skipping save: would overwrite non-empty file with []');
+              return;
+            }
+          }
+        } catch {
+          // If we can't read the existing file, proceed with the save
+        }
+      }
+
+      // Write to temp file first
+      await writeTextFile(tmpPath, JSON.stringify(conversations));
+      // Backup current file (ignore errors if file doesn't exist yet)
+      try {
+        if (await exists(filePath)) {
+          await rename(filePath, bakPath);
+        }
+      } catch {
+        // Backup failed — continue anyway, the temp file has the new data
+      }
+      // Rename temp to final (atomic on most filesystems)
+      await rename(tmpPath, filePath);
     } catch (err) {
       console.error('[ConversationStore] Failed to save conversations:', err);
     }

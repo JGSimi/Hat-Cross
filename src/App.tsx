@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { listen, emit } from '@tauri-apps/api/event';
 import { readText, writeText, readImage } from '@tauri-apps/plugin-clipboard-manager';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
 import { AnimatePresence, motion } from 'framer-motion';
 import MainPage from './pages/MainPage';
@@ -12,7 +13,7 @@ import HorseLogo from './components/Shared/HorseLogo';
 import ToastContainer from './components/Shared/ToastContainer';
 import { useSettingsStore, setupSettingsSync } from './stores/settingsStore';
 import { useChatStore } from './stores/chatStore';
-import { useConversationStore } from './stores/conversationStore';
+import { useConversationStore, flushPendingSave } from './stores/conversationStore';
 import { useClipboardStore } from './stores/clipboardStore';
 import { useDraftsStore } from './stores/draftsStore';
 import { nextStreamId } from './services/ai';
@@ -76,6 +77,17 @@ function App() {
     })();
     setupSettingsSync();
     useClipboardStore.getState().loadEntries();
+
+    // Flush pending saves on window close to prevent data loss
+    let unlistenClose: (() => void) | undefined;
+    getCurrentWindow().onCloseRequested(async () => {
+      flushPendingSave();
+      await useConversationStore.getState().saveConversations();
+    }).then((unlisten) => { unlistenClose = unlisten; });
+
+    return () => {
+      unlistenClose?.();
+    };
   }, [loadSettings]);
 
   useEffect(() => {
