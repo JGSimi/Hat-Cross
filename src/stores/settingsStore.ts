@@ -1,14 +1,11 @@
 import { create } from 'zustand';
 import { LazyStore } from '@tauri-apps/plugin-store';
-import { invoke } from '@tauri-apps/api/core';
 import { emit, listen } from '@tauri-apps/api/event';
 import {
   type AppSettings,
   type AppTheme,
-  type CloudProvider,
   type TokenUsage,
   DEFAULT_SETTINGS,
-  PROVIDER_DEFAULTS,
 } from '../types';
 
 // --- Tauri persistent store ---
@@ -41,43 +38,15 @@ function deepMerge(defaults: any, stored: any): any {
   return result;
 }
 
-// --- Provider config helpers ---
-
-export interface ProviderConfigEntry {
-  apiKey: string;
-  endpoint: string;
-  model: string;
-  thinkingEnabled: boolean;
-  thinkingBudget: number;
-}
-
-function defaultProviderConfigs(): Record<CloudProvider, ProviderConfigEntry> {
-  const providers: CloudProvider[] = [
-    'google',
-    'openai',
-    'anthropic',
-    'inception',
-    'openrouter',
-    'custom',
-  ];
-  const configs = {} as Record<CloudProvider, ProviderConfigEntry>;
-  for (const p of providers) {
-    configs[p] = {
-      apiKey: '',
-      endpoint: PROVIDER_DEFAULTS[p].defaultEndpoint,
-      model: '',
-      thinkingEnabled: false,
-      thinkingBudget: 10000,
-    };
-  }
-  return configs;
-}
-
 // --- Store interface ---
+//
+// BYOK was removed on 2026-04-16 — the store no longer tracks per-provider
+// API keys, endpoints, or model choices. The user's chosen AI mode lives in
+// creditsStore (`selectedMode`), and everything else the Worker needs is
+// derived from the Firebase session at request time.
 
 interface SettingsState {
   settings: AppSettings;
-  providerConfigs: Record<CloudProvider, ProviderConfigEntry>;
   _hydrated: boolean;
   showSettingsPanel: boolean;
 
@@ -85,12 +54,6 @@ interface SettingsState {
   setShowSettingsPanel: (show: boolean) => void;
   updateSettings: (partial: Partial<AppSettings>) => void;
   setTheme: (theme: AppTheme) => void;
-  setProvider: (provider: CloudProvider) => void;
-  setApiKey: (provider: CloudProvider, key: string) => void;
-  setModel: (provider: CloudProvider, model: string) => void;
-  setEndpoint: (provider: CloudProvider, endpoint: string) => void;
-  setThinkingEnabled: (provider: CloudProvider, enabled: boolean) => void;
-  setThinkingBudget: (provider: CloudProvider, budget: number) => void;
   updateTokenStats: (usage: Partial<TokenUsage>) => void;
   resetTokenStats: () => void;
   loadSettings: () => Promise<void>;
@@ -99,7 +62,6 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
   settings: { ...DEFAULT_SETTINGS },
-  providerConfigs: defaultProviderConfigs(),
   _hydrated: false,
   showSettingsPanel: false,
 
@@ -117,64 +79,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setTheme: (theme) => {
     set((state) => ({
       settings: { ...state.settings, theme },
-    }));
-    get().saveSettings();
-  },
-
-  setProvider: (provider) => {
-    set((state) => ({
-      settings: { ...state.settings, cloudProvider: provider },
-    }));
-    get().saveSettings();
-  },
-
-  setApiKey: (provider, key) => {
-    set((state) => ({
-      providerConfigs: {
-        ...state.providerConfigs,
-        [provider]: { ...state.providerConfigs[provider], apiKey: key },
-      },
-    }));
-    invoke('set_provider_key', { provider, key }).catch(console.error);
-    get().saveSettings();
-  },
-
-  setEndpoint: (provider, endpoint) => {
-    set((state) => ({
-      providerConfigs: {
-        ...state.providerConfigs,
-        [provider]: { ...state.providerConfigs[provider], endpoint },
-      },
-    }));
-    get().saveSettings();
-  },
-
-  setModel: (provider, model) => {
-    set((state) => ({
-      providerConfigs: {
-        ...state.providerConfigs,
-        [provider]: { ...state.providerConfigs[provider], model },
-      },
-    }));
-    get().saveSettings();
-  },
-
-  setThinkingEnabled: (provider, enabled) => {
-    set((state) => ({
-      providerConfigs: {
-        ...state.providerConfigs,
-        [provider]: { ...state.providerConfigs[provider], thinkingEnabled: enabled },
-      },
-    }));
-    get().saveSettings();
-  },
-
-  setThinkingBudget: (provider, budget) => {
-    set((state) => ({
-      providerConfigs: {
-        ...state.providerConfigs,
-        [provider]: { ...state.providerConfigs[provider], thinkingBudget: budget },
-      },
     }));
     get().saveSettings();
   },
@@ -210,36 +114,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
   loadSettings: async () => {
     try {
-      const stored = await tauriStore.get<{
-        settings: AppSettings;
-        providerConfigs: Record<CloudProvider, ProviderConfigEntry>;
-      }>('hat-settings');
-
+      const stored = await tauriStore.get<{ settings: AppSettings }>('hat-settings');
       if (stored) {
-        // Deep merge provider configs (per-provider field merge)
-        const defaults = defaultProviderConfigs();
-        const mergedConfigs = { ...defaults };
-        if (stored.providerConfigs) {
-          for (const provider of Object.keys(defaults) as CloudProvider[]) {
-            if (stored.providerConfigs[provider]) {
-              mergedConfigs[provider] = { ...defaults[provider], ...stored.providerConfigs[provider] };
-            }
-          }
-        }
         set({
           settings: deepMerge(DEFAULT_SETTINGS, stored.settings ?? {}),
-          providerConfigs: mergedConfigs,
           _hydrated: true,
         });
-        // Sync all stored API keys to the Rust backend
-        const syncPromises = Object.entries(mergedConfigs)
-          .filter(([, config]) => config.apiKey)
-          .map(([provider, config]) =>
-            invoke('set_provider_key', { provider, key: config.apiKey })
-          );
-        await Promise.all(syncPromises).catch((err) =>
-          console.error('[SettingsStore] Failed to sync keys to backend:', err)
-        );
       } else {
         set({ _hydrated: true });
       }
@@ -252,8 +132,8 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   saveSettings: async () => {
     if (!get()._hydrated) return; // Don't overwrite persisted data before hydration
     try {
-      const { settings, providerConfigs } = get();
-      await tauriStore.set('hat-settings', { settings, providerConfigs });
+      const { settings } = get();
+      await tauriStore.set('hat-settings', { settings });
       await tauriStore.save();
       // Notify other windows to reload settings
       emit('settings-changed').catch(() => {});

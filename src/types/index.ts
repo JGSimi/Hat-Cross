@@ -67,71 +67,11 @@ export interface TokenUsage {
 }
 
 // === Providers ===
-
-export type AISource = 'hat' | 'byok';
-
-export type CloudProvider =
-  | 'google'
-  | 'openai'
-  | 'anthropic'
-  | 'inception'
-  | 'openrouter'
-  | 'custom';
-
-export interface ProviderConfig {
-  name: CloudProvider;
-  displayName: string;
-  defaultEndpoint: string;
-  modelsEndpoint: string | null;
-  apiKey: string;
-  endpoint: string;
-  model: string;
-}
-
-export const PROVIDER_DEFAULTS: Record<CloudProvider, Omit<ProviderConfig, 'apiKey' | 'model'>> = {
-  google: {
-    name: 'google',
-    displayName: 'Google Gemini',
-    defaultEndpoint: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    modelsEndpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/models',
-    endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai',
-  },
-  openai: {
-    name: 'openai',
-    displayName: 'OpenAI',
-    defaultEndpoint: 'https://api.openai.com/v1',
-    modelsEndpoint: 'https://api.openai.com/v1/models',
-    endpoint: 'https://api.openai.com/v1',
-  },
-  anthropic: {
-    name: 'anthropic',
-    displayName: 'Anthropic Claude',
-    defaultEndpoint: 'https://api.anthropic.com/v1',
-    modelsEndpoint: null,
-    endpoint: 'https://api.anthropic.com/v1',
-  },
-  inception: {
-    name: 'inception',
-    displayName: 'Inception Mercury',
-    defaultEndpoint: 'https://api.inceptionlabs.ai/v1',
-    modelsEndpoint: 'https://api.inceptionlabs.ai/v1/models',
-    endpoint: 'https://api.inceptionlabs.ai/v1',
-  },
-  openrouter: {
-    name: 'openrouter',
-    displayName: 'OpenRouter',
-    defaultEndpoint: 'https://openrouter.ai/api/v1',
-    modelsEndpoint: 'https://openrouter.ai/api/v1/models',
-    endpoint: 'https://openrouter.ai/api/v1',
-  },
-  custom: {
-    name: 'custom',
-    displayName: 'Custom',
-    defaultEndpoint: '',
-    modelsEndpoint: null,
-    endpoint: '',
-  },
-};
+//
+// BYOK was removed on 2026-04-16 — all inference now goes through the Hat
+// proxy Worker with Firebase-backed credits. The old CloudProvider /
+// ProviderConfig / PROVIDER_DEFAULTS exports are gone; anything still
+// importing them should migrate to the Hat credits flow.
 
 // === Theme ===
 
@@ -260,8 +200,6 @@ export interface AppSettings {
   soundEnabled: boolean;
   theme: AppTheme;
   popover: PopoverSettings;
-  aiSource: AISource;
-  cloudProvider: CloudProvider;
   systemPrompt: string;
   temperature: number;
   maxTokens: number;
@@ -289,8 +227,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
     disguiseWidget: 'clock',
     rememberPosition: true,
   },
-  aiSource: 'hat',
-  cloudProvider: 'google',
   systemPrompt: 'Você é um assistente de IA útil e conciso. Responda em português brasileiro.',
   temperature: 0.7,
   maxTokens: 4096,

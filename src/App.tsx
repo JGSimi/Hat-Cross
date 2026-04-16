@@ -243,11 +243,12 @@ function App() {
   const rebuildTrayMenu = useCallback(() => {
     if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current);
     rebuildTimerRef.current = setTimeout(() => {
-      const { settings, providerConfigs } = useSettingsStore.getState();
-      const provider = settings.cloudProvider.charAt(0).toUpperCase() + settings.cloudProvider.slice(1);
-      const cfg = providerConfigs[settings.cloudProvider];
-      const model = cfg?.model || '';
-      const providerLabel = `${provider} — ${model}`;
+      // Tray label reflects the active Hat credits mode (Mini/Standard/Plus).
+      // Signed-out users get a neutral label since there's no active LLM.
+      const authedLabel = useAuthStore.getState().user ? (
+        AI_MODES.find((m) => m.id === useCreditsStore.getState().selectedMode)?.label ?? 'Hat'
+      ) : 'Hat — entre para usar';
+      const providerLabel = authedLabel;
 
       const conversations = useConversationStore.getState().conversations;
       const recentConversations = conversations.slice(0, 5).map(c => ({
@@ -317,7 +318,7 @@ function App() {
       let chunkUnlisten: (() => void) | null = null;
 
       try {
-        const { settings, providerConfigs } = useSettingsStore.getState();
+        const { settings } = useSettingsStore.getState();
         const clip = settings.clipboard;
 
         if (!clip.enabled) { isProcessing = false; return; }
@@ -363,39 +364,29 @@ function App() {
             .catch((e) => console.error('[notification] processing-started failed:', e));
         }
 
-        // Resolve which stream path to use (Hat credits vs BYOK) up front,
-        // so the chunk listener below can tag history entries with the right
-        // provider/model label.
+        // Clipboard now only works when signed in — BYOK is gone, so bail
+        // early (with a notification nudge) if the user hasn't logged in.
         const authUser = useAuthStore.getState().user;
-        const byokCfg = providerConfigs[settings.cloudProvider];
-        let provider: string;
-        let model: string;
-        let hatMode: typeof AI_MODES[number]['id'] | null = null;
-        let hatToken: string | null = null;
-
-        if (authUser) {
-          hatToken = await getIdToken();
-          if (!hatToken) {
-            invoke('send_notification', { title: 'Hat — Erro', body: 'Sessão expirada. Entre de novo na aba Conta.' }).catch(() => {});
-            isProcessing = false;
-            return;
-          }
-          hatMode = useCreditsStore.getState().selectedMode;
-          provider = 'Hat';
-          model = AI_MODES.find((m) => m.id === hatMode)?.label ?? 'Hat';
-        } else {
-          const apiKey = byokCfg?.apiKey?.trim() ?? '';
-          if (!apiKey) {
-            invoke('send_notification', {
-              title: 'Hat — Sem API',
-              body: 'Entre no Hat ou configure uma API key em Configurações > Modelos & IA.',
-            }).catch(() => {});
-            isProcessing = false;
-            return;
-          }
-          provider = settings.cloudProvider;
-          model = byokCfg?.model || '';
+        if (!authUser) {
+          invoke('send_notification', {
+            title: 'Hat — Entre para usar',
+            body: 'Faça login com Google na aba Conta para processar o clipboard.',
+          }).catch(() => {});
+          isProcessing = false;
+          return;
         }
+        const hatToken = await getIdToken();
+        if (!hatToken) {
+          invoke('send_notification', {
+            title: 'Hat — Sessão expirada',
+            body: 'Entre de novo na aba Conta para continuar.',
+          }).catch(() => {});
+          isProcessing = false;
+          return;
+        }
+        const hatMode = useCreditsStore.getState().selectedMode;
+        const provider = 'Hat';
+        const model = AI_MODES.find((m) => m.id === hatMode)?.label ?? 'Hat';
 
         const systemPrompt = clip.useCustomPrompt && clip.customPrompt
           ? clip.customPrompt
@@ -483,34 +474,16 @@ function App() {
           },
         );
 
-        if (hatMode && hatToken) {
-          // Authenticated → Hat proxy (credits debited server-side)
-          await invoke('stream_chat_hat', {
-            streamId,
-            messages: [{ role: 'user', textContent: messageText }],
-            systemPrompt,
-            mode: hatMode,
-            temperature: settings.temperature,
-            maxTokens: clip.maxResponseLength || settings.maxTokens,
-            images: clipImages,
-            idToken: hatToken,
-          });
-        } else {
-          // BYOK → direct provider call
-          await invoke('stream_chat', {
-            streamId,
-            messages: [{ role: 'user', textContent: messageText }],
-            systemPrompt,
-            provider: settings.cloudProvider,
-            endpoint: byokCfg?.endpoint || '',
-            model,
-            temperature: settings.temperature,
-            maxTokens: clip.maxResponseLength || settings.maxTokens,
-            images: clipImages,
-            thinkingEnabled: false,
-            thinkingBudget: 10000,
-          });
-        }
+        await invoke('stream_chat_hat', {
+          streamId,
+          messages: [{ role: 'user', textContent: messageText }],
+          systemPrompt,
+          mode: hatMode,
+          temperature: settings.temperature,
+          maxTokens: clip.maxResponseLength || settings.maxTokens,
+          images: clipImages,
+          idToken: hatToken,
+        });
       } catch (e) {
         console.error('Clipboard processing failed:', e);
         if (chunkUnlisten) {

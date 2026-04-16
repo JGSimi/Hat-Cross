@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, RefreshCw, Eye, EyeOff, Bot, Brain, Zap, Shuffle, Globe, Gem } from 'lucide-react';
+import { ArrowLeft, Zap } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import ThemePicker from './ThemePicker';
@@ -8,14 +8,12 @@ import WindowControls from '../Shared/WindowControls';
 import AccountTab from '../Account/AccountTab';
 import { usePlatform } from '../../hooks/usePlatform';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { PROVIDER_DEFAULTS, type CloudProvider } from '../../types';
-import { fetchModels } from '../../services/ai';
 
 interface Props {
   onClose: () => void;
 }
 
-type Tab = 'account' | 'general' | 'notifications' | 'clipboard' | 'appearance' | 'models' | 'behavior' | 'shortcuts' | 'popover';
+type Tab = 'account' | 'general' | 'notifications' | 'clipboard' | 'appearance' | 'behavior' | 'shortcuts' | 'popover';
 
 const tabContentVariants = {
   initial: { opacity: 0, y: 8 },
@@ -28,21 +26,12 @@ export default function SettingsPanel({ onClose }: Props) {
   const platform = usePlatform();
   const {
     settings,
-    providerConfigs,
     updateSettings,
     setTheme,
-    setProvider,
-    setApiKey,
-    setModel,
-    setEndpoint,
-    setThinkingEnabled,
-    setThinkingBudget,
-    resetTokenStats,
   } = useSettingsStore();
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'account', label: 'Conta' },
-    { id: 'models', label: 'Modelos & IA' },
     { id: 'general', label: 'Geral' },
     { id: 'appearance', label: 'Aparência' },
     { id: 'behavior', label: 'Comportamento' },
@@ -154,20 +143,6 @@ export default function SettingsPanel({ onClose }: Props) {
                   settings={settings}
                   updateSettings={updateSettings}
                   setTheme={setTheme}
-                />
-              )}
-              {activeTab === 'models' && (
-                <ModelsTab
-                  settings={settings}
-                  providerConfigs={providerConfigs}
-                  updateSettings={updateSettings}
-                  setProvider={setProvider}
-                  setApiKey={setApiKey}
-                  setModel={setModel}
-                  setEndpoint={setEndpoint}
-                  setThinkingEnabled={setThinkingEnabled}
-                  setThinkingBudget={setThinkingBudget}
-                  resetTokenStats={resetTokenStats}
                 />
               )}
               {activeTab === 'behavior' && (
@@ -874,350 +849,6 @@ function AppearanceTab({
   );
 }
 
-// Popular models per provider (shown when API hasn't been fetched yet)
-const POPULAR_MODELS: Record<string, string[]> = {
-  google: ['gemini-2.5-flash-preview-05-20', 'gemini-2.5-pro-preview-05-06', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-  openai: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'o3', 'o4-mini', 'gpt-4o', 'gpt-4o-mini'],
-  anthropic: ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001', 'claude-3-5-sonnet-20241022'],
-  inception: ['mercury-coder-small-beta'],
-  openrouter: ['google/gemini-2.5-flash-preview', 'anthropic/claude-sonnet-4-6', 'openai/gpt-4.1', 'deepseek/deepseek-r1', 'meta-llama/llama-4-maverick'],
-  custom: [],
-};
-
-// Provider icon component
-function ProviderIcon({ provider, size = 14 }: { provider: string; size?: number }) {
-  const style = { color: 'currentColor' };
-  switch (provider) {
-    case 'google': return <Gem size={size} style={style} />;
-    case 'openai': return <Bot size={size} style={style} />;
-    case 'anthropic': return <Brain size={size} style={style} />;
-    case 'inception': return <Zap size={size} style={style} />;
-    case 'openrouter': return <Shuffle size={size} style={style} />;
-    case 'custom': return <Globe size={size} style={style} />;
-    default: return <Globe size={size} style={style} />;
-  }
-}
-
-function ModelsTab({
-  settings,
-  providerConfigs,
-  setProvider,
-  setApiKey,
-  setModel,
-  setEndpoint,
-  setThinkingEnabled,
-  setThinkingBudget,
-  resetTokenStats,
-}: {
-  settings: ReturnType<typeof useSettingsStore.getState>['settings'];
-  providerConfigs: ReturnType<typeof useSettingsStore.getState>['providerConfigs'];
-  updateSettings: ReturnType<typeof useSettingsStore.getState>['updateSettings'];
-  setProvider: ReturnType<typeof useSettingsStore.getState>['setProvider'];
-  setApiKey: ReturnType<typeof useSettingsStore.getState>['setApiKey'];
-  setModel: ReturnType<typeof useSettingsStore.getState>['setModel'];
-  setEndpoint: ReturnType<typeof useSettingsStore.getState>['setEndpoint'];
-  setThinkingEnabled: ReturnType<typeof useSettingsStore.getState>['setThinkingEnabled'];
-  setThinkingBudget: ReturnType<typeof useSettingsStore.getState>['setThinkingBudget'];
-  resetTokenStats: ReturnType<typeof useSettingsStore.getState>['resetTokenStats'];
-}) {
-  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
-  const [loadingModels, setLoadingModels] = useState(false);
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [modelSearch, setModelSearch] = useState('');
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
-
-  const currentProvider = settings.cloudProvider;
-  const currentConfig = providerConfigs[currentProvider];
-  const hasApiKey = !!(currentConfig?.apiKey);
-
-  // Auto-fetch models when provider changes or API key is set
-  useEffect(() => {
-    if (!hasApiKey) {
-      setFetchedModels([]);
-      setApiKeyStatus('idle');
-      return;
-    }
-    let cancelled = false;
-    const doFetch = async () => {
-      setLoadingModels(true);
-      const defaults = PROVIDER_DEFAULTS[currentProvider];
-      const endpoint = currentConfig?.endpoint || defaults.defaultEndpoint;
-      const result = await fetchModels(currentProvider, endpoint);
-      if (!cancelled) {
-        setFetchedModels(result);
-        setLoadingModels(false);
-        setApiKeyStatus(result.length > 0 ? 'valid' : 'invalid');
-      }
-    };
-    // Debounce to avoid fetching on every keystroke of API key
-    const timer = setTimeout(doFetch, 800);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [currentProvider, hasApiKey, currentConfig?.apiKey, currentConfig?.endpoint]);
-
-  // Combine fetched models with popular defaults
-  const allModels = fetchedModels.length > 0
-    ? fetchedModels
-    : POPULAR_MODELS[currentProvider] || [];
-
-  const filteredModels = modelSearch
-    ? allModels.filter((m) => m.toLowerCase().includes(modelSearch.toLowerCase()))
-    : allModels;
-
-  const inputStyle: React.CSSProperties = {
-    background: 'var(--input-bg)',
-    color: 'var(--text-primary)',
-    borderRadius: 8,
-    padding: '7px 12px',
-    fontSize: 12,
-    border: '1px solid var(--border-subtle)',
-    width: '100%',
-    transition: 'border-color 0.15s ease',
-  };
-
-  return (
-    <>
-          {/* Provider selector */}
-          <SectionTitle>Provedor</SectionTitle>
-          <GlassCard>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-              {(Object.keys(PROVIDER_DEFAULTS) as CloudProvider[]).map((p) => (
-                <motion.button
-                  key={p}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setProvider(p)}
-                  style={{
-                    padding: '8px 4px', borderRadius: 8, fontSize: 11, fontWeight: 500,
-                    background: currentProvider === p ? 'color-mix(in srgb, var(--color-accent) 15%, transparent)' : 'transparent',
-                    color: currentProvider === p ? 'var(--color-accent)' : 'var(--text-secondary)',
-                    border: currentProvider === p ? '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' : '1px solid var(--border-subtle)',
-                    cursor: 'pointer', transition: 'all 0.15s ease',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                  }}
-                >
-                  <ProviderIcon provider={p} size={13} />
-                  {PROVIDER_DEFAULTS[p].displayName.split(' ')[0]}
-                </motion.button>
-              ))}
-            </div>
-          </GlassCard>
-
-          {/* API Key with status */}
-          <SectionTitle>
-            API Key
-            {apiKeyStatus === 'valid' && <span style={{ color: 'var(--success)', marginLeft: 6, fontSize: 9 }}>● conectado</span>}
-            {apiKeyStatus === 'invalid' && hasApiKey && <span style={{ color: 'var(--error)', marginLeft: 6, fontSize: 9 }}>● inválida</span>}
-          </SectionTitle>
-          <GlassCard>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ flex: 1, position: 'relative' }}>
-                <input
-                  type={showApiKey ? 'text' : 'password'}
-                  value={currentConfig?.apiKey || ''}
-                  onChange={(e) => { setApiKey(currentProvider, e.target.value); setApiKeyStatus('idle'); }}
-                  placeholder={`Cole sua API key do ${PROVIDER_DEFAULTS[currentProvider].displayName}`}
-                  style={{ ...inputStyle, fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: 11, paddingRight: 36 }}
-                />
-                <button
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  style={{
-                    position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'var(--text-muted)', display: 'flex', alignItems: 'center', padding: 2,
-                  }}
-                >
-                  {showApiKey ? <EyeOff size={13} /> : <Eye size={13} />}
-                </button>
-              </div>
-            </div>
-          </GlassCard>
-
-          {/* Model selector — the main focus */}
-          <SectionTitle>
-            Modelo
-            {loadingModels && <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 9 }}>carregando...</span>}
-          </SectionTitle>
-          <GlassCard>
-            {/* Search/filter input */}
-            <div style={{ position: 'relative', marginBottom: 8 }}>
-              <input
-                value={modelSearch || currentConfig?.model || ''}
-                onChange={(e) => {
-                  setModelSearch(e.target.value);
-                  setModel(currentProvider, e.target.value);
-                }}
-                onFocus={() => { if (!modelSearch) setModelSearch(''); }}
-                onBlur={() => setTimeout(() => setModelSearch(''), 200)}
-                placeholder="Buscar ou digitar modelo..."
-                style={{ ...inputStyle, fontSize: 12, fontWeight: currentConfig?.model ? 500 : 400 }}
-              />
-            </div>
-
-            {/* Model list */}
-            <div
-              style={{
-                maxHeight: 220, overflowY: 'auto', borderRadius: 8,
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              {fetchedModels.length === 0 && !loadingModels && (
-                <p style={{ fontSize: 10, color: 'var(--text-muted)', padding: '8px 12px', margin: 0, textAlign: 'center' }}>
-                  {hasApiKey ? 'Modelos populares (conecte para ver todos)' : 'Adicione sua API key para buscar modelos'}
-                </p>
-              )}
-              {filteredModels.map((m) => {
-                const isSelected = currentConfig?.model === m;
-                return (
-                  <motion.button
-                    key={m}
-                    whileHover={{ backgroundColor: isSelected ? undefined : 'var(--surface-hover)' }}
-                    onClick={() => { setModel(currentProvider, m); setModelSearch(''); }}
-                    style={{
-                      width: '100%', textAlign: 'left',
-                      padding: '7px 12px', fontSize: 11.5,
-                      color: isSelected ? 'var(--color-accent)' : 'var(--text-primary)',
-                      fontWeight: isSelected ? 600 : 400,
-                      background: isSelected ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent',
-                      border: 'none', cursor: 'pointer',
-                      borderLeft: isSelected ? '2px solid var(--color-accent)' : '2px solid transparent',
-                      transition: 'all 0.1s ease',
-                    }}
-                  >
-                    {m}
-                  </motion.button>
-                );
-              })}
-              {filteredModels.length === 0 && modelSearch && (
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', padding: '12px', margin: 0, textAlign: 'center' }}>
-                  Nenhum modelo encontrado
-                </p>
-              )}
-            </div>
-
-            {/* Manual refresh */}
-            {hasApiKey && (
-              <motion.button
-                whileHover={{ color: 'var(--color-accent)' }}
-                whileTap={{ scale: 0.97 }}
-                onClick={async () => {
-                  setLoadingModels(true);
-                  const defaults = PROVIDER_DEFAULTS[currentProvider];
-                  const ep = currentConfig?.endpoint || defaults.defaultEndpoint;
-                  const result = await fetchModels(currentProvider, ep);
-                  setFetchedModels(result);
-                  setLoadingModels(false);
-                  setApiKeyStatus(result.length > 0 ? 'valid' : 'invalid');
-                }}
-                style={{
-                  fontSize: 10, color: 'var(--text-muted)', background: 'none',
-                  border: 'none', cursor: 'pointer', padding: '8px 0 0', display: 'flex', alignItems: 'center', gap: 4,
-                }}
-              >
-                <RefreshCw size={10} className={loadingModels ? 'animate-spin' : ''} />
-                Atualizar lista de modelos
-              </motion.button>
-            )}
-          </GlassCard>
-
-          {/* Thinking / Extended Thinking */}
-          <SectionTitle>
-            Cadeia de Pensamento
-            <span style={{ fontSize: 9, color: 'var(--text-muted)', marginLeft: 6, fontWeight: 400, textTransform: 'none' }}>
-              (Extended Thinking)
-            </span>
-          </SectionTitle>
-          <GlassCard>
-            <SettingRow label="Ativar pensamento estendido">
-              <Toggle
-                checked={currentConfig?.thinkingEnabled ?? false}
-                onChange={(v) => setThinkingEnabled(currentProvider, v)}
-              />
-            </SettingRow>
-            {currentConfig?.thinkingEnabled && (
-              <>
-                <SettingRow label={`Budget de tokens: ${currentConfig.thinkingBudget ?? 10000}`}>
-                  <CustomSlider
-                    min={1024} max={100000} step={1024}
-                    value={currentConfig?.thinkingBudget ?? 10000}
-                    onChange={(v) => setThinkingBudget(currentProvider, v)}
-                  />
-                </SettingRow>
-                {currentProvider === 'anthropic' && (
-                  <p style={{ fontSize: 10, color: 'var(--warning)', marginTop: 4, lineHeight: 1.5 }}>
-                    A Anthropic exige temperature = 1 com pensamento ativo. O valor sera ajustado automaticamente.
-                  </p>
-                )}
-              </>
-            )}
-          </GlassCard>
-
-          {/* Advanced: Endpoint (collapsed by default) */}
-          <motion.button
-            whileHover={{ color: 'var(--text-secondary)' }}
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            style={{
-              fontSize: 10, color: 'var(--text-muted)', background: 'none',
-              border: 'none', cursor: 'pointer', padding: '4px 0 8px', display: 'flex', alignItems: 'center', gap: 4,
-            }}
-          >
-            {showAdvanced ? '▾' : '▸'} Configuração avançada
-          </motion.button>
-          <AnimatePresence>
-            {showAdvanced && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                style={{ overflow: 'hidden' }}
-              >
-                <GlassCard>
-                  <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6 }}>Endpoint da API</p>
-                  <input
-                    value={currentConfig?.endpoint || ''}
-                    onChange={(e) => setEndpoint(currentProvider, e.target.value)}
-                    style={{ ...inputStyle, fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: 10.5 }}
-                  />
-                </GlassCard>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-      {/* Token stats */}
-      <SectionTitle>Uso de Tokens</SectionTitle>
-      <GlassCard>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
-          {[
-            { label: 'Input', value: settings.tokenStats.inputTokens },
-            { label: 'Output', value: settings.tokenStats.outputTokens },
-            { label: 'Total', value: settings.tokenStats.totalTokens },
-          ].map((stat) => (
-            <div key={stat.label} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                {stat.value >= 1000 ? `${(stat.value / 1000).toFixed(1)}k` : stat.value}
-              </div>
-              <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>{stat.label}</div>
-            </div>
-          ))}
-        </div>
-        <motion.button
-          whileTap={{ scale: 0.97 }}
-          onClick={resetTokenStats}
-          style={{
-            width: '100%', fontSize: 10, color: 'var(--text-muted)',
-            background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)',
-            borderRadius: 6, padding: '5px 0', cursor: 'pointer',
-            transition: 'color 0.15s ease',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--error)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
-        >
-          Resetar contagem
-        </motion.button>
-      </GlassCard>
-    </>
-  );
-}
 
 function BehaviorTab({
   settings,

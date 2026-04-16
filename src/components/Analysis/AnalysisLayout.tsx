@@ -11,15 +11,14 @@ import { useAuthStore } from '../../stores/authStore';
 import { useCreditsStore } from '../../stores/creditsStore';
 import { usePlatform } from '../../hooks/usePlatform';
 import WindowControls from '../Shared/WindowControls';
-import { PROVIDER_DEFAULTS } from '../../types';
 import type { StreamChunk, ConversationTurn } from '../../types';
 import { nextStreamId } from '../../services/ai';
 import { getIdToken } from '../../services/auth/firebase';
 
-// Screen analysis has its own listener+invoke pattern (no reuse of startStream),
-// so we can't call dispatchStream directly. This helper encapsulates the same
-// Hat-vs-BYOK decision the main chat makes, invoking the appropriate Rust
-// command and propagating errors to the caller via throw.
+// Screen analysis has its own listener+invoke pattern (not reused from
+// startHatStream), so we call `stream_chat_hat` directly here. Requires a
+// signed-in user — BYOK was removed and analysis now always goes through
+// the Worker just like every other LLM call.
 async function invokeAnalysisStream(args: {
   streamId: number;
   messages: ConversationTurn[];
@@ -29,46 +28,23 @@ async function invokeAnalysisStream(args: {
   images: string[];
 }): Promise<void> {
   const user = useAuthStore.getState().user;
-  if (user) {
-    const idToken = await getIdToken();
-    if (!idToken) {
-      throw new Error('Sessão expirada. Entre de novo na aba Conta.');
-    }
-    const mode = useCreditsStore.getState().selectedMode;
-    return invoke('stream_chat_hat', {
-      streamId: args.streamId,
-      messages: args.messages,
-      systemPrompt: args.systemPrompt,
-      mode,
-      temperature: args.temperature,
-      maxTokens: args.maxTokens,
-      images: args.images,
-      idToken,
-    });
+  if (!user) {
+    throw new Error('Entre no Hat com Google para usar a análise de tela.');
   }
-
-  // BYOK path — mirrors getProviderDetails() but reads stores via getState()
-  // so we don't depend on the component closure.
-  const { settings, providerConfigs } = useSettingsStore.getState();
-  const cfg = providerConfigs[settings.cloudProvider];
-  const apiKey = cfg?.apiKey?.trim() ?? '';
-  if (!apiKey) {
-    throw new Error('Sem API key. Entre no Hat (grátis) ou configure em Configurações > Modelos & IA.');
+  const idToken = await getIdToken();
+  if (!idToken) {
+    throw new Error('Sessão expirada. Entre de novo na aba Conta.');
   }
-  const endpoint = cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
-  const model = cfg?.model || '';
-  return invoke('stream_chat', {
+  const mode = useCreditsStore.getState().selectedMode;
+  return invoke('stream_chat_hat', {
     streamId: args.streamId,
     messages: args.messages,
     systemPrompt: args.systemPrompt,
-    provider: settings.cloudProvider,
-    endpoint,
-    model,
+    mode,
     temperature: args.temperature,
     maxTokens: args.maxTokens,
     images: args.images,
-    thinkingEnabled: false,
-    thinkingBudget: 10000,
+    idToken,
   });
 }
 
