@@ -14,6 +14,7 @@ import { useSettingsStore, setupSettingsSync } from './stores/settingsStore';
 import { useChatStore } from './stores/chatStore';
 import { useConversationStore } from './stores/conversationStore';
 import { useClipboardStore } from './stores/clipboardStore';
+import { useDraftsStore } from './stores/draftsStore';
 import { nextStreamId } from './services/ai';
 
 /** Normalize legacy shortcut format (CmdOrCtrl → CommandOrControl) */
@@ -66,9 +67,14 @@ function App() {
   const loadSettings = useSettingsStore((s) => s.loadSettings);
 
   useEffect(() => {
-    loadSettings();
+    (async () => {
+      await loadSettings();
+      await Promise.all([
+        useConversationStore.getState().loadConversations(),
+        useDraftsStore.getState().loadDrafts(),
+      ]);
+    })();
     setupSettingsSync();
-    useConversationStore.getState().loadConversations();
     useClipboardStore.getState().loadEntries();
   }, [loadSettings]);
 

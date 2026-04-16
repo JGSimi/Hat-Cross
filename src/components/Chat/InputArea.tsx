@@ -1,8 +1,11 @@
-import { useState, useRef, useCallback, type KeyboardEvent } from 'react';
+import { useState, useRef, useCallback, useEffect, type KeyboardEvent } from 'react';
 import { motion } from 'framer-motion';
 import { Camera, Send, Square } from 'lucide-react';
 import AttachmentPreview from './AttachmentPreview';
 import type { ChatAttachment } from '../../types';
+import { useDraftsStore } from '../../stores/draftsStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { formatDraftAge } from '../../utils/markdown';
 
 interface Props {
   onSend: (text: string, images?: string[]) => void;
@@ -12,36 +15,79 @@ interface Props {
   attachments: ChatAttachment[];
   onRemoveAttachment: (id: string) => void;
   onAddAttachment?: (attachment: ChatAttachment) => void;
+  conversationId: string | null;
 }
 
 export default function InputArea({
   onSend, onCancel, onScreenCapture, isStreaming,
-  attachments, onRemoveAttachment, onAddAttachment,
+  attachments, onRemoveAttachment, onAddAttachment, conversationId,
 }: Props) {
   const [text, setText] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [draftChipLabel, setDraftChipLabel] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const shouldAnimatePlunger = useRef(false);
+  // Session-only tracker so the plunger animation fires at most once per conversation per session.
+  const hydratedIds = useRef(new Set<string>());
   const hasContent = text.trim().length > 0 || attachments.length > 0;
+  const reducedMotion = useSettingsStore((s) => s.settings.performance?.reducedMotion ?? false);
+
+  const resizeTextarea = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 96)}px`;
+  }, []);
+
+  useEffect(() => {
+    if (!conversationId) {
+      setText('');
+      setDraftChipLabel(null);
+      shouldAnimatePlunger.current = false;
+      return;
+    }
+    const draft = useDraftsStore.getState().getDraft(conversationId);
+    const alreadyHydrated = hydratedIds.current.has(conversationId);
+    if (draft?.text && !alreadyHydrated) {
+      shouldAnimatePlunger.current = true;
+      hydratedIds.current.add(conversationId);
+    } else {
+      shouldAnimatePlunger.current = false;
+    }
+    setText(draft?.text ?? '');
+    setDraftChipLabel(draft ? formatDraftAge(draft.updatedAt) : null);
+    // Resize on next tick so auto-grow matches hydrated content after setText commits.
+    requestAnimationFrame(resizeTextarea);
+  }, [conversationId, resizeTextarea]);
 
   const handleSend = useCallback(() => {
     if (isStreaming) { onCancel(); return; }
     if (!text.trim() && attachments.length === 0) return;
     onSend(text);
     setText('');
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
-  }, [text, isStreaming, attachments, onSend, onCancel]);
+    setDraftChipLabel(null);
+    resizeTextarea();
+    if (conversationId) {
+      useDraftsStore.getState().clearDraft(conversationId);
+    }
+  }, [text, isStreaming, attachments, onSend, onCancel, conversationId, resizeTextarea]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const handleInput = () => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 96)}px`;
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setText(value);
+    if (conversationId) {
+      useDraftsStore.getState().setDraft(conversationId, value);
+    }
+    // Clear chip as soon as user starts editing their own draft
+    if (draftChipLabel) setDraftChipLabel(null);
   };
+
+  const handleInput = resizeTextarea;
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true); };
   const handleDragLeave = () => setIsDragOver(false);
@@ -63,6 +109,9 @@ export default function InputArea({
     }
   };
 
+  const animatePlunger = shouldAnimatePlunger.current && !reducedMotion;
+  const wrapperKey = `${conversationId ?? 'none'}:${animatePlunger ? 'plunger' : 'static'}`;
+
   return (
     <div
       onDragOver={handleDragOver}
@@ -71,7 +120,34 @@ export default function InputArea({
       style={{ padding: '10px 16px 14px', flexShrink: 0 }}
     >
       <AttachmentPreview attachments={attachments} onRemove={onRemoveAttachment} />
-      <div
+      {draftChipLabel && (
+        <motion.div
+          initial={{ opacity: 0, y: -2 }}
+          animate={{ opacity: 0.7, y: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            marginBottom: 6,
+            padding: '2px 8px',
+            fontSize: 10,
+            color: 'var(--text-muted)',
+            background: 'color-mix(in srgb, var(--surface-input) 60%, transparent)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            border: '1px solid var(--border-input)',
+            borderRadius: 6,
+            letterSpacing: '0.02em',
+          }}
+        >
+          {draftChipLabel}
+        </motion.div>
+      )}
+      <motion.div
+        key={wrapperKey}
+        initial={animatePlunger ? { y: 4, opacity: 0.7 } : false}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
         style={{
           background: isDragOver
             ? 'var(--surface-input-hover)'
@@ -105,7 +181,7 @@ export default function InputArea({
         <textarea
           ref={textareaRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={handleChange}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
           onFocus={() => setIsFocused(true)}
@@ -140,7 +216,7 @@ export default function InputArea({
         >
           {isStreaming ? <Square size={16} /> : <Send size={16} />}
         </motion.button>
-      </div>
+      </motion.div>
     </div>
   );
 }

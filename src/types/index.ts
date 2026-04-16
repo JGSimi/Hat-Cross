@@ -25,6 +25,11 @@ export interface Conversation {
   updatedAt: number;
 }
 
+export interface DraftEntry {
+  text: string;
+  updatedAt: number;
+}
+
 // === Clipboard History ===
 
 export interface ClipboardEntry {
