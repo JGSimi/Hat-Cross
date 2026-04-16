@@ -34,6 +34,7 @@ pub fn run() {
             commands::set_provider_key,
             commands::get_provider_key_cmd,
             streaming::stream_chat,
+            streaming::stream_chat_hat,
             streaming::cancel_stream,
             streaming::fetch_models,
             oauth::oauth_start_server,

@@ -3,9 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { useChatStore } from '../stores/chatStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useConversationStore } from '../stores/conversationStore';
-import { startStream } from '../services/ai';
+import { dispatchStream } from '../services/ai/dispatch';
 import type { Message } from '../types';
-import { PROVIDER_DEFAULTS } from '../types';
 import { generateId } from '../utils/markdown';
 
 // Threshold to warn user (percentage of max context)
@@ -92,69 +91,54 @@ export function useChat() {
         ];
         clearAttachments();
 
-        const provider = settings.cloudProvider;
-        const cfg = providerConfigs[settings.cloudProvider];
-        const endpoint = cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
-        const model = cfg?.model || '';
-
-        const apiKey = cfg?.apiKey || '';
-        if (!apiKey.trim()) {
-          setError('Chave de API não configurada. Vá em Configurações > Modelos & IA para adicionar sua chave.');
-          return;
-        }
-
-        setStreaming(true);
         setError(null);
 
-        const thinkingEnabled1 = cfg?.thinkingEnabled ?? false;
-        const thinkingBudget1 = cfg?.thinkingBudget ?? 10000;
-        const effectiveTemp1 = (provider === 'anthropic' && thinkingEnabled1) ? 1.0 : settings.temperature;
-
         try {
-          const cancel = await startStream({
-            messages: history,
-            systemPrompt: settings.systemPrompt,
-            provider,
-            endpoint,
-            model,
-            temperature: effectiveTemp1,
-            maxTokens: settings.maxTokens,
-            images: allImages,
-            thinkingEnabled: thinkingEnabled1,
-            thinkingBudget: thinkingBudget1,
-            onChunk: (chunk) => {
-              if (chunk.text) {
-                if (chunk.contentType === 'thinking') {
-                  appendStreamThinking(chunk.text);
+          const cancel = await dispatchStream(
+            {
+              messages: history,
+              systemPrompt: settings.systemPrompt,
+              temperature: settings.temperature,
+              maxTokens: settings.maxTokens,
+              images: allImages,
+              onChunk: (chunk) => {
+                if (chunk.text) {
+                  if (chunk.contentType === 'thinking') {
+                    appendStreamThinking(chunk.text);
+                  } else {
+                    appendStreamContent(chunk.text);
+                  }
+                }
+                if (chunk.isFinished && (chunk.inputTokens || chunk.outputTokens)) {
+                  updateTokenStats({
+                    inputTokens: chunk.inputTokens ?? 0,
+                    outputTokens: chunk.outputTokens ?? 0,
+                  });
+                }
+              },
+              onError: (error) => { setError(error); setStreaming(false); },
+              onDone: () => {
+                const content = useChatStore.getState().streamingContent;
+                if (content) {
+                  finishStream();
+                  const msgs = useChatStore.getState().messages;
+                  const lastMsg = msgs[msgs.length - 1];
+                  if (lastMsg && !lastMsg.isUser) {
+                    addMessageToConversation(conv.id, lastMsg);
+                  }
+                  playCompletionSound();
+                  sendNotificationIfNeeded();
                 } else {
-                  appendStreamContent(chunk.text);
+                  setStreaming(false);
                 }
-              }
-              if (chunk.isFinished && (chunk.inputTokens || chunk.outputTokens)) {
-                updateTokenStats({
-                  inputTokens: chunk.inputTokens ?? 0,
-                  outputTokens: chunk.outputTokens ?? 0,
-                });
-              }
+              },
             },
-            onError: (error) => { setError(error); setStreaming(false); },
-            onDone: () => {
-              const content = useChatStore.getState().streamingContent;
-              if (content) {
-                finishStream();
-                const msgs = useChatStore.getState().messages;
-                const lastMsg = msgs[msgs.length - 1];
-                if (lastMsg && !lastMsg.isUser) {
-                  addMessageToConversation(conv.id, lastMsg);
-                }
-                playCompletionSound();
-                sendNotificationIfNeeded();
-              } else {
-                setStreaming(false);
-              }
-            },
-          });
-          cancelRef.current = cancel;
+            setError,
+          );
+          if (cancel) {
+            setStreaming(true);
+            cancelRef.current = cancel;
+          }
         } catch (e) {
           setError(String(e));
           setStreaming(false);
@@ -194,74 +178,57 @@ export function useChat() {
         textContent: m.content,
       }));
 
-      const provider = settings.cloudProvider;
-      const cfg = providerConfigs[settings.cloudProvider];
-      const endpoint = cfg?.endpoint || PROVIDER_DEFAULTS[settings.cloudProvider]?.defaultEndpoint || '';
-      const model = cfg?.model || '';
-
-      const apiKey = cfg?.apiKey || '';
-      if (!apiKey.trim()) {
-        setError(
-          'Chave de API não configurada. Vá em Configurações > Modelos & IA para adicionar sua chave.'
-        );
-        return;
-      }
-
-      setStreaming(true);
       setError(null);
 
-      const thinkingEnabled2 = cfg?.thinkingEnabled ?? false;
-      const thinkingBudget2 = cfg?.thinkingBudget ?? 10000;
-      const effectiveTemp2 = (provider === 'anthropic' && thinkingEnabled2) ? 1.0 : settings.temperature;
-
       try {
-        const cancel = await startStream({
-          messages: history,
-          systemPrompt: settings.systemPrompt,
-          provider,
-          endpoint,
-          model,
-          temperature: effectiveTemp2,
-          maxTokens: settings.maxTokens,
-          images: allImages,
-          thinkingEnabled: thinkingEnabled2,
-          thinkingBudget: thinkingBudget2,
-          onChunk: (chunk) => {
-            if (chunk.text) {
-              if (chunk.contentType === 'thinking') {
-                appendStreamThinking(chunk.text);
-              } else {
-                appendStreamContent(chunk.text);
+        const cancel = await dispatchStream(
+          {
+            messages: history,
+            systemPrompt: settings.systemPrompt,
+            temperature: settings.temperature,
+            maxTokens: settings.maxTokens,
+            images: allImages,
+            onChunk: (chunk) => {
+              if (chunk.text) {
+                if (chunk.contentType === 'thinking') {
+                  appendStreamThinking(chunk.text);
+                } else {
+                  appendStreamContent(chunk.text);
+                }
               }
-            }
-            if (chunk.isFinished && (chunk.inputTokens || chunk.outputTokens)) {
-              updateTokenStats({
-                inputTokens: chunk.inputTokens ?? 0,
-                outputTokens: chunk.outputTokens ?? 0,
-              });
-            }
-          },
-          onError: (error) => {
-            setError(error);
-            setStreaming(false);
-          },
-          onDone: () => {
-            const content = useChatStore.getState().streamingContent;
-            if (content) {
-              finishStream();
-              const msgs = useChatStore.getState().messages;
-              const lastMsg = msgs[msgs.length - 1];
-              if (lastMsg && !lastMsg.isUser && convId) {
-                addMessageToConversation(convId, lastMsg);
+              if (chunk.isFinished && (chunk.inputTokens || chunk.outputTokens)) {
+                updateTokenStats({
+                  inputTokens: chunk.inputTokens ?? 0,
+                  outputTokens: chunk.outputTokens ?? 0,
+                });
               }
-              playCompletionSound();
-              sendNotificationIfNeeded();
-            } else {
+            },
+            onError: (error) => {
+              setError(error);
               setStreaming(false);
-            }
+            },
+            onDone: () => {
+              const content = useChatStore.getState().streamingContent;
+              if (content) {
+                finishStream();
+                const msgs = useChatStore.getState().messages;
+                const lastMsg = msgs[msgs.length - 1];
+                if (lastMsg && !lastMsg.isUser && convId) {
+                  addMessageToConversation(convId, lastMsg);
+                }
+                playCompletionSound();
+                sendNotificationIfNeeded();
+              } else {
+                setStreaming(false);
+              }
+            },
           },
-        });
-        cancelRef.current = cancel;
+          setError,
+        );
+        if (cancel) {
+          setStreaming(true);
+          cancelRef.current = cancel;
+        }
       } catch (e) {
         setError(String(e));
         setStreaming(false);

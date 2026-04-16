@@ -102,6 +102,85 @@ export async function cancelStream(streamId: number): Promise<void> {
   await invoke('cancel_stream', { streamId });
 }
 
+// ----- Hat proxy (credits-based) streaming -----
+
+import type { AIMode } from '../../types/account';
+
+export interface HatStreamOptions {
+  messages: ConversationTurn[];
+  systemPrompt: string;
+  mode: AIMode;
+  temperature: number;
+  maxTokens: number;
+  images?: string[];
+  idToken: string;
+  onChunk: (chunk: StreamChunk) => void;
+  onError: (error: string) => void;
+  onDone: () => void;
+}
+
+export async function startHatStream(options: HatStreamOptions): Promise<() => void> {
+  const {
+    messages,
+    systemPrompt,
+    mode,
+    temperature,
+    maxTokens,
+    images = [],
+    idToken,
+    onChunk,
+    onError,
+    onDone,
+  } = options;
+
+  const streamId = nextStreamId();
+
+  let unlistenError: (() => void) | null = null;
+  let done = false;
+
+  const cleanup = () => {
+    if (done) return;
+    done = true;
+    unlisten();
+    unlistenError?.();
+  };
+
+  const unlisten = await listen<StreamChunk>('chat-stream', (event) => {
+    const chunk = event.payload;
+    if (chunk.streamId !== streamId) return;
+    onChunk(chunk);
+    if (chunk.isFinished) {
+      onDone();
+      cleanup();
+    }
+  });
+
+  unlistenError = await listen<string>('chat-stream-error', (event) => {
+    onError(event.payload);
+    cleanup();
+  });
+
+  invoke('stream_chat_hat', {
+    streamId,
+    messages,
+    systemPrompt,
+    mode,
+    temperature,
+    maxTokens,
+    images,
+    idToken,
+  }).catch((e) => {
+    if (done) return;
+    onError(String(e));
+    cleanup();
+  });
+
+  return () => {
+    invoke('cancel_stream', { streamId }).catch(() => {});
+    cleanup();
+  };
+}
+
 export async function fetchModels(
   provider: CloudProvider,
   endpoint: string,

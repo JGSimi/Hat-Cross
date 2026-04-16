@@ -121,6 +121,59 @@ pub fn cancel_stream(stream_id: u64) {
     }
 }
 
+// Streams a chat through the Hat proxy Worker using the user's Firebase ID
+// token for auth. The Worker converts the Hat-format body into a Gemini call,
+// streams the response back in OpenAI-compatible SSE format, and debits
+// Firestore credits after the stream ends (we observe the balance change via
+// the creditsStore's Firestore listener, no extra round-trip needed).
+#[tauri::command]
+pub async fn stream_chat_hat(
+    app: AppHandle,
+    stream_id: u64,
+    messages: Vec<ConversationTurn>,
+    system_prompt: String,
+    mode: String,
+    temperature: f64,
+    max_tokens: u32,
+    images: Vec<String>,
+    id_token: String,
+) -> Result<(), String> {
+    let cancel_flag = register_stream(stream_id);
+
+    let result = stream_chat_hat_impl(
+        &app,
+        stream_id,
+        &cancel_flag,
+        &messages,
+        &system_prompt,
+        &mode,
+        temperature,
+        max_tokens,
+        &images,
+        &id_token,
+    )
+    .await;
+
+    unregister_stream(stream_id);
+
+    if let Err(e) = result {
+        let _ = app.emit(
+            "chat-stream",
+            StreamChunkPayload {
+                stream_id,
+                text: e.clone(),
+                is_finished: true,
+                input_tokens: None,
+                output_tokens: None,
+                content_type: "text".to_string(),
+            },
+        );
+        return Err(e);
+    }
+
+    Ok(())
+}
+
 fn validate_endpoint_security(endpoint: &str) -> Result<(), String> {
     let parsed = reqwest::Url::parse(endpoint)
         .map_err(|e| format!("Endpoint inválido: {}", e))?;
@@ -696,6 +749,305 @@ async fn stream_anthropic(
             is_finished: true,
             input_tokens,
             output_tokens,
+            content_type: "text".to_string(),
+        },
+    );
+
+    Ok(())
+}
+
+// ----- Hat proxy streaming -----
+
+const HAT_PROXY_URL: &str = "https://hat-proxy.joao02simi.workers.dev/v1/chat";
+
+async fn stream_chat_hat_impl(
+    app: &AppHandle,
+    stream_id: u64,
+    cancel_flag: &Arc<AtomicBool>,
+    messages: &[ConversationTurn],
+    system_prompt: &str,
+    mode: &str,
+    temperature: f64,
+    max_tokens: u32,
+    images: &[String],
+    id_token: &str,
+) -> Result<(), String> {
+    // Same OpenAI-style content array when images are present on the last turn;
+    // the Worker passes this through to the Gemini OpenAI-compat endpoint.
+    let mut api_messages = Vec::new();
+    for (i, turn) in messages.iter().enumerate() {
+        let turn_images = turn.images.as_deref().unwrap_or(&[]);
+        let is_last = i == messages.len() - 1;
+        let combined_images: Vec<&str> = if is_last {
+            turn_images
+                .iter()
+                .chain(images.iter())
+                .map(|s| s.as_str())
+                .collect()
+        } else {
+            turn_images.iter().map(|s| s.as_str()).collect()
+        };
+
+        if !combined_images.is_empty() {
+            let mut content_parts = Vec::new();
+            for img in &combined_images {
+                let image_url = if img.starts_with("data:") {
+                    img.to_string()
+                } else {
+                    format!("data:image/png;base64,{}", img)
+                };
+                content_parts.push(serde_json::json!({
+                    "type": "image_url",
+                    "image_url": { "url": image_url }
+                }));
+            }
+            content_parts.push(serde_json::json!({
+                "type": "text",
+                "text": turn.text_content
+            }));
+            api_messages.push(serde_json::json!({
+                "role": turn.role,
+                "content": content_parts
+            }));
+        } else {
+            api_messages.push(serde_json::json!({
+                "role": turn.role,
+                "content": turn.text_content
+            }));
+        }
+    }
+
+    let body = serde_json::json!({
+        "mode": mode,
+        "messages": api_messages,
+        "systemPrompt": system_prompt,
+        "temperature": temperature,
+        "maxTokens": max_tokens,
+    });
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(HAT_PROXY_URL)
+        .header(CONTENT_TYPE, "application/json")
+        .header(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", id_token))
+                .map_err(|e| format!("Token invalido: {}", e))?,
+        )
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Erro ao conectar ao Hat: {}", e))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let body_text = response.text().await.unwrap_or_default();
+        return Err(map_hat_proxy_error(status.as_u16(), &body_text));
+    }
+
+    // Worker pipes through Gemini's OpenAI-compat SSE without modification, so
+    // the same parser we use for direct Gemini/OpenAI calls works verbatim.
+    consume_openai_sse(app, stream_id, cancel_flag, response).await
+}
+
+// Translates Worker-level HTTP errors into user-friendly PT-BR messages.
+// The Worker returns 402 when the balance is too low (bounce before starting
+// the stream), 401 on bad/missing JWT, 500 on Gemini upstream failures.
+fn map_hat_proxy_error(status: u16, body: &str) -> String {
+    // Try to pluck {"error": "..."} out of the body for more detail.
+    let detail = serde_json::from_str::<serde_json::Value>(body)
+        .ok()
+        .and_then(|v| v["error"].as_str().map(|s| s.to_string()))
+        .unwrap_or_default();
+
+    match status {
+        401 => "Sessao expirada. Faca login de novo para continuar.".to_string(),
+        402 => "Creditos insuficientes. Recarregue via PIX na aba Conta.".to_string(),
+        429 => "Muitas requisicoes em pouco tempo. Aguarde alguns segundos.".to_string(),
+        500..=599 => format!("Erro no Hat ({}): {}", status, detail),
+        _ => format!("Erro do Hat ({}): {}", status, detail),
+    }
+}
+
+// ----- SSE consumption (shared between direct BYOK and Hat proxy paths) -----
+
+async fn consume_openai_sse(
+    app: &AppHandle,
+    stream_id: u64,
+    cancel_flag: &Arc<AtomicBool>,
+    response: reqwest::Response,
+) -> Result<(), String> {
+    let mut stream = response.bytes_stream();
+    let mut buffer: Vec<u8> = Vec::new();
+    let mut finished = false;
+    let mut in_thoughts_block: bool = false;
+
+    while let Some(chunk) = stream.next().await {
+        if cancel_flag.load(Ordering::SeqCst) {
+            let _ = app.emit(
+                "chat-stream",
+                StreamChunkPayload {
+                    stream_id,
+                    text: String::new(),
+                    is_finished: true,
+                    input_tokens: None,
+                    output_tokens: None,
+                    content_type: "text".to_string(),
+                },
+            );
+            return Ok(());
+        }
+
+        let chunk = chunk.map_err(|e| format!("Erro no stream: {}", e))?;
+        buffer.extend_from_slice(&chunk);
+
+        drain_lines(&mut buffer, |line| {
+            if finished || line.is_empty() || line.starts_with(':') {
+                return;
+            }
+
+            if let Some(data) = line.strip_prefix("data: ") {
+                if data.trim() == "[DONE]" {
+                    let _ = app.emit(
+                        "chat-stream",
+                        StreamChunkPayload {
+                            stream_id,
+                            text: String::new(),
+                            is_finished: true,
+                            input_tokens: None,
+                            output_tokens: None,
+                            content_type: "text".to_string(),
+                        },
+                    );
+                    finished = true;
+                    return;
+                }
+
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
+                    let content = json["choices"][0]["delta"]["content"]
+                        .as_str()
+                        .unwrap_or("");
+
+                    if !content.is_empty() {
+                        let mut remaining = content.to_string();
+                        while !remaining.is_empty() {
+                            if in_thoughts_block {
+                                if let Some(end_pos) = remaining.find("</thoughts>") {
+                                    let before = &remaining[..end_pos];
+                                    if !before.is_empty() {
+                                        let _ = app.emit(
+                                            "chat-stream",
+                                            StreamChunkPayload {
+                                                stream_id,
+                                                text: before.to_string(),
+                                                is_finished: false,
+                                                input_tokens: None,
+                                                output_tokens: None,
+                                                content_type: "thinking".to_string(),
+                                            },
+                                        );
+                                    }
+                                    in_thoughts_block = false;
+                                    remaining = remaining[end_pos + "</thoughts>".len()..].to_string();
+                                } else {
+                                    let _ = app.emit(
+                                        "chat-stream",
+                                        StreamChunkPayload {
+                                            stream_id,
+                                            text: remaining.to_string(),
+                                            is_finished: false,
+                                            input_tokens: None,
+                                            output_tokens: None,
+                                            content_type: "thinking".to_string(),
+                                        },
+                                    );
+                                    remaining.clear();
+                                }
+                            } else if let Some(start_pos) = remaining.find("<thoughts>") {
+                                let before = &remaining[..start_pos];
+                                if !before.is_empty() {
+                                    let _ = app.emit(
+                                        "chat-stream",
+                                        StreamChunkPayload {
+                                            stream_id,
+                                            text: before.to_string(),
+                                            is_finished: false,
+                                            input_tokens: None,
+                                            output_tokens: None,
+                                            content_type: "text".to_string(),
+                                        },
+                                    );
+                                }
+                                in_thoughts_block = true;
+                                remaining = remaining[start_pos + "<thoughts>".len()..].to_string();
+                            } else {
+                                let _ = app.emit(
+                                    "chat-stream",
+                                    StreamChunkPayload {
+                                        stream_id,
+                                        text: remaining.to_string(),
+                                        is_finished: false,
+                                        input_tokens: None,
+                                        output_tokens: None,
+                                        content_type: "text".to_string(),
+                                    },
+                                );
+                                remaining.clear();
+                            }
+                        }
+                    }
+
+                    let reasoning = json["choices"][0]["delta"]["reasoning_content"]
+                        .as_str()
+                        .unwrap_or("");
+                    if !reasoning.is_empty() {
+                        let _ = app.emit(
+                            "chat-stream",
+                            StreamChunkPayload {
+                                stream_id,
+                                text: reasoning.to_string(),
+                                is_finished: false,
+                                input_tokens: None,
+                                output_tokens: None,
+                                content_type: "thinking".to_string(),
+                            },
+                        );
+                    }
+
+                    if let Some(usage) = json.get("usage") {
+                        let input_tokens = usage["prompt_tokens"].as_u64().map(|v| v as u32);
+                        let output_tokens = usage["completion_tokens"].as_u64().map(|v| v as u32);
+                        if input_tokens.is_some() || output_tokens.is_some() {
+                            let _ = app.emit(
+                                "chat-stream",
+                                StreamChunkPayload {
+                                    stream_id,
+                                    text: String::new(),
+                                    is_finished: false,
+                                    input_tokens,
+                                    output_tokens,
+                                    content_type: "text".to_string(),
+                                },
+                            );
+                        }
+                    }
+                }
+            }
+        });
+
+        if finished {
+            return Ok(());
+        }
+    }
+
+    let _ = app.emit(
+        "chat-stream",
+        StreamChunkPayload {
+            stream_id,
+            text: String::new(),
+            is_finished: true,
+            input_tokens: None,
+            output_tokens: None,
             content_type: "text".to_string(),
         },
     );
