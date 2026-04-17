@@ -9,10 +9,13 @@ const SAVE_DEBOUNCE_MS = 500;
 interface ClipboardState {
   entries: ClipboardEntry[];
   loaded: boolean;
+  isProcessing: boolean;
 
   addEntry: (entry: ClipboardEntry) => void;
   deleteEntry: (id: string) => void;
+  togglePin: (id: string) => void;
   clearAll: () => void;
+  setProcessing: (v: boolean) => void;
   loadEntries: () => Promise<void>;
   saveEntries: () => Promise<void>;
 }
@@ -24,16 +27,22 @@ function debouncedSave(fn: () => Promise<void>) {
   saveTimer = setTimeout(() => { fn(); saveTimer = null; }, SAVE_DEBOUNCE_MS);
 }
 
+function enforceMaxPreservingPinned(entries: ClipboardEntry[]): ClipboardEntry[] {
+  if (entries.length <= MAX_ENTRIES) return entries;
+  const pinned = entries.filter((e) => e.isPinned);
+  const unpinned = entries.filter((e) => !e.isPinned);
+  const unpinnedSlots = Math.max(0, MAX_ENTRIES - pinned.length);
+  return [...pinned, ...unpinned.slice(0, unpinnedSlots)];
+}
+
 export const useClipboardStore = create<ClipboardState>()((set, get) => ({
   entries: [],
   loaded: false,
+  isProcessing: false,
 
   addEntry: (entry) => {
     set((state) => {
-      let entries = [entry, ...state.entries];
-      if (entries.length > MAX_ENTRIES) {
-        entries = entries.slice(0, MAX_ENTRIES);
-      }
+      const entries = enforceMaxPreservingPinned([entry, ...state.entries]);
       return { entries };
     });
     debouncedSave(() => get().saveEntries());
@@ -46,10 +55,21 @@ export const useClipboardStore = create<ClipboardState>()((set, get) => ({
     debouncedSave(() => get().saveEntries());
   },
 
+  togglePin: (id) => {
+    set((state) => ({
+      entries: state.entries.map((e) =>
+        e.id === id ? { ...e, isPinned: !e.isPinned } : e,
+      ),
+    }));
+    debouncedSave(() => get().saveEntries());
+  },
+
   clearAll: () => {
     set({ entries: [] });
     debouncedSave(() => get().saveEntries());
   },
+
+  setProcessing: (v) => set({ isProcessing: v }),
 
   loadEntries: async () => {
     try {

@@ -283,6 +283,10 @@ function App() {
   useEffect(() => {
     if (!isMainWindow) return;
     let isProcessing = false;
+    const setProc = (v: boolean) => {
+      isProcessing = v;
+      useClipboardStore.getState().setProcessing(v);
+    };
 
     // Convert RGBA Image to base64 PNG via OffscreenCanvas
     async function imageToBase64(image: Awaited<ReturnType<typeof readImage>>): Promise<string> {
@@ -304,7 +308,7 @@ function App() {
 
     const unlisten = listen('process-clipboard', async () => {
       if (isProcessing) return;
-      isProcessing = true;
+      setProc(true);
 
       let chunkUnlisten: (() => void) | null = null;
 
@@ -312,7 +316,7 @@ function App() {
         const { settings } = useSettingsStore.getState();
         const clip = settings.clipboard;
 
-        if (!clip.enabled) { isProcessing = false; return; }
+        if (!clip.enabled) { setProc(false); return; }
 
         // Read text and (optionally) image from clipboard.
         // readClipboardTextWithRetry handles the Windows ownership race where the
@@ -338,7 +342,7 @@ function App() {
             invoke('send_notification', { title: 'Hat', body: 'Clipboard vazio.' })
               .catch((e) => console.error('[notification] clipboard-empty failed:', e));
           }
-          isProcessing = false;
+          setProc(false);
           return;
         }
 
@@ -363,7 +367,7 @@ function App() {
             title: 'Hat — Entre para usar',
             body: 'Faça login com Google na aba Conta para processar o clipboard.',
           }).catch(() => {});
-          isProcessing = false;
+          setProc(false);
           return;
         }
         const hatToken = await getIdToken();
@@ -372,7 +376,7 @@ function App() {
             title: 'Hat — Sessão expirada',
             body: 'Entre de novo na aba Conta para continuar.',
           }).catch(() => {});
-          isProcessing = false;
+          setProc(false);
           return;
         }
         const hatMode = useCreditsStore.getState().selectedMode;
@@ -460,7 +464,7 @@ function App() {
 
               chunkUnlisten?.();
               chunkUnlisten = null;
-              isProcessing = false;
+              setProc(false);
             }
           },
         );
@@ -486,7 +490,7 @@ function App() {
           invoke('send_notification', { title: 'Hat — Erro', body: 'Falha ao processar clipboard.' })
             .catch((e) => console.error('[notification] processing-error failed:', e));
         }
-        isProcessing = false;
+        setProc(false);
       }
     });
     return () => { unlisten.then(fn => fn()); };

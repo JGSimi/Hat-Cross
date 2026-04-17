@@ -41,6 +41,7 @@ export interface ClipboardEntry {
   provider: string;
   model: string;
   images?: string[]; // base64 images captured from clipboard
+  isPinned?: boolean;
 }
 
 // === AI Models ===

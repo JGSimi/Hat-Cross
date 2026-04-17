@@ -9,6 +9,7 @@ import { useClipboardStore } from '../../stores/clipboardStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useToastStore } from '../../stores/toastStore';
 import { usePlatform } from '../../hooks/usePlatform';
+import { groupByDate } from '../../utils/dateGroups';
 import WindowControls from '../Shared/WindowControls';
 import type { Conversation } from '../../types';
 
@@ -21,40 +22,6 @@ interface Props {
   onSelectConversation: (id: string) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
-}
-
-// --- Date grouping helpers ---
-
-function getDateGroup(timestamp: number): string {
-  const now = new Date();
-  const date = new Date(timestamp);
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today.getTime() - 86400000);
-  const weekAgo = new Date(today.getTime() - 7 * 86400000);
-  const monthAgo = new Date(today.getTime() - 30 * 86400000);
-
-  if (date >= today) return 'Hoje';
-  if (date >= yesterday) return 'Ontem';
-  if (date >= weekAgo) return 'Esta semana';
-  if (date >= monthAgo) return 'Este mês';
-  return 'Mais antigas';
-}
-
-const GROUP_ORDER = ['Hoje', 'Ontem', 'Esta semana', 'Este mês', 'Mais antigas'];
-
-function groupConversations(conversations: Conversation[]): Map<string, Conversation[]> {
-  const groups = new Map<string, Conversation[]>();
-  for (const conv of conversations) {
-    const group = getDateGroup(conv.updatedAt);
-    const existing = groups.get(group) || [];
-    existing.push(conv);
-    groups.set(group, existing);
-  }
-  const sorted = new Map<string, Conversation[]>();
-  for (const key of GROUP_ORDER) {
-    if (groups.has(key)) sorted.set(key, groups.get(key)!);
-  }
-  return sorted;
 }
 
 function formatStorageSize(kb: number): string {
@@ -97,7 +64,7 @@ export default function Sidebar({
 
   const pinned = useMemo(() => filtered.filter((c) => c.isPinned), [filtered]);
   const recent = useMemo(() => filtered.filter((c) => !c.isPinned), [filtered]);
-  const recentGrouped = useMemo(() => groupConversations(recent), [recent]);
+  const recentGrouped = useMemo(() => groupByDate(recent, (c) => c.updatedAt), [recent]);
   const storageStats = useMemo(() => getStorageStats(), [conversations]);
 
   const handleClearAll = useCallback(() => {

@@ -1,430 +1,629 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Clipboard, Copy, Check, MessageSquarePlus, Trash2, Clock, Cpu, X, ArrowLeft, ImageIcon } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Loader2, Sparkles } from 'lucide-react';
 import { useClipboardStore } from '../../stores/clipboardStore';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useChatStore } from '../../stores/chatStore';
+import { useToastStore } from '../../stores/toastStore';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { groupByDate, type DateGroup } from '../../utils/dateGroups';
+import { matchesSearch } from '../../utils/clipboardSearch';
 import type { ClipboardEntry, Message } from '../../types';
+import ClipboardToolbar, { type SortMode } from './ClipboardToolbar';
+import ClipboardCard from './ClipboardCard';
+import ClipboardGroup from './ClipboardGroup';
+import ClipboardContextMenu from './ClipboardContextMenu';
+import { ClipboardZeroState, ClipboardNoResultsState } from './ClipboardEmptyState';
 
-function formatTime(ts: number): string {
-  const d = new Date(ts);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today.getTime() - 86400000);
-
-  const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  if (d >= today) return `Hoje ${time}`;
-  if (d >= yesterday) return `Ontem ${time}`;
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ` ${time}`;
+interface Props {
+  onBack?: () => void;
 }
 
-function ClipboardCard({ entry, onOpenInChat, onDelete }: {
-  entry: ClipboardEntry;
-  onOpenInChat: () => void;
-  onDelete: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(entry.response);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirmDelete) {
-      onDelete();
-    } else {
-      setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 2500);
-    }
-  };
-
-  const previewText = entry.originalText.length > 120
-    ? entry.originalText.slice(0, 120) + '...'
-    : entry.originalText;
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8, scale: 0.95 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-      onClick={() => setExpanded(!expanded)}
-      style={{
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: 14,
-        padding: 0,
-        cursor: 'pointer',
-        overflow: 'hidden',
-        transition: 'border-color 0.2s ease',
-      }}
-      whileHover={{ borderColor: 'rgba(255,255,255,0.12)' }}
-    >
-      {/* Header strip */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '10px 14px',
-        background: 'color-mix(in srgb, var(--color-accent) 5%, transparent)',
-        borderBottom: expanded ? '1px solid rgba(255,255,255,0.04)' : 'none',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-          <div style={{
-            width: 24, height: 24, borderRadius: 6,
-            background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            {entry.images && entry.images.length > 0
-              ? <ImageIcon size={11} style={{ color: 'var(--color-accent)' }} />
-              : <Clipboard size={11} style={{ color: 'var(--color-accent)' }} />
-            }
-          </div>
-          <p style={{
-            fontSize: 11, color: 'var(--text-secondary)', margin: 0,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            {previewText}
-          </p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <span style={{ fontSize: 9, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 3 }}>
-            <Clock size={8} />
-            {formatTime(entry.timestamp)}
-          </span>
-        </div>
-      </div>
-
-      {/* Response preview (always visible) */}
-      {!expanded && (
-        <div style={{ padding: '10px 14px' }}>
-          <p style={{
-            fontSize: 12, color: 'var(--text-normal)', margin: 0,
-            lineHeight: 1.5, overflow: 'hidden',
-            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
-          }}>
-            {entry.response.replace(/[#*`_]/g, '').slice(0, 200)}
-          </p>
-        </div>
-      )}
-
-      {/* Expanded view */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-          >
-            {/* Original text */}
-            <div style={{
-              padding: '12px 14px',
-              background: 'rgba(0,0,0,0.15)',
-              borderBottom: '1px solid rgba(255,255,255,0.04)',
-            }}>
-              <p style={{
-                fontSize: 9, fontWeight: 600, color: 'var(--text-dim)',
-                textTransform: 'uppercase', letterSpacing: 0.8, margin: '0 0 6px',
-              }}>
-                {entry.images && entry.images.length > 0 ? 'Conteúdo original' : 'Texto original'}
-              </p>
-              {entry.images && entry.images.length > 0 && (
-                <div style={{
-                  display: 'flex', gap: 6, marginBottom: entry.originalText && entry.originalText !== '(imagem)' ? 8 : 0,
-                  flexWrap: 'wrap',
-                }}>
-                  {entry.images.map((img, i) => (
-                    <img
-                      key={i}
-                      src={`data:image/png;base64,${img}`}
-                      alt={`Clipboard imagem ${i + 1}`}
-                      style={{
-                        maxWidth: 180, maxHeight: 120,
-                        borderRadius: 8,
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        objectFit: 'contain',
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-              {entry.originalText && entry.originalText !== '(imagem)' && (
-                <p style={{
-                  fontSize: 11.5, color: 'var(--text-muted)', margin: 0,
-                  lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                  maxHeight: 120, overflowY: 'auto',
-                }}>
-                  {entry.originalText}
-                </p>
-              )}
-            </div>
-
-            {/* AI Response */}
-            <div style={{ padding: '12px 14px' }}>
-              <p style={{
-                fontSize: 9, fontWeight: 600, color: 'var(--color-accent)',
-                textTransform: 'uppercase', letterSpacing: 0.8, margin: '0 0 6px',
-                opacity: 0.7,
-              }}>
-                Resposta da IA
-              </p>
-              <div
-                className="prose prose-invert prose-sm max-w-none"
-                style={{
-                  fontSize: 12, lineHeight: 1.6, color: 'var(--text-normal)',
-                  wordBreak: 'break-word', maxHeight: 300, overflowY: 'auto',
-                }}
-              >
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-                  {entry.response}
-                </ReactMarkdown>
-              </div>
-            </div>
-
-            {/* Footer with model info + actions */}
-            <div style={{
-              padding: '8px 14px 10px',
-              borderTop: '1px solid rgba(255,255,255,0.04)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'rgba(0,0,0,0.08)',
-            }}>
-              <span style={{
-                fontSize: 9, color: 'var(--text-dim)',
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}>
-                <Cpu size={9} />
-                {entry.model || entry.provider}
-              </span>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <ActionButton
-                  icon={confirmDelete ? <X size={11} /> : <Trash2 size={11} />}
-                  label={confirmDelete ? 'Certeza?' : 'Excluir'}
-                  onClick={handleDelete}
-                  danger={confirmDelete}
-                />
-                <ActionButton
-                  icon={copied ? <Check size={11} /> : <Copy size={11} />}
-                  label={copied ? 'Copiado' : 'Copiar'}
-                  onClick={handleCopy}
-                  active={copied}
-                />
-                <ActionButton
-                  icon={<MessageSquarePlus size={11} />}
-                  label="Abrir no Chat"
-                  onClick={(e) => { e.stopPropagation(); onOpenInChat(); }}
-                  primary
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
+interface ContextMenuState {
+  x: number;
+  y: number;
+  entryId: string;
 }
 
-function ActionButton({ icon, label, onClick, primary, danger, active }: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: (e: React.MouseEvent) => void;
-  primary?: boolean;
-  danger?: boolean;
-  active?: boolean;
-}) {
-  const bg = danger
-    ? 'color-mix(in srgb, var(--error) 15%, transparent)'
-    : primary
-      ? 'color-mix(in srgb, var(--color-accent) 15%, transparent)'
-      : active
-        ? 'color-mix(in srgb, var(--success) 12%, transparent)'
-        : 'rgba(255,255,255,0.04)';
-  const color = danger
-    ? 'var(--error)'
-    : primary
-      ? 'var(--color-accent)'
-      : active
-        ? 'var(--success)'
-        : 'var(--text-muted)';
-  const border = danger
-    ? '1px solid color-mix(in srgb, var(--error) 25%, transparent)'
-    : primary
-      ? '1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)'
-      : '1px solid rgba(255,255,255,0.06)';
+const PINNED_GROUP_KEY = 'Fixados';
+const FLAT_GROUP_KEY = 'Todos';
 
-  return (
-    <motion.button
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
-      onClick={onClick}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 4,
-        padding: '4px 8px', borderRadius: 6,
-        fontSize: 9, fontWeight: 500,
-        background: bg, color, border,
-        cursor: 'pointer',
-      }}
-    >
-      {icon}
-      {label}
-    </motion.button>
-  );
-}
-
-export default function ClipboardHistory({ onBack }: { onBack?: () => void }) {
+export default function ClipboardHistory({ onBack }: Props) {
   const entries = useClipboardStore((s) => s.entries);
+  const isProcessing = useClipboardStore((s) => s.isProcessing);
   const deleteEntry = useClipboardStore((s) => s.deleteEntry);
+  const togglePin = useClipboardStore((s) => s.togglePin);
   const clearAll = useClipboardStore((s) => s.clearAll);
   const createConversation = useConversationStore((s) => s.createConversation);
   const addMessageToConversation = useConversationStore((s) => s.addMessageToConversation);
+  const showToast = useToastStore((s) => s.showToast);
+  const reduceMotion = useReducedMotion();
+
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode] = useState<SortMode>('recent');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [focusedIndex, setFocusedIndex] = useState<number>(0);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
 
-  const handleOpenInChat = (entry: ClipboardEntry) => {
-    const userMsg: Message = {
-      id: crypto.randomUUID(),
-      content: entry.originalText,
-      isUser: true,
-      timestamp: entry.timestamp,
-      source: 'clipboard',
-    };
-    const aiMsg: Message = {
-      id: crypto.randomUUID(),
-      content: entry.response,
-      isUser: false,
-      timestamp: entry.timestamp + 1,
-      source: 'clipboard',
-    };
-    const conv = createConversation(userMsg);
-    addMessageToConversation(conv.id, aiMsg);
-    useChatStore.getState().loadFromConversation(conv.id);
-  };
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
-  const handleClearAll = () => {
+  // Debounce search input -> query (150ms)
+  useEffect(() => {
+    const t = setTimeout(() => setSearchQuery(searchInput), 150);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // Reset confirm states after timeout
+  useEffect(() => {
+    if (!confirmDeleteId) return;
+    const t = setTimeout(() => setConfirmDeleteId(null), 2500);
+    return () => clearTimeout(t);
+  }, [confirmDeleteId]);
+
+  useEffect(() => {
+    if (!confirmClear) return;
+    const t = setTimeout(() => setConfirmClear(false), 3000);
+    return () => clearTimeout(t);
+  }, [confirmClear]);
+
+  // ---- Derived data ----
+
+  const filtered = useMemo(() => {
+    if (!searchQuery) return entries;
+    return entries.filter(
+      (e) => matchesSearch(e.originalText, searchQuery) || matchesSearch(e.response, searchQuery),
+    );
+  }, [entries, searchQuery]);
+
+  const sorted = useMemo(() => {
+    const copy = [...filtered];
+    if (sortMode === 'oldest') {
+      copy.sort((a, b) => a.timestamp - b.timestamp);
+    } else if (sortMode === 'alphabetical') {
+      copy.sort((a, b) => a.originalText.localeCompare(b.originalText, 'pt-BR'));
+    } else {
+      copy.sort((a, b) => b.timestamp - a.timestamp);
+    }
+    return copy;
+  }, [filtered, sortMode]);
+
+  const pinnedEntries = useMemo(() => sorted.filter((e) => e.isPinned), [sorted]);
+  const unpinnedEntries = useMemo(() => sorted.filter((e) => !e.isPinned), [sorted]);
+
+  const dateGroups = useMemo(() => {
+    if (sortMode !== 'recent') {
+      return new Map<DateGroup | typeof FLAT_GROUP_KEY, ClipboardEntry[]>([
+        [FLAT_GROUP_KEY, unpinnedEntries],
+      ]);
+    }
+    return groupByDate(unpinnedEntries, (e) => e.timestamp);
+  }, [unpinnedEntries, sortMode]);
+
+  // Flat display order for keyboard nav (pinned first, then groups)
+  const flatDisplayOrder = useMemo(() => {
+    const list: ClipboardEntry[] = [];
+    if (pinnedEntries.length > 0) list.push(...pinnedEntries);
+    for (const items of dateGroups.values()) list.push(...items);
+    return list;
+  }, [pinnedEntries, dateGroups]);
+
+  // Clamp focusedIndex when list size changes
+  useEffect(() => {
+    if (flatDisplayOrder.length === 0) {
+      if (focusedIndex !== 0) setFocusedIndex(0);
+      return;
+    }
+    if (focusedIndex >= flatDisplayOrder.length) {
+      setFocusedIndex(flatDisplayOrder.length - 1);
+    }
+  }, [flatDisplayOrder, focusedIndex]);
+
+  // ---- Handlers ----
+
+  const toggleExpand = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleCopyResponse = useCallback(
+    (entry: ClipboardEntry) => {
+      navigator.clipboard.writeText(entry.response).catch(() => {});
+      showToast('Resposta copiada', 'success');
+    },
+    [showToast],
+  );
+
+  const handleCopyOriginal = useCallback(
+    (entry: ClipboardEntry) => {
+      const text = entry.originalText && entry.originalText !== '(imagem)' ? entry.originalText : '';
+      if (!text) {
+        showToast('Nada para copiar', 'info');
+        return;
+      }
+      navigator.clipboard.writeText(text).catch(() => {});
+      showToast('Texto original copiado', 'success');
+    },
+    [showToast],
+  );
+
+  const handleCopyBoth = useCallback(
+    (entry: ClipboardEntry) => {
+      const orig = entry.originalText && entry.originalText !== '(imagem)' ? entry.originalText : '';
+      const combined = orig ? `${orig}\n\n---\n\n${entry.response}` : entry.response;
+      navigator.clipboard.writeText(combined).catch(() => {});
+      showToast('Original + resposta copiados', 'success');
+    },
+    [showToast],
+  );
+
+  const handleOpenInChat = useCallback(
+    (entry: ClipboardEntry) => {
+      const userMsg: Message = {
+        id: crypto.randomUUID(),
+        content: entry.originalText,
+        isUser: true,
+        timestamp: entry.timestamp,
+        source: 'clipboard',
+      };
+      const aiMsg: Message = {
+        id: crypto.randomUUID(),
+        content: entry.response,
+        isUser: false,
+        timestamp: entry.timestamp + 1,
+        source: 'clipboard',
+      };
+      const conv = createConversation(userMsg);
+      addMessageToConversation(conv.id, aiMsg);
+      useChatStore.getState().loadFromConversation(conv.id);
+      showToast('Nova conversa criada', 'info');
+    },
+    [createConversation, addMessageToConversation, showToast],
+  );
+
+  const handleTogglePin = useCallback(
+    (entry: ClipboardEntry) => {
+      togglePin(entry.id);
+      showToast(entry.isPinned ? 'Item desafixado' : 'Item fixado', 'info');
+    },
+    [togglePin, showToast],
+  );
+
+  const requestDelete = useCallback(
+    (entry: ClipboardEntry) => {
+      if (confirmDeleteId === entry.id) {
+        deleteEntry(entry.id);
+        setConfirmDeleteId(null);
+        showToast('Item removido', 'success');
+        setExpandedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(entry.id);
+          return next;
+        });
+      } else {
+        setConfirmDeleteId(entry.id);
+      }
+    },
+    [confirmDeleteId, deleteEntry, showToast],
+  );
+
+  const handleClearAll = useCallback(() => {
     if (confirmClear) {
       clearAll();
       setConfirmClear(false);
+      setExpandedIds(new Set());
+      setConfirmDeleteId(null);
+      showToast('Histórico limpo', 'success');
     } else {
       setConfirmClear(true);
-      setTimeout(() => setConfirmClear(false), 3000);
     }
-  };
+  }, [confirmClear, clearAll, showToast]);
 
-  if (entries.length === 0) {
+  const handleContextMenu = useCallback((entry: ClipboardEntry, x: number, y: number) => {
+    setContextMenu({ x, y, entryId: entry.id });
+  }, []);
+
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  // ---- Keyboard shortcuts ----
+
+  const focusedEntry = flatDisplayOrder[focusedIndex];
+
+  useKeyboardShortcuts({
+    ArrowDown: (e) => {
+      if (flatDisplayOrder.length === 0) return;
+      e.preventDefault();
+      setFocusedIndex((i) => Math.min(flatDisplayOrder.length - 1, i + 1));
+    },
+    j: (e) => {
+      if (flatDisplayOrder.length === 0) return;
+      e.preventDefault();
+      setFocusedIndex((i) => Math.min(flatDisplayOrder.length - 1, i + 1));
+    },
+    ArrowUp: (e) => {
+      if (flatDisplayOrder.length === 0) return;
+      e.preventDefault();
+      setFocusedIndex((i) => Math.max(0, i - 1));
+    },
+    k: (e) => {
+      if (flatDisplayOrder.length === 0) return;
+      e.preventDefault();
+      setFocusedIndex((i) => Math.max(0, i - 1));
+    },
+    Home: (e) => {
+      if (flatDisplayOrder.length === 0) return;
+      e.preventDefault();
+      setFocusedIndex(0);
+    },
+    End: (e) => {
+      if (flatDisplayOrder.length === 0) return;
+      e.preventDefault();
+      setFocusedIndex(flatDisplayOrder.length - 1);
+    },
+    Enter: (e) => {
+      if (!focusedEntry) return;
+      e.preventDefault();
+      toggleExpand(focusedEntry.id);
+    },
+    space: (e) => {
+      if (!focusedEntry) return;
+      e.preventDefault();
+      toggleExpand(focusedEntry.id);
+    },
+    'mod+c': (e) => {
+      if (!focusedEntry) return;
+      const selection = window.getSelection?.()?.toString();
+      if (selection && selection.length > 0) return; // let browser copy selection
+      e.preventDefault();
+      handleCopyResponse(focusedEntry);
+    },
+    'shift+c': (e) => {
+      if (!focusedEntry) return;
+      e.preventDefault();
+      handleCopyOriginal(focusedEntry);
+    },
+    Delete: (e) => {
+      if (!focusedEntry) return;
+      e.preventDefault();
+      requestDelete(focusedEntry);
+    },
+    Backspace: (e) => {
+      if (!focusedEntry) return;
+      e.preventDefault();
+      requestDelete(focusedEntry);
+    },
+    p: (e) => {
+      if (!focusedEntry) return;
+      e.preventDefault();
+      handleTogglePin(focusedEntry);
+    },
+    'mod+f': (e) => {
+      e.preventDefault();
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    },
+    'mod+shift+d': (e) => {
+      e.preventDefault();
+      handleClearAll();
+    },
+    Escape: (e) => {
+      if (contextMenu) {
+        e.preventDefault();
+        closeContextMenu();
+        return;
+      }
+      if (focusedEntry && expandedIds.has(focusedEntry.id)) {
+        e.preventDefault();
+        toggleExpand(focusedEntry.id);
+        return;
+      }
+      if (document.activeElement === searchInputRef.current) {
+        if (searchInput) {
+          e.preventDefault();
+          setSearchInput('');
+        } else {
+          searchInputRef.current?.blur();
+        }
+        return;
+      }
+      if (searchInput) {
+        e.preventDefault();
+        setSearchInput('');
+      }
+    },
+  });
+
+  // ---- Render ----
+
+  const contextMenuEntry = contextMenu
+    ? flatDisplayOrder.find((e) => e.id === contextMenu.entryId) ??
+      entries.find((e) => e.id === contextMenu.entryId) ??
+      null
+    : null;
+
+  const showZeroState = entries.length === 0 && !isProcessing;
+  const showNoResults = entries.length > 0 && filtered.length === 0 && searchQuery.length > 0;
+
+  if (showZeroState) {
     return (
-      <div style={{
-        flex: 1, display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        padding: 32, textAlign: 'center',
-      }}>
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-        >
-          <div style={{
-            width: 56, height: 56, borderRadius: 16,
-            background: 'color-mix(in srgb, var(--color-accent) 8%, transparent)',
-            border: '1px solid color-mix(in srgb, var(--color-accent) 12%, transparent)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px',
-          }}>
-            <Clipboard size={24} style={{ color: 'var(--color-accent)', opacity: 0.5 }} />
-          </div>
-          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', margin: '0 0 6px' }}>
-            Nenhum clipboard processado
-          </p>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, maxWidth: 220 }}>
-            Copie um texto ou imagem e pressione o atalho de clipboard para processar com a IA
-          </p>
-        </motion.div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <ClipboardToolbar
+          onBack={onBack}
+          totalCount={0}
+          filteredCount={0}
+          searchValue={searchInput}
+          onSearchChange={setSearchInput}
+          searchInputRef={searchInputRef}
+          sortMode={sortMode}
+          onSortChange={setSortMode}
+          hasEntries={false}
+          onClearAll={handleClearAll}
+          confirmClear={confirmClear}
+        />
+        <ClipboardZeroState onSuggestionClick={onBack} />
       </div>
     );
   }
 
+  let globalIndex = 0;
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{
-        padding: '14px 18px 10px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexShrink: 0,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {onBack && (
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={onBack}
-              style={{
-                padding: 4, borderRadius: 6,
-                background: 'var(--glass-secondary)',
-                border: '0.5px solid var(--glass-border-subtle)',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center',
-              }}
-            >
-              <ArrowLeft size={14} />
-            </motion.button>
-          )}
-          <div>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-              Clipboard
-            </h2>
-          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '2px 0 0' }}>
-            {entries.length} {entries.length === 1 ? 'processamento' : 'processamentos'}
-          </p>
-          </div>
-        </div>
-        {entries.length > 0 && (
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={handleClearAll}
-            style={{
-              padding: '4px 10px', borderRadius: 6, fontSize: 9, fontWeight: 500,
-              background: confirmClear
-                ? 'color-mix(in srgb, var(--error) 15%, transparent)'
-                : 'rgba(255,255,255,0.04)',
-              color: confirmClear ? 'var(--error)' : 'var(--text-muted)',
-              border: confirmClear
-                ? '1px solid color-mix(in srgb, var(--error) 25%, transparent)'
-                : '1px solid rgba(255,255,255,0.06)',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}
-          >
-            <Trash2 size={9} />
-            {confirmClear ? 'Confirmar limpar tudo' : 'Limpar tudo'}
-          </motion.button>
+      <ClipboardToolbar
+        onBack={onBack}
+        totalCount={entries.length}
+        filteredCount={filtered.length}
+        searchValue={searchInput}
+        onSearchChange={setSearchInput}
+        searchInputRef={searchInputRef}
+        sortMode={sortMode}
+        onSortChange={setSortMode}
+        hasEntries={entries.length > 0}
+        onClearAll={handleClearAll}
+        confirmClear={confirmClear}
+      />
+
+      <div
+        ref={listRef}
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '0 14px 18px',
+          display: 'flex',
+          flexDirection: 'column',
+          maskImage:
+            'linear-gradient(to bottom, transparent 0, black 14px, black calc(100% - 16px), transparent 100%)',
+          WebkitMaskImage:
+            'linear-gradient(to bottom, transparent 0, black 14px, black calc(100% - 16px), transparent 100%)',
+        }}
+      >
+        <AnimatePresence initial={false}>
+          {isProcessing && <ProcessingSkeleton key="processing-skeleton" reduceMotion={!!reduceMotion} />}
+        </AnimatePresence>
+
+        {showNoResults ? (
+          <ClipboardNoResultsState query={searchQuery} onClearSearch={() => setSearchInput('')} />
+        ) : (
+          <>
+            {pinnedEntries.length > 0 && (
+              <ClipboardGroup
+                label={PINNED_GROUP_KEY}
+                count={pinnedEntries.length}
+                isPinnedGroup
+              >
+                <AnimatePresence initial={false}>
+                  {pinnedEntries.map((entry) => {
+                    const index = globalIndex++;
+                    return (
+                      <ClipboardCard
+                        key={entry.id}
+                        entry={entry}
+                        index={index}
+                        isFocused={focusedIndex === index}
+                        isExpanded={expandedIds.has(entry.id)}
+                        confirmDelete={confirmDeleteId === entry.id}
+                        searchQuery={searchQuery}
+                        onToggleExpand={() => {
+                          setFocusedIndex(index);
+                          toggleExpand(entry.id);
+                        }}
+                        onCopyResponse={() => handleCopyResponse(entry)}
+                        onCopyOriginal={() => handleCopyOriginal(entry)}
+                        onOpenInChat={() => handleOpenInChat(entry)}
+                        onTogglePin={() => handleTogglePin(entry)}
+                        onRequestDelete={() => requestDelete(entry)}
+                        onContextMenu={(x, y) => {
+                          setFocusedIndex(index);
+                          handleContextMenu(entry, x, y);
+                        }}
+                        onFocus={() => setFocusedIndex(index)}
+                      />
+                    );
+                  })}
+                </AnimatePresence>
+              </ClipboardGroup>
+            )}
+
+            {Array.from(dateGroups.entries()).map(([groupKey, items]) => {
+              if (items.length === 0) return null;
+              if (sortMode !== 'recent') {
+                return (
+                  <AnimatePresence key="flat-list" initial={false}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 10 }}>
+                      {items.map((entry) => {
+                        const index = globalIndex++;
+                        return (
+                          <ClipboardCard
+                            key={entry.id}
+                            entry={entry}
+                            index={index}
+                            isFocused={focusedIndex === index}
+                            isExpanded={expandedIds.has(entry.id)}
+                            confirmDelete={confirmDeleteId === entry.id}
+                            searchQuery={searchQuery}
+                            onToggleExpand={() => {
+                              setFocusedIndex(index);
+                              toggleExpand(entry.id);
+                            }}
+                            onCopyResponse={() => handleCopyResponse(entry)}
+                            onCopyOriginal={() => handleCopyOriginal(entry)}
+                            onOpenInChat={() => handleOpenInChat(entry)}
+                            onTogglePin={() => handleTogglePin(entry)}
+                            onRequestDelete={() => requestDelete(entry)}
+                            onContextMenu={(x, y) => {
+                              setFocusedIndex(index);
+                              handleContextMenu(entry, x, y);
+                            }}
+                            onFocus={() => setFocusedIndex(index)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </AnimatePresence>
+                );
+              }
+              return (
+                <ClipboardGroup
+                  key={groupKey as string}
+                  label={groupKey as string}
+                  count={items.length}
+                >
+                  <AnimatePresence initial={false}>
+                    {items.map((entry) => {
+                      const index = globalIndex++;
+                      return (
+                        <ClipboardCard
+                          key={entry.id}
+                          entry={entry}
+                          index={index}
+                          isFocused={focusedIndex === index}
+                          isExpanded={expandedIds.has(entry.id)}
+                          confirmDelete={confirmDeleteId === entry.id}
+                          searchQuery={searchQuery}
+                          onToggleExpand={() => {
+                            setFocusedIndex(index);
+                            toggleExpand(entry.id);
+                          }}
+                          onCopyResponse={() => handleCopyResponse(entry)}
+                          onCopyOriginal={() => handleCopyOriginal(entry)}
+                          onOpenInChat={() => handleOpenInChat(entry)}
+                          onTogglePin={() => handleTogglePin(entry)}
+                          onRequestDelete={() => requestDelete(entry)}
+                          onContextMenu={(x, y) => {
+                            setFocusedIndex(index);
+                            handleContextMenu(entry, x, y);
+                          }}
+                          onFocus={() => setFocusedIndex(index)}
+                        />
+                      );
+                    })}
+                  </AnimatePresence>
+                </ClipboardGroup>
+              );
+            })}
+          </>
         )}
       </div>
 
-      {/* Cards list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <AnimatePresence>
-          {entries.map((entry) => (
-            <ClipboardCard
-              key={entry.id}
-              entry={entry}
-              onOpenInChat={() => handleOpenInChat(entry)}
-              onDelete={() => deleteEntry(entry.id)}
-            />
-          ))}
-        </AnimatePresence>
-      </div>
+      <AnimatePresence>
+        {contextMenu && contextMenuEntry && (
+          <ClipboardContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            isPinned={!!contextMenuEntry.isPinned}
+            onClose={closeContextMenu}
+            onCopyResponse={() => handleCopyResponse(contextMenuEntry)}
+            onCopyOriginal={() => handleCopyOriginal(contextMenuEntry)}
+            onCopyBoth={() => handleCopyBoth(contextMenuEntry)}
+            onOpenInChat={() => handleOpenInChat(contextMenuEntry)}
+            onTogglePin={() => handleTogglePin(contextMenuEntry)}
+            onDelete={() => {
+              // Skip confirm for context-menu delete to feel snappy
+              deleteEntry(contextMenuEntry.id);
+              showToast('Item removido', 'success');
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+function ProcessingSkeleton({ reduceMotion }: { reduceMotion: boolean }) {
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8, scale: 0.95 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '14px 16px',
+        margin: '14px 0 10px',
+        borderRadius: 14,
+        background:
+          'linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 8%, transparent), color-mix(in srgb, var(--color-accent) 3%, transparent))',
+        border: '0.5px solid color-mix(in srgb, var(--color-accent) 22%, transparent)',
+        boxShadow: '0 2px 14px color-mix(in srgb, var(--color-accent) 14%, transparent)',
+      }}
+      role="status"
+      aria-live="polite"
+    >
+      {reduceMotion ? (
+        <motion.div
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: 6,
+            background: 'color-mix(in srgb, var(--color-accent) 35%, transparent)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-accent)',
+          }}
+        >
+          <Sparkles size={11} />
+        </motion.div>
+      ) : (
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }}
+          style={{ display: 'flex', color: 'var(--color-accent)' }}
+        >
+          <Loader2 size={18} />
+        </motion.div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+        <span
+          style={{
+            fontSize: 12.5,
+            fontWeight: 600,
+            color: 'var(--text-secondary)',
+          }}
+        >
+          Processando seu clipboard
+        </span>
+        <span
+          style={{
+            fontSize: 11,
+            color: 'var(--text-muted)',
+          }}
+        >
+          A IA está analisando o conteúdo copiado...
+        </span>
+      </div>
+    </motion.div>
   );
 }
