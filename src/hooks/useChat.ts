@@ -278,17 +278,14 @@ export function useChat() {
 // --- Helpers ---
 
 function playCompletionSound() {
-  const currentSettings = useSettingsStore.getState().settings;
-  if (currentSettings.soundEnabled) {
-    try {
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.connect(g); g.connect(ctx.destination);
-      osc.frequency.value = 800; g.gain.value = 0.1;
-      osc.start(); osc.stop(ctx.currentTime + 0.15);
-    } catch {}
-  }
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
+    osc.frequency.value = 800; g.gain.value = 0.1;
+    osc.start(); osc.stop(ctx.currentTime + 0.15);
+  } catch {}
 }
 
 function sendNotificationIfNeeded() {

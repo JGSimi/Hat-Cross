@@ -3,18 +3,7 @@ import HorseLogo from './HorseLogo';
 import { getGreeting } from '../../utils/markdown';
 import { usePlatform } from '../../hooks/usePlatform';
 import { useSettingsStore } from '../../stores/settingsStore';
-
-function formatShortcut(shortcut: string, platform: string): string {
-  if (platform === 'macos') {
-    return shortcut
-      .replace(/CommandOrControl\+/g, '⌘')
-      .replace(/CmdOrCtrl\+/g, '⌘')
-      .replace(/Shift\+/g, '⇧');
-  }
-  return shortcut
-    .replace(/CommandOrControl\+/g, 'Ctrl+')
-    .replace(/CmdOrCtrl\+/g, 'Ctrl+');
-}
+import { formatShortcut } from '../../utils/formatShortcut';
 
 interface Props {
   onSuggestionClick?: (text: string) => void;
