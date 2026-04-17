@@ -387,21 +387,45 @@ export default function Sidebar({
 
 function SectionHeader({ label, count }: { label: string; count: number }) {
   return (
-    <div style={{
-      padding: '8px 14px 4px', display: 'flex',
-      alignItems: 'center', justifyContent: 'space-between',
-    }}>
-      <p style={{
-        fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
-        textTransform: 'uppercase', letterSpacing: 0.8, margin: 0,
-      }}>
+    <div
+      style={{
+        padding: '14px 14px 6px',
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: 8,
+      }}
+    >
+      <span
+        style={{
+          fontSize: 9.5,
+          fontWeight: 600,
+          color: 'var(--text-muted)',
+          textTransform: 'uppercase',
+          letterSpacing: 1.1,
+          flexShrink: 0,
+        }}
+      >
         {label}
-      </p>
-      <span style={{
-        fontSize: 9, color: 'var(--text-dim)',
-        background: 'rgba(255,255,255,0.04)',
-        padding: '1px 5px', borderRadius: 4, fontWeight: 500,
-      }}>
+      </span>
+      <span
+        aria-hidden
+        style={{
+          flex: 1,
+          height: 1,
+          background:
+            'linear-gradient(to right, color-mix(in srgb, var(--text-dim) 35%, transparent), transparent)',
+          transform: 'translateY(-1px)',
+        }}
+      />
+      <span
+        style={{
+          fontSize: 9,
+          color: 'var(--text-dim)',
+          fontWeight: 500,
+          fontVariantNumeric: 'tabular-nums',
+          flexShrink: 0,
+        }}
+      >
         {count}
       </span>
     </div>

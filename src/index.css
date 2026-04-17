@@ -838,8 +838,25 @@
 /* ==========================================================================
    Global Reset
    ========================================================================== */
+
+/* Lock the document viewport. Without height/overflow pinned on ALL three
+   of html/body/#root, any transient layout shift (Framer `layout`, focus
+   auto-scroll, scrollIntoView on a streaming message) can push the page
+   a few px and leave a transparent gap at the top or bottom that you
+   can't scroll back from. `position: fixed` + `overflow: hidden` +
+   `overscroll-behavior: none` together kill the WebKit elastic bounce
+   and the body-scroll drift. */
 html, body, #root {
   background: transparent !important;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+html, body {
+  position: fixed;
+  inset: 0;
 }
 
 *,
@@ -854,11 +871,26 @@ body {
   font-family: 'General Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   color: var(--text-primary);
   background: transparent;
-  overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Every internal scroll container (MessageList, Sidebar list, Settings, etc.)
+   gets `overscroll-behavior: contain` so its scroll stays inside — no
+   chain-scroll propagating up to the window when you hit top/bottom. This
+   is what eliminates the ghost-drift bug where the whole UI slides a few
+   pixels after heavy interaction. */
+[style*="overflow-y: auto"],
+[style*="overflow-y: scroll"],
+[style*="overflowY: 'auto'"],
+[style*="overflowY: 'scroll'"],
+.overflow-y-auto,
+.overflow-y-scroll,
+.overflow-auto,
+.overflow-scroll {
+  overscroll-behavior: contain;
 }
 
 /* Drag region support for custom titlebar */

@@ -20,17 +20,23 @@ export default function MessageList({ messages, streamingContent, streamingThink
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Scroll on new messages only
+  // Scroll on new messages. We write to containerRef.scrollTop directly
+  // instead of calling scrollIntoView — scrollIntoView walks every scrollable
+  // ancestor (including the window) which is what causes the whole UI to
+  // drift after heavy interaction. scrollTop is scoped to just this div.
+  const scrollToBottom = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  };
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+    scrollToBottom();
   }, [messages.length]);
 
-  // Throttled scroll for streaming
   useEffect(() => {
     if (!isStreaming) return;
-    const interval = setInterval(() => {
-      bottomRef.current?.scrollIntoView({ behavior: 'auto' });
-    }, 800);
+    const interval = setInterval(scrollToBottom, 800);
     return () => clearInterval(interval);
   }, [isStreaming]);
 
