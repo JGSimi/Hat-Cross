@@ -20,6 +20,7 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
+      // Tauri owns the Rust sources — let its watcher handle them.
       ignored: ["**/src-tauri/**"],
     },
   },
