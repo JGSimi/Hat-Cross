@@ -37,16 +37,16 @@ export default function MainLayout() {
   const activeConversationId = useConversationStore((s) => s.activeConversationId);
   const loadFromConversation = useChatStore((s) => s.loadFromConversation);
 
-  // Onboarding: show wizard whenever the user isn't signed in. Even if they
-  // already have a BYOK key configured, we still nudge them toward creating
-  // an account so they can use credits; the wizard has a discreet "sou dev:
-  // usar minha própria API key" escape hatch for devs who prefer BYOK.
+  // Onboarding: runs once per install, gated on the persistent
+  // `onboardingCompleted` flag in settings. Sign-in is one of the steps inside
+  // the tour, not a prerequisite for showing it — the wizard persists its own
+  // completion so users who skip sign-in still only see it once.
   const hydrated = useSettingsStore((s) => s._hydrated);
   const authHydrated = useAuthStore((s) => s.isHydrated);
-  const isSignedIn = useAuthStore((s) => s.user !== null);
-  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const onboardingCompleted = useSettingsStore((s) => s.settings.onboardingCompleted);
+  const updateSettings = useSettingsStore((s) => s.updateSettings);
 
-  const needsOnboarding = hydrated && authHydrated && !onboardingDismissed && !isSignedIn;
+  const needsOnboarding = hydrated && authHydrated && !onboardingCompleted;
 
   const [activeView, setActiveView] = useState<SidebarView>('chats');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -95,7 +95,7 @@ export default function MainLayout() {
       {/* Onboarding wizard for first-run users */}
       <AnimatePresence>
         {needsOnboarding && (
-          <OnboardingWizard onComplete={() => setOnboardingDismissed(true)} />
+          <OnboardingWizard onComplete={() => updateSettings({ onboardingCompleted: true })} />
         )}
       </AnimatePresence>
 

@@ -1,33 +1,75 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Check, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Brain,
+  Camera,
+  Check,
+  Clipboard as ClipboardIcon,
+  Coins,
+  Loader2,
+  MessageSquare,
+  Sparkles,
+  Zap,
+} from 'lucide-react';
 import HorseLogo from './HorseLogo';
 import { useAuthStore } from '../../stores/authStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { useCreditsStore } from '../../stores/creditsStore';
+import { usePlatform, type Platform } from '../../hooks/usePlatform';
+import { AI_MODES } from '../../types/account';
 
-type Step = 'welcome' | 'done';
+type Step = 'welcome' | 'shortcuts' | 'modes' | 'credits' | 'signin' | 'done';
+
+const STEPS: Step[] = ['welcome', 'shortcuts', 'modes', 'credits', 'signin', 'done'];
+
+const slideVariants = {
+  initial: { opacity: 0, x: 40 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -40 },
+};
+
+// Color per mode mirrors AccountTab's MODE_TINT so the tour teaches the same
+// visual language users will meet inside the app.
+const MODE_TINT: Record<string, { icon: typeof Zap; hue: string; soft: string }> = {
+  mini: { icon: Zap, hue: '#FBBF24', soft: 'rgba(251, 191, 36, 0.14)' },
+  standard: { icon: Sparkles, hue: '#818CF8', soft: 'rgba(129, 140, 248, 0.14)' },
+  plus: { icon: Brain, hue: '#C084FC', soft: 'rgba(192, 132, 252, 0.14)' },
+};
 
 export default function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
-  const [step, setStep] = useState<Step>('welcome');
+  const [stepIdx, setStepIdx] = useState(0);
+  const step = STEPS[stepIdx];
+
+  const user = useAuthStore((s) => s.user);
   const isSigningIn = useAuthStore((s) => s.isSigningIn);
   const signInError = useAuthStore((s) => s.signInError);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
+  const platform = usePlatform();
+  const reducedMotion = useReducedMotion();
+
+  const goNext = () => {
+    if (stepIdx < STEPS.length - 1) setStepIdx((i) => i + 1);
+    else onComplete();
+  };
+  const goBack = () => {
+    if (stepIdx > 0) setStepIdx((i) => i - 1);
+  };
 
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogle();
-      // onAuthStateChanged fires, MainLayout's needsOnboarding turns false,
-      // but we also flip to the "done" step for a friendly hand-off.
-      setStep('done');
+      // onAuthStateChanged fires; advance to the "done" step for a friendly
+      // hand-off once the user is back from the browser flow.
+      setStepIdx(STEPS.indexOf('done'));
     } catch {
-      // Error is surfaced via signInError; stay on welcome.
+      // signInError is already surfaced inline; stay on step.
     }
   };
 
-  const slideVariants = {
-    initial: { opacity: 0, x: 40 },
-    animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: -40 },
-  };
+  const isTerminal = step === 'done';
+  const primaryLabel = isTerminal ? 'Começar a usar' : 'Próximo';
 
   return (
     <motion.div
@@ -45,151 +87,752 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
         backdropFilter: 'blur(30px)',
       }}
     >
-      <div style={{ width: 400, maxHeight: '80vh', overflow: 'auto', padding: 32 }}>
-        <AnimatePresence mode="wait">
-          {step === 'welcome' && (
+      {/* Ambient glow for depth */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: '15%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 520,
+          height: 360,
+          borderRadius: '50%',
+          background:
+            'radial-gradient(circle, color-mix(in srgb, var(--color-accent) 22%, transparent) 0%, transparent 70%)',
+          filter: 'blur(60px)',
+          pointerEvents: 'none',
+          opacity: 0.55,
+        }}
+      />
+
+      <div
+        style={{
+          position: 'relative',
+          width: 460,
+          maxWidth: 'calc(100% - 32px)',
+          height: 560,
+          maxHeight: 'calc(100% - 64px)',
+          padding: '20px 28px 22px',
+          display: 'flex',
+          flexDirection: 'column',
+          background:
+            'linear-gradient(160deg, color-mix(in srgb, var(--color-accent) 6%, var(--bg-secondary)), var(--bg-primary) 85%)',
+          border: '0.5px solid color-mix(in srgb, var(--color-accent) 18%, var(--border-subtle))',
+          borderRadius: 20,
+          boxShadow:
+            '0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.02), inset 0 1px 0 rgba(255,255,255,0.05)',
+        }}
+      >
+        {/* Header: brand + skip */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <HorseLogo size={22} />
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text-secondary)',
+                letterSpacing: -0.2,
+              }}
+            >
+              Hat
+            </span>
+          </div>
+          {!isTerminal && (
+            <motion.button
+              whileHover={{ opacity: 1 }}
+              onClick={onComplete}
+              aria-label="Pular tutorial"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                fontSize: 11,
+                fontWeight: 500,
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: 6,
+                opacity: 0.7,
+                fontFamily: 'inherit',
+              }}
+            >
+              Pular
+            </motion.button>
+          )}
+        </div>
+
+        {/* Step body */}
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          <AnimatePresence mode="wait">
             <motion.div
-              key="welcome"
+              key={step}
               variants={slideVariants}
               initial="initial"
               animate="animate"
               exit="exit"
               transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              style={{ textAlign: 'center' }}
+              style={{
+                width: '100%',
+                textAlign: 'center',
+              }}
             >
-              <motion.div
-                initial={{ scale: 0.6, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 200, damping: 18, delay: 0.1 }}
-                style={{ marginBottom: 24 }}
-              >
-                <HorseLogo size={72} animated />
-              </motion.div>
-
-              <h1 style={{
-                fontSize: 24, fontWeight: 700, color: 'var(--text-bright)',
-                margin: '0 0 8px', letterSpacing: -0.5,
-              }}>
-                Bem-vindo ao Hat
-              </h1>
-
-              <p style={{
-                fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6,
-                margin: '0 0 28px',
-              }}>
-                Entre com Google para usar <strong style={{ color: 'var(--text-secondary)' }}>créditos Hat</strong> e acessar modelos top-tier sem configurar nada.
-              </p>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={handleGoogleSignIn}
-                disabled={isSigningIn}
-                style={{
-                  padding: '11px 24px',
-                  borderRadius: 10,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: 'var(--color-accent)',
-                  color: 'white',
-                  border: 'none',
-                  cursor: isSigningIn ? 'default' : 'pointer',
-                  opacity: isSigningIn ? 0.75 : 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 10,
-                  minWidth: 220,
-                  boxShadow: '0 2px 12px var(--accent-glow)',
-                }}
-              >
-                {isSigningIn ? (
-                  <>
-                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ display: 'flex' }}>
-                      <Loader2 size={14} />
-                    </motion.div>
-                    Abrindo navegador...
-                  </>
-                ) : (
-                  <>
-                    <GoogleIcon size={14} /> Entrar com Google
-                  </>
-                )}
-              </motion.button>
-
-              {signInError && (
-                <p style={{ marginTop: 14, fontSize: 11, color: 'var(--error)', maxWidth: 320, lineHeight: 1.5 }}>
-                  {signInError}
-                </p>
+              {step === 'welcome' && <WelcomeStep reducedMotion={!!reducedMotion} />}
+              {step === 'shortcuts' && <ShortcutsStep platform={platform} />}
+              {step === 'modes' && <ModesStep />}
+              {step === 'credits' && <CreditsStep />}
+              {step === 'signin' && (
+                <SigninStep
+                  user={user}
+                  isSigningIn={isSigningIn}
+                  signInError={signInError}
+                  onSignIn={handleGoogleSignIn}
+                  onSkip={goNext}
+                />
               )}
+              {step === 'done' && <DoneStep platform={platform} />}
             </motion.div>
-          )}
+          </AnimatePresence>
+        </div>
 
-          {step === 'done' && (
-            <motion.div
-              key="done"
-              variants={slideVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              style={{ textAlign: 'center' }}
-            >
+        {/* Footer: progress dots + navigation */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            marginTop: 12,
+          }}
+        >
+          <button
+            onClick={goBack}
+            disabled={stepIdx === 0}
+            style={{
+              visibility: stepIdx === 0 ? 'hidden' : 'visible',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 12px',
+              borderRadius: 8,
+              background: 'transparent',
+              border: '0.5px solid var(--border-subtle)',
+              color: 'var(--text-muted)',
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            <ArrowLeft size={12} /> Voltar
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {STEPS.map((s, i) => (
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                style={{
-                  width: 56, height: 56, borderRadius: '50%',
-                  background: 'color-mix(in srgb, var(--success) 15%, transparent)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  margin: '0 auto 20px',
+                key={s}
+                layout
+                aria-current={i === stepIdx ? 'step' : undefined}
+                animate={{
+                  width: i === stepIdx ? 22 : 6,
+                  backgroundColor:
+                    i === stepIdx
+                      ? 'var(--color-accent)'
+                      : i < stepIdx
+                      ? 'color-mix(in srgb, var(--color-accent) 45%, transparent)'
+                      : 'var(--border-subtle)',
                 }}
-              >
-                <Check size={28} style={{ color: 'var(--success)' }} />
-              </motion.div>
+                transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+                style={{ height: 6, borderRadius: 999 }}
+              />
+            ))}
+          </div>
 
-              <h2 style={{
-                fontSize: 20, fontWeight: 700, color: 'var(--text-bright)',
-                margin: '0 0 8px',
-              }}>
-                Tudo pronto!
-              </h2>
-              <p style={{
-                fontSize: 13, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.5,
-              }}>
-                Você já pode conversar com o Hat. Para recarregar créditos, vá em Configurações → Conta.
-              </p>
-
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={onComplete}
-                style={{
-                  marginTop: 20,
-                  padding: '10px 28px',
-                  borderRadius: 10,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  background: 'var(--color-accent)',
-                  color: 'white',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  boxShadow: '0 2px 12px var(--accent-glow)',
-                }}
-              >
-                Começar a usar <ArrowRight size={14} />
-              </motion.button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={goNext}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '9px 16px',
+              borderRadius: 9,
+              background: 'var(--color-accent)',
+              color: 'white',
+              border: 'none',
+              fontSize: 12.5,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              boxShadow: '0 2px 12px var(--accent-glow)',
+              minWidth: 110,
+              justifyContent: 'center',
+            }}
+          >
+            {primaryLabel}
+            {!isTerminal && <ArrowRight size={13} />}
+            {isTerminal && <Check size={13} />}
+          </motion.button>
+        </div>
       </div>
     </motion.div>
   );
 }
+
+// ---- Steps ----
+
+function WelcomeStep({ reducedMotion }: { reducedMotion: boolean }) {
+  return (
+    <div>
+      <motion.div
+        initial={{ scale: 0.6, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 18, delay: 0.1 }}
+        style={{ marginBottom: 22 }}
+      >
+        <HorseLogo size={76} animated={!reducedMotion} />
+      </motion.div>
+      <h1
+        style={{
+          fontSize: 24,
+          fontWeight: 700,
+          color: 'var(--text-bright)',
+          margin: '0 0 10px',
+          letterSpacing: -0.5,
+        }}
+      >
+        Bem-vindo ao Hat
+      </h1>
+      <p
+        style={{
+          fontSize: 13,
+          color: 'var(--text-muted)',
+          lineHeight: 1.6,
+          margin: '0 auto',
+          maxWidth: 340,
+        }}
+      >
+        Um assistente de IA que vive na sua barra de menus. Um atalho e você já tá conversando com modelos de ponta — sem abrir aba de navegador, sem configurar nada.
+      </p>
+    </div>
+  );
+}
+
+function ShortcutsStep({ platform }: { platform: Platform }) {
+  const settings = useSettingsStore((s) => s.settings);
+  const rows = [
+    {
+      icon: MessageSquare,
+      title: 'Chat flutuante',
+      desc: 'Janela sempre por cima pra conversar rápido',
+      keys: formatShortcut(settings.shortcuts.floatingChat, platform),
+    },
+    {
+      icon: ClipboardIcon,
+      title: 'Processar clipboard',
+      desc: 'Copia um texto, aperta o atalho, a IA responde',
+      keys: formatShortcut(settings.shortcuts.clipboard, platform),
+    },
+    {
+      icon: Camera,
+      title: 'Analisar tela',
+      desc: 'Print da tela + análise da IA em um passo',
+      keys: formatShortcut(settings.shortcuts.screenCapture, platform),
+    },
+  ];
+
+  return (
+    <div>
+      <h2 style={stepTitle}>Três atalhos pra tudo</h2>
+      <p style={stepLede}>Cada recurso tem um atalho global. Funciona em qualquer app.</p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 22, textAlign: 'left' }}>
+        {rows.map((row) => (
+          <div
+            key={row.title}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '12px 14px',
+              borderRadius: 11,
+              background: 'var(--surface-secondary)',
+              border: '0.5px solid var(--border-subtle)',
+            }}
+          >
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'color-mix(in srgb, var(--color-accent) 14%, transparent)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--color-accent)',
+                flexShrink: 0,
+              }}
+            >
+              <row.icon size={16} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-bright)', lineHeight: 1.3 }}>
+                {row.title}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, marginTop: 2 }}>
+                {row.desc}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+              {row.keys.map((k, i) => (
+                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  {i > 0 && (
+                    <span style={{ fontSize: 9, color: 'var(--text-muted)', opacity: 0.5 }}>+</span>
+                  )}
+                  <kbd style={kbdStyle}>{k}</kbd>
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p style={{ ...stepFoot, marginTop: 14 }}>
+        Personalize em <span style={{ color: 'var(--text-secondary)' }}>Configurações → Atalhos</span>.
+      </p>
+    </div>
+  );
+}
+
+function ModesStep() {
+  return (
+    <div>
+      <h2 style={stepTitle}>Escolha o cérebro certo</h2>
+      <p style={stepLede}>Três modos de IA pra balancear velocidade, custo e capacidade.</p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 22, textAlign: 'left' }}>
+        {AI_MODES.map((mode) => {
+          const tint = MODE_TINT[mode.id];
+          const Icon = tint.icon;
+          return (
+            <div
+              key={mode.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '14px',
+                borderRadius: 11,
+                background: 'var(--surface-secondary)',
+                border: '0.5px solid var(--border-subtle)',
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 9,
+                  background: tint.soft,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: tint.hue,
+                  flexShrink: 0,
+                }}
+              >
+                <Icon size={18} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-bright)', letterSpacing: -0.1 }}>
+                  {mode.label}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
+                  {mode.description}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p style={{ ...stepFoot, marginTop: 14 }}>Cada modo consome créditos em quantidades diferentes.</p>
+    </div>
+  );
+}
+
+function CreditsStep() {
+  const pricing = useCreditsStore((s) => s.pricing);
+  const exampleBrl = pricing.tierBrls[0] ?? 5;
+  const exampleCredits = Math.floor(exampleBrl * pricing.brlToCredits);
+  const exampleMessages = Math.round(exampleCredits / 10);
+
+  const bullets = [
+    'Cada mensagem consome créditos — quanto mais potente o modo, mais consumo.',
+    'Você recarrega via PIX direto com o criador do Hat, em segundos.',
+    'Seu saldo fica sincronizado na nuvem — abre em qualquer máquina.',
+  ];
+
+  return (
+    <div>
+      <motion.div
+        initial={{ scale: 0.7, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 14,
+          margin: '0 auto 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background:
+            'linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 30%, transparent), color-mix(in srgb, var(--color-accent) 10%, transparent))',
+          border: '0.5px solid color-mix(in srgb, var(--color-accent) 35%, transparent)',
+          color: 'var(--color-accent)',
+          boxShadow: '0 10px 28px color-mix(in srgb, var(--color-accent) 20%, transparent)',
+        }}
+      >
+        <Coins size={26} />
+      </motion.div>
+
+      <h2 style={stepTitle}>Como funcionam os créditos</h2>
+
+      <ul
+        style={{
+          listStyle: 'none',
+          padding: 0,
+          margin: '18px 0 0',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 9,
+          textAlign: 'left',
+        }}
+      >
+        {bullets.map((b) => (
+          <li
+            key={b}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              fontSize: 12,
+              color: 'var(--text-secondary)',
+              lineHeight: 1.5,
+            }}
+          >
+            <span
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: '50%',
+                background: 'color-mix(in srgb, var(--color-accent) 20%, transparent)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--color-accent)',
+                flexShrink: 0,
+                marginTop: 2,
+              }}
+            >
+              <Check size={9} strokeWidth={3} />
+            </span>
+            <span>{b}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div
+        style={{
+          marginTop: 18,
+          padding: '12px 14px',
+          borderRadius: 11,
+          background:
+            'linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 14%, var(--surface-secondary)), var(--surface-secondary))',
+          border: '1px solid color-mix(in srgb, var(--color-accent) 35%, transparent)',
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 10,
+        }}
+      >
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-bright)', letterSpacing: -0.3 }}>
+          R$ {exampleBrl}
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--color-accent)',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {exampleCredits.toLocaleString('pt-BR')} créditos
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+            ~{exampleMessages.toLocaleString('pt-BR')} mensagens Hat
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SigninStep({
+  user,
+  isSigningIn,
+  signInError,
+  onSignIn,
+  onSkip,
+}: {
+  user: { displayName: string | null; email: string | null } | null;
+  isSigningIn: boolean;
+  signInError: string | null;
+  onSignIn: () => void;
+  onSkip: () => void;
+}) {
+  if (user) {
+    return (
+      <div>
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'color-mix(in srgb, var(--success) 15%, transparent)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 20px',
+          }}
+        >
+          <Check size={28} style={{ color: 'var(--success)' }} />
+        </motion.div>
+        <h2 style={stepTitle}>Você já está logado</h2>
+        <p style={stepLede}>
+          Entrou como{' '}
+          <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+            {user.displayName ?? user.email}
+          </span>
+          . Seus créditos já estão sincronizados.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h2 style={stepTitle}>Ative seus créditos</h2>
+      <p style={stepLede}>
+        Entre com Google pra ter seu saldo, histórico de conversas e modelos de ponta — tudo sincronizado.
+      </p>
+
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.97 }}
+        onClick={onSignIn}
+        disabled={isSigningIn}
+        style={{
+          marginTop: 24,
+          padding: '11px 24px',
+          borderRadius: 10,
+          fontSize: 13,
+          fontWeight: 600,
+          background: 'var(--color-accent)',
+          color: 'white',
+          border: 'none',
+          cursor: isSigningIn ? 'default' : 'pointer',
+          opacity: isSigningIn ? 0.75 : 1,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+          minWidth: 220,
+          boxShadow: '0 2px 12px var(--accent-glow)',
+          fontFamily: 'inherit',
+        }}
+      >
+        {isSigningIn ? (
+          <>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+              style={{ display: 'flex' }}
+            >
+              <Loader2 size={14} />
+            </motion.div>
+            Abrindo navegador...
+          </>
+        ) : (
+          <>
+            <GoogleIcon size={14} /> Entrar com Google
+          </>
+        )}
+      </motion.button>
+
+      {signInError && (
+        <p
+          style={{
+            marginTop: 14,
+            fontSize: 11,
+            color: 'var(--error)',
+            maxWidth: 320,
+            margin: '14px auto 0',
+            lineHeight: 1.5,
+          }}
+        >
+          {signInError}
+        </p>
+      )}
+
+      <button
+        onClick={onSkip}
+        style={{
+          marginTop: 18,
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--text-muted)',
+          fontSize: 11.5,
+          cursor: 'pointer',
+          padding: '4px 8px',
+          fontFamily: 'inherit',
+          textDecoration: 'underline',
+          textDecorationColor: 'var(--border-subtle)',
+          textUnderlineOffset: 3,
+        }}
+      >
+        Fazer isso depois
+      </button>
+    </div>
+  );
+}
+
+function DoneStep({ platform }: { platform: Platform }) {
+  const settings = useSettingsStore((s) => s.settings);
+  const mainHotkey = formatShortcut(settings.shortcuts.floatingChat, platform).join(' + ');
+
+  return (
+    <div>
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: '50%',
+          background: 'color-mix(in srgb, var(--success) 15%, transparent)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 22px',
+          boxShadow: '0 0 40px color-mix(in srgb, var(--success) 40%, transparent)',
+        }}
+      >
+        <Check size={32} style={{ color: 'var(--success)' }} />
+      </motion.div>
+
+      <h2 style={stepTitle}>Tudo pronto!</h2>
+      <p style={stepLede}>
+        Chame o Hat a qualquer momento com{' '}
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 3,
+            padding: '2px 6px',
+            borderRadius: 6,
+            background: 'var(--surface-secondary)',
+            border: '0.5px solid var(--border-subtle)',
+            color: 'var(--text-bright)',
+            fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+            fontSize: 10.5,
+            fontWeight: 600,
+          }}
+        >
+          {mainHotkey}
+        </span>
+        . Para recarregar créditos, vá em Configurações → Conta.
+      </p>
+    </div>
+  );
+}
+
+// ---- Helpers ----
+
+function formatShortcut(shortcut: string, platform: Platform): string[] {
+  return shortcut.split('+').map((part) => {
+    if (part === 'CommandOrControl') return platform === 'macos' ? '⌘' : 'Ctrl';
+    if (part === 'Command') return '⌘';
+    if (part === 'Control') return 'Ctrl';
+    if (part === 'Shift') return '⇧';
+    if (part === 'Alt' || part === 'Option') return platform === 'macos' ? '⌥' : 'Alt';
+    return part;
+  });
+}
+
+const stepTitle: React.CSSProperties = {
+  fontSize: 22,
+  fontWeight: 700,
+  color: 'var(--text-bright)',
+  margin: '0 0 8px',
+  letterSpacing: -0.4,
+};
+
+const stepLede: React.CSSProperties = {
+  fontSize: 12.5,
+  color: 'var(--text-muted)',
+  lineHeight: 1.55,
+  margin: '0 auto',
+  maxWidth: 340,
+};
+
+const stepFoot: React.CSSProperties = {
+  fontSize: 11,
+  color: 'var(--text-muted)',
+  textAlign: 'center',
+  lineHeight: 1.5,
+};
+
+const kbdStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: 20,
+  height: 22,
+  padding: '0 6px',
+  borderRadius: 5,
+  background: 'var(--bg-primary)',
+  border: '0.5px solid var(--border-subtle)',
+  boxShadow: '0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.2)',
+  fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+  fontSize: 10.5,
+  fontWeight: 600,
+  color: 'var(--text-bright)',
+  letterSpacing: -0.2,
+};
 
 function GoogleIcon({ size }: { size: number }) {
   return (
@@ -201,3 +844,4 @@ function GoogleIcon({ size }: { size: number }) {
     </svg>
   );
 }
+

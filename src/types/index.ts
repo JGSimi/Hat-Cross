@@ -203,6 +203,7 @@ export interface AppSettings {
   clipboard: ClipboardSettings;
   notifications: NotificationSettings;
   chatLimits: ChatLimits;
+  onboardingCompleted: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -254,4 +255,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
     maxMessagesPerConversation: 200,
     autoNewChatOnLimit: true,
   },
+  onboardingCompleted: false,
 };
