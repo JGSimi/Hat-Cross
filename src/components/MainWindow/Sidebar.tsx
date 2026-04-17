@@ -76,7 +76,6 @@ export default function Sidebar({
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [showStorageInfo, setShowStorageInfo] = useState(false);
   const platform = usePlatform();
-  const sidebarWidth = useSettingsStore((s) => s.settings.appearance?.sidebarWidth ?? 220);
   const clipboardCount = useClipboardStore((s) => s.entries.length);
 
   useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
@@ -126,7 +125,7 @@ export default function Sidebar({
   return (
     <div
       style={{
-        width: sidebarWidth,
+        width: 220,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',

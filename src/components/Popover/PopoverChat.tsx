@@ -1,22 +1,17 @@
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import ChatWindow from '../Chat/ChatWindow';
-import { useSettingsStore } from '../../stores/settingsStore';
 
 interface PopoverChatProps {
   onBack?: () => void;
 }
 
 export default function PopoverChat({ onBack }: PopoverChatProps) {
-  const reducedMotion = useSettingsStore((s) => s.settings.performance.reducedMotion);
-
-  const animationProps = reducedMotion
-    ? { initial: { opacity: 1 }, animate: { opacity: 1 }, transition: { duration: 0.01 } }
-    : { initial: { opacity: 0, scale: 0.95 }, animate: { opacity: 1, scale: 1 }, transition: { type: 'spring' as const, stiffness: 350, damping: 28 } };
-
   return (
     <motion.div
-      {...animationProps}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 350, damping: 28 }}
       style={{
         display: 'flex',
         flexDirection: 'column',

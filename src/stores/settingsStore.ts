@@ -6,6 +6,7 @@ import {
   type AppTheme,
   type TokenUsage,
   DEFAULT_SETTINGS,
+  VALID_THEMES,
 } from '../types';
 
 // --- Tauri persistent store ---
@@ -116,10 +117,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     try {
       const stored = await tauriStore.get<{ settings: AppSettings }>('hat-settings');
       if (stored) {
-        set({
-          settings: deepMerge(DEFAULT_SETTINGS, stored.settings ?? {}),
-          _hydrated: true,
-        });
+        const merged = deepMerge(DEFAULT_SETTINGS, stored.settings ?? {}) as AppSettings;
+        // Accent-only themes were removed — fall back to the default full theme.
+        if (!VALID_THEMES.includes(merged.theme)) {
+          merged.theme = DEFAULT_SETTINGS.theme;
+        }
+        set({ settings: merged, _hydrated: true });
       } else {
         set({ _hydrated: true });
       }

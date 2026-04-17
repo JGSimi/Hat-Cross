@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Zap } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import ThemePicker from './ThemePicker';
@@ -141,7 +141,6 @@ export default function SettingsPanel({ onClose }: Props) {
               {activeTab === 'appearance' && (
                 <AppearanceTab
                   settings={settings}
-                  updateSettings={updateSettings}
                   setTheme={setTheme}
                 />
               )}
@@ -569,281 +568,16 @@ function ClipboardTab({
 
 function AppearanceTab({
   settings,
-  updateSettings,
   setTheme,
 }: {
   settings: ReturnType<typeof useSettingsStore.getState>['settings'];
-  updateSettings: ReturnType<typeof useSettingsStore.getState>['updateSettings'];
   setTheme: ReturnType<typeof useSettingsStore.getState>['setTheme'];
 }) {
-  const appearance = settings.appearance ?? {
-    fontSize: 'md' as const,
-    fontScale: 1.0,
-    backgroundStyle: 'default' as const,
-    customBackground: '#0C0C0E',
-    messageBubbleOpacity: 1.0,
-    sidebarWidth: 220,
-    uiOpacity: 1.0,
-  };
-  const performance = settings.performance ?? {
-    reducedMotion: false,
-    disableBlur: false,
-    disableMouseBackground: false,
-    disableAnimatedGradients: false,
-    disableSplashScreen: false,
-    disableStaggerAnimations: false,
-  };
-
-  const updateAppearance = (partial: Partial<typeof appearance>) => {
-    updateSettings({ appearance: { ...appearance, ...partial } });
-  };
-  const updatePerformance = (partial: Partial<typeof performance>) => {
-    updateSettings({ performance: { ...performance, ...partial } });
-  };
-
-  const fontSizeLabels: Record<string, string> = {
-    xs: 'Muito pequeno',
-    sm: 'Pequeno',
-    md: 'Normal',
-    lg: 'Grande',
-    xl: 'Muito grande',
-  };
-  const fontScaleMap: Record<string, number> = { xs: 0.82, sm: 0.9, md: 1.0, lg: 1.12, xl: 1.25 };
-
-  const bgOptions: { value: string; label: string; preview: string }[] = [
-    { value: 'default', label: 'Padrão', preview: '#0C0C0E' },
-    { value: 'darker', label: 'Mais escuro', preview: '#060608' },
-    { value: 'lighter', label: 'Mais claro', preview: '#1a1a1f' },
-    { value: 'solid', label: 'Sólido', preview: appearance.customBackground },
-    { value: 'custom', label: 'Personalizado', preview: appearance.customBackground },
-  ];
-
   return (
     <>
       <SectionTitle>Tema</SectionTitle>
       <GlassCard>
         <ThemePicker current={settings.theme} onChange={setTheme} />
-      </GlassCard>
-
-      <SectionTitle>Tamanho do Texto</SectionTitle>
-      <GlassCard>
-        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-          {(['xs', 'sm', 'md', 'lg', 'xl'] as const).map((size) => (
-            <motion.button
-              key={size}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                updateAppearance({ fontSize: size, fontScale: fontScaleMap[size] });
-              }}
-              style={{
-                flex: 1,
-                padding: '8px 4px',
-                borderRadius: 8,
-                fontSize: size === 'xs' ? 9 : size === 'sm' ? 10 : size === 'md' ? 11 : size === 'lg' ? 12 : 13,
-                fontWeight: appearance.fontSize === size ? 600 : 400,
-                background: appearance.fontSize === size
-                  ? 'color-mix(in srgb, var(--color-accent) 15%, transparent)'
-                  : 'rgba(255,255,255,0.03)',
-                color: appearance.fontSize === size ? 'var(--color-accent)' : 'var(--text-muted)',
-                border: appearance.fontSize === size
-                  ? '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)'
-                  : '1px solid rgba(255,255,255,0.05)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              Aa
-            </motion.button>
-          ))}
-        </div>
-        <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center' }}>
-          {fontSizeLabels[appearance.fontSize]} ({Math.round(appearance.fontScale * 100)}%)
-        </div>
-      </GlassCard>
-
-      <SectionTitle>Fundo</SectionTitle>
-      <GlassCard>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-          {bgOptions.map((opt) => (
-            <motion.button
-              key={opt.value}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => updateAppearance({ backgroundStyle: opt.value as typeof appearance.backgroundStyle })}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 4,
-                padding: 6,
-                borderRadius: 8,
-                background: 'transparent',
-                border: appearance.backgroundStyle === opt.value
-                  ? '1.5px solid var(--color-accent)'
-                  : '1.5px solid rgba(255,255,255,0.06)',
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{
-                width: 36,
-                height: 24,
-                borderRadius: 4,
-                background: opt.preview,
-                border: '1px solid rgba(255,255,255,0.1)',
-              }} />
-              <span style={{
-                fontSize: 9,
-                color: appearance.backgroundStyle === opt.value ? 'var(--color-accent)' : 'var(--text-muted)',
-                fontWeight: appearance.backgroundStyle === opt.value ? 600 : 400,
-              }}>
-                {opt.label}
-              </span>
-            </motion.button>
-          ))}
-        </div>
-        {(appearance.backgroundStyle === 'custom' || appearance.backgroundStyle === 'solid') && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
-            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Cor:</span>
-            <input
-              type="color"
-              value={appearance.customBackground}
-              onChange={(e) => updateAppearance({ customBackground: e.target.value })}
-              style={{
-                width: 32, height: 24, border: 'none', borderRadius: 4,
-                cursor: 'pointer', background: 'transparent',
-              }}
-            />
-            <input
-              type="text"
-              value={appearance.customBackground}
-              onChange={(e) => {
-                if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) {
-                  updateAppearance({ customBackground: e.target.value });
-                }
-              }}
-              style={{
-                width: 80,
-                background: 'var(--input-bg)',
-                color: 'var(--text-primary)',
-                border: '0.5px solid var(--border-subtle)',
-                borderRadius: 4,
-                padding: '3px 8px',
-                fontSize: 10,
-                fontFamily: "'JetBrains Mono', monospace",
-              }}
-            />
-          </div>
-        )}
-      </GlassCard>
-
-      <SectionTitle>Interface</SectionTitle>
-      <GlassCard>
-        <SettingRow label={`Opacidade das bolhas: ${Math.round(appearance.messageBubbleOpacity * 100)}%`}>
-          <CustomSlider min={0.3} max={1} step={0.05} value={appearance.messageBubbleOpacity}
-            onChange={(v) => updateAppearance({ messageBubbleOpacity: v })} />
-        </SettingRow>
-        <SettingRow label={`Opacidade geral: ${Math.round(appearance.uiOpacity * 100)}%`}>
-          <CustomSlider min={0.6} max={1} step={0.05} value={appearance.uiOpacity}
-            onChange={(v) => updateAppearance({ uiOpacity: v })} />
-        </SettingRow>
-        <SettingRow label={`Largura da sidebar: ${appearance.sidebarWidth}px`}>
-          <CustomSlider min={180} max={320} step={10} value={appearance.sidebarWidth}
-            onChange={(v) => updateAppearance({ sidebarWidth: v })} />
-        </SettingRow>
-      </GlassCard>
-
-      <SectionTitle>Desempenho Visual</SectionTitle>
-      <GlassCard>
-        <div style={{ marginBottom: 10 }}>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              updatePerformance({
-                reducedMotion: true,
-                disableBlur: true,
-                disableMouseBackground: true,
-                disableAnimatedGradients: true,
-                disableSplashScreen: true,
-                disableStaggerAnimations: true,
-              });
-            }}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              borderRadius: 8,
-              fontSize: 11,
-              fontWeight: 500,
-              background: 'color-mix(in srgb, var(--warning) 10%, transparent)',
-              color: 'var(--warning)',
-              border: '1px solid color-mix(in srgb, var(--warning) 20%, transparent)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-            }}
-          >
-            <Zap size={12} />
-            Modo economia — desativar tudo
-          </motion.button>
-          {(performance.reducedMotion && performance.disableBlur && performance.disableMouseBackground) && (
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                updatePerformance({
-                  reducedMotion: false,
-                  disableBlur: false,
-                  disableMouseBackground: false,
-                  disableAnimatedGradients: false,
-                  disableSplashScreen: false,
-                  disableStaggerAnimations: false,
-                });
-              }}
-              style={{
-                width: '100%',
-                marginTop: 6,
-                padding: '6px 12px',
-                borderRadius: 8,
-                fontSize: 10,
-                background: 'rgba(255,255,255,0.03)',
-                color: 'var(--text-muted)',
-                border: '1px solid rgba(255,255,255,0.06)',
-                cursor: 'pointer',
-              }}
-            >
-              Restaurar tudo
-            </motion.button>
-          )}
-        </div>
-        <SettingRow label="Reduzir animações">
-          <Toggle checked={performance.reducedMotion} onChange={(v) => updatePerformance({ reducedMotion: v })} />
-        </SettingRow>
-        <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '0 0 6px', lineHeight: 1.4 }}>
-          Desativa transições e animações de elementos. Melhora a fluidez em hardware mais fraco.
-        </div>
-        <SettingRow label="Desativar blur/glassmorphism">
-          <Toggle checked={performance.disableBlur} onChange={(v) => updatePerformance({ disableBlur: v })} />
-        </SettingRow>
-        <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '0 0 6px', lineHeight: 1.4 }}>
-          Remove efeito de vidro fosco (backdrop-filter). Grande impacto em GPUs integradas.
-        </div>
-        <SettingRow label="Desativar fundo reativo ao mouse">
-          <Toggle checked={performance.disableMouseBackground} onChange={(v) => updatePerformance({ disableMouseBackground: v })} />
-        </SettingRow>
-        <SettingRow label="Desativar gradientes animados">
-          <Toggle checked={performance.disableAnimatedGradients} onChange={(v) => updatePerformance({ disableAnimatedGradients: v })} />
-        </SettingRow>
-        <SettingRow label="Desativar animações de lista">
-          <Toggle checked={performance.disableStaggerAnimations} onChange={(v) => updatePerformance({ disableStaggerAnimations: v })} />
-        </SettingRow>
-        <SettingRow label="Pular tela de splash">
-          <Toggle checked={performance.disableSplashScreen} onChange={(v) => updatePerformance({ disableSplashScreen: v })} />
-        </SettingRow>
       </GlassCard>
     </>
   );

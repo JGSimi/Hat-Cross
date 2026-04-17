@@ -1,9 +1,22 @@
 import { useState, type CSSProperties } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { usePlatform } from '../../hooks/usePlatform';
+import { invoke } from '@tauri-apps/api/core';
+import { usePlatform, type Platform } from '../../hooks/usePlatform';
 
 interface Props {
   variant?: 'sidebar' | 'header';
+}
+
+// On Linux compositors without a system-tray host (Hyprland, sway w/o SNI),
+// the tray icon is invisible — so "close window" leaves an orphaned process
+// the user can't reach. Quit outright instead. Mac/Windows keep the tray
+// convention where X just hides the window.
+function closeOrQuit(appWindow: ReturnType<typeof getCurrentWindow>, platform: Platform) {
+  if (platform === 'linux') {
+    invoke('quit_app').catch(() => appWindow.close());
+  } else {
+    appWindow.close();
+  }
 }
 
 export default function WindowControls({ variant = 'sidebar' }: Props) {
@@ -11,17 +24,17 @@ export default function WindowControls({ variant = 'sidebar' }: Props) {
   const appWindow = getCurrentWindow();
 
   if (platform === 'macos' && variant === 'sidebar') {
-    return <MacControls appWindow={appWindow} />;
+    return <MacControls appWindow={appWindow} platform={platform} />;
   }
 
   if (platform !== 'macos' && variant === 'header') {
-    return <MinimalControls appWindow={appWindow} />;
+    return <MinimalControls appWindow={appWindow} platform={platform} />;
   }
 
   return null;
 }
 
-function MacControls({ appWindow }: { appWindow: ReturnType<typeof getCurrentWindow> }) {
+function MacControls({ appWindow, platform }: { appWindow: ReturnType<typeof getCurrentWindow>; platform: Platform }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -36,7 +49,7 @@ function MacControls({ appWindow }: { appWindow: ReturnType<typeof getCurrentWin
       }}
     >
       <button
-        onClick={() => appWindow.close()}
+        onClick={() => closeOrQuit(appWindow, platform)}
         style={{
           width: 12,
           height: 12,
@@ -105,7 +118,7 @@ function MacControls({ appWindow }: { appWindow: ReturnType<typeof getCurrentWin
   );
 }
 
-function MinimalControls({ appWindow }: { appWindow: ReturnType<typeof getCurrentWindow> }) {
+function MinimalControls({ appWindow, platform }: { appWindow: ReturnType<typeof getCurrentWindow>; platform: Platform }) {
   const [hoveredBtn, setHoveredBtn] = useState<string | null>(null);
 
   const btnBase: CSSProperties = {
@@ -167,7 +180,7 @@ function MinimalControls({ appWindow }: { appWindow: ReturnType<typeof getCurren
       <button
         onMouseEnter={() => setHoveredBtn('close')}
         onMouseLeave={() => setHoveredBtn(null)}
-        onClick={() => appWindow.close()}
+        onClick={() => closeOrQuit(appWindow, platform)}
         style={{
           ...btnBase,
           background: hoveredBtn === 'close' ? 'rgba(232, 17, 35, 0.9)' : 'transparent',

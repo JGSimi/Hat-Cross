@@ -27,6 +27,7 @@ pub fn run() {
             commands::open_main_window,
             commands::toggle_popover_window,
             commands::close_window,
+            commands::quit_app,
             commands::capture_screen,
             commands::set_autostart,
             commands::open_analysis_window,

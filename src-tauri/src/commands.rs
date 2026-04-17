@@ -83,6 +83,11 @@ pub fn close_window(app: AppHandle, label: String) {
 }
 
 #[tauri::command]
+pub fn quit_app(app: AppHandle) {
+    app.exit(0);
+}
+
+#[tauri::command]
 pub fn capture_screen(app: AppHandle) -> Result<String, String> {
     capture_screen_impl(&app)
 }
