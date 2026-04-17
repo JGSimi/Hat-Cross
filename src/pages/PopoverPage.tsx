@@ -6,7 +6,6 @@ import PopoverChat from '../components/Popover/PopoverChat';
 
 export default function PopoverPage() {
   const popoverSettings = useSettingsStore((s) => s.settings.popover);
-  const reducedMotion = useSettingsStore((s) => s.settings.performance.reducedMotion);
   const [revealed, setRevealed] = useState(!popoverSettings.disguiseMode);
   const [hovered, setHovered] = useState(false);
 
@@ -21,9 +20,7 @@ export default function PopoverPage() {
       : 'stealth-idle'
     : '';
 
-  const springTransition = reducedMotion
-    ? { duration: 0.01 }
-    : { type: 'spring' as const, stiffness: 350, damping: 28 };
+  const springTransition = { type: 'spring' as const, stiffness: 350, damping: 28 };
 
   return (
     <div
@@ -42,9 +39,9 @@ export default function PopoverPage() {
         {popoverSettings.disguiseMode && !revealed ? (
           <motion.div
             key="clock"
-            initial={reducedMotion ? { opacity: 1 } : { opacity: 0, x: 0 }}
+            initial={{ opacity: 0, x: 0 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: -380 }}
+            exit={{ opacity: 0, x: -380 }}
             transition={springTransition}
             style={{ width: '100%', height: '100%' }}
           >
@@ -53,9 +50,9 @@ export default function PopoverPage() {
         ) : (
           <motion.div
             key="chat"
-            initial={reducedMotion ? { opacity: 0 } : { opacity: 0, x: 380 }}
+            initial={{ opacity: 0, x: 380 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: 380 }}
+            exit={{ opacity: 0, x: 380 }}
             transition={springTransition}
             style={{ width: '100%', height: '100%' }}
           >

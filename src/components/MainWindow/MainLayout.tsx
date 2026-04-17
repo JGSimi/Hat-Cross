@@ -9,7 +9,6 @@ import OnboardingWizard from '../Shared/OnboardingWizard';
 import WindowControls from '../Shared/WindowControls';
 import { usePlatform } from '../../hooks/usePlatform';
 import { useChatStore } from '../../stores/chatStore';
-import MouseReactiveBackground from './MouseReactiveBackground';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -93,8 +92,6 @@ export default function MainLayout() {
       animate="show"
       style={{ display: 'flex', height: '100vh', width: '100%' }}
     >
-      <MouseReactiveBackground />
-
       {/* Onboarding wizard for first-run users */}
       <AnimatePresence>
         {needsOnboarding && (

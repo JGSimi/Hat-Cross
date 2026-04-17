@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useSettingsStore } from '../../stores/settingsStore';
 
 const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -17,7 +16,6 @@ interface DisguiseClockProps {
 }
 
 export default function DisguiseClock({ onReveal }: DisguiseClockProps) {
-  const reducedMotion = useSettingsStore((s) => s.settings.performance.reducedMotion);
   const [now, setNow] = useState(() => new Date());
   const [colonVisible, setColonVisible] = useState(true);
 
@@ -46,13 +44,11 @@ export default function DisguiseClock({ onReveal }: DisguiseClockProps) {
   const minutes = String(now.getMinutes()).padStart(2, '0');
   const seconds = String(now.getSeconds()).padStart(2, '0');
 
-  const animationProps = reducedMotion
-    ? { initial: { opacity: 1 }, animate: { opacity: 1 }, transition: { duration: 0.01 } }
-    : { initial: { opacity: 0, scale: 0.95 }, animate: { opacity: 1, scale: 1 }, transition: { type: 'spring' as const, stiffness: 350, damping: 28 } };
-
   return (
     <motion.div
-      {...animationProps}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 350, damping: 28 }}
       data-tauri-drag-region
       onClick={onReveal}
       style={{

@@ -5,7 +5,6 @@ import AttachmentPreview from './AttachmentPreview';
 import ModeSelector from './ModeSelector';
 import type { ChatAttachment } from '../../types';
 import { useDraftsStore } from '../../stores/draftsStore';
-import { useSettingsStore } from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
 import { formatDraftAge } from '../../utils/markdown';
 
@@ -33,7 +32,6 @@ export default function InputArea({
   // Session-only tracker so the plunger animation fires at most once per conversation per session.
   const hydratedIds = useRef(new Set<string>());
   const hasContent = text.trim().length > 0 || attachments.length > 0;
-  const reducedMotion = useSettingsStore((s) => s.settings.performance?.reducedMotion ?? false);
   const isSignedIn = useAuthStore((s) => s.user !== null);
 
   const resizeTextarea = useCallback(() => {
@@ -112,7 +110,7 @@ export default function InputArea({
     }
   };
 
-  const animatePlunger = shouldAnimatePlunger.current && !reducedMotion;
+  const animatePlunger = shouldAnimatePlunger.current;
   const wrapperKey = `${conversationId ?? 'none'}:${animatePlunger ? 'plunger' : 'static'}`;
 
   return (

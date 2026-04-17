@@ -5,7 +5,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { formatTimestamp } from '../../utils/markdown';
-import { useSettingsStore } from '../../stores/settingsStore';
 import ThinkingBlock from './ThinkingBlock';
 import type { Message } from '../../types';
 
@@ -17,7 +16,6 @@ interface Props {
 function MessageBubble({ message, isGrouped }: Props) {
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
-  const bubbleOpacity = useSettingsStore((s) => s.settings.appearance?.messageBubbleOpacity ?? 1);
 
   const handleCopy = () => {
     const text = message.thinking
@@ -42,7 +40,6 @@ function MessageBubble({ message, isGrouped }: Props) {
         {message.isUser ? (
           <div
             style={{
-              opacity: bubbleOpacity,
               background: 'var(--user-bubble-bg)',
               border: '1px solid var(--accent-border)',
               borderRadius: 16, borderBottomRightRadius: 4,
