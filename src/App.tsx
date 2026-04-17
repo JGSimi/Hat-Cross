@@ -104,8 +104,12 @@ function App() {
   }, [theme]);
 
   // Global shortcut registration via JS API (handles CommandOrControl correctly per platform)
+  // Only in the main window — each Tauri window boots its own App instance, and
+  // double-registering the same accelerator races on Linux/Windows (the second
+  // call clobbers the first handler) and spawns duplicate listeners on macOS.
   const registeredShortcuts = useRef<{ clipboard: string; screenCapture: string; floatingChat: string }>({ clipboard: '', screenCapture: '', floatingChat: '' });
   useEffect(() => {
+    if (!isMainWindow) return;
     const prev = registeredShortcuts.current;
 
     async function registerShortcuts() {
@@ -150,17 +154,17 @@ function App() {
         }
       }
 
-      // Register floating chat shortcut (toggle — must debounce auto-repeat)
+      // Register floating chat shortcut (toggle — time-based debounce handles auto-repeat
+      // and the press/release double-fire; no event.state gate, since the plugin's event
+      // shape isn't uniform across platforms and the check was silently killing the popover).
       if (floatingChatShortcut && floatingChatShortcut !== prev.floatingChat) {
         let lastToggleTime = 0;
         try {
-          await register(floatingChatShortcut, (event) => {
-            if (event.state === 'Pressed') {
-              const now = Date.now();
-              if (now - lastToggleTime > 400) {
-                lastToggleTime = now;
-                invoke('toggle_popover_window').catch(() => {});
-              }
+          await register(floatingChatShortcut, () => {
+            const now = Date.now();
+            if (now - lastToggleTime > 400) {
+              lastToggleTime = now;
+              invoke('toggle_popover_window').catch(() => {});
             }
           });
           prev.floatingChat = floatingChatShortcut;
@@ -178,7 +182,7 @@ function App() {
       if (prev.screenCapture) { unregister(prev.screenCapture).catch(() => {}); prev.screenCapture = ''; }
       if (prev.floatingChat) { unregister(prev.floatingChat).catch(() => {}); prev.floatingChat = ''; }
     };
-  }, [shortcuts.clipboard, shortcuts.screenCapture, shortcuts.floatingChat]);
+  }, [shortcuts.clipboard, shortcuts.screenCapture, shortcuts.floatingChat, isMainWindow]);
 
   // Tray menu events
   useEffect(() => {
@@ -273,7 +277,11 @@ function App() {
 
   // Clipboard processing — core feature
   // Flow: user copies text/image → presses shortcut → AI processes → notification with response
+  // Gated to the main window: Tauri broadcasts `process-clipboard` to every webview,
+  // and without this gate the hidden analysis window also ran the full pipeline, producing
+  // two "Processando" + two "Resposta" notifications per trigger on every OS.
   useEffect(() => {
+    if (!isMainWindow) return;
     let isProcessing = false;
 
     // Convert RGBA Image to base64 PNG via OffscreenCanvas
@@ -482,7 +490,7 @@ function App() {
       }
     });
     return () => { unlisten.then(fn => fn()); };
-  }, []);
+  }, [isMainWindow]);
 
   return (
     <>
