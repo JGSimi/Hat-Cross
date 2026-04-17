@@ -150,13 +150,10 @@ export const VALID_THEMES: AppTheme[] = THEME_PRESETS.map((t) => t.name);
 export interface PopoverSettings {
   width: number;
   height: number;
-  opacity: number;
-  vibrancy: boolean;
   stealthMode: boolean;
   stealthHoverOpacity: number;
   disguiseMode: boolean;
   disguiseWidget: 'clock';
-  rememberPosition: boolean;
 }
 
 export interface ShortcutSettings {
@@ -195,7 +192,6 @@ export interface ChatLimits {
 
 export interface AppSettings {
   autoLaunch: boolean;
-  soundEnabled: boolean;
   theme: AppTheme;
   popover: PopoverSettings;
   systemPrompt: string;
@@ -210,18 +206,14 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   autoLaunch: false,
-  soundEnabled: true,
   theme: 'lavender',
   popover: {
     width: 380,
     height: 480,
-    opacity: 1.0,
-    vibrancy: false,
     stealthMode: false,
     stealthHoverOpacity: 0.4,
     disguiseMode: true,
     disguiseWidget: 'clock',
-    rememberPosition: true,
   },
   systemPrompt: 'Você é um assistente de IA útil e conciso. Responda em português brasileiro.',
   temperature: 0.7,
