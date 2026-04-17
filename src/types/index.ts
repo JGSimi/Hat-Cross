@@ -76,7 +76,9 @@ export interface TokenUsage {
 // === Theme ===
 
 export type AppTheme =
-  | 'noir' | 'cappuccino' | 'cyberpunk' | 'minimal' | 'ocean' | 'sunset' | 'forest' | 'lavender' | 'cherry';
+  | 'noir' | 'cappuccino' | 'cyberpunk' | 'minimal' | 'ocean' | 'sunset' | 'forest' | 'lavender' | 'cherry'
+  | 'matrix' | 'dracula' | 'nord' | 'monokai' | 'synthwave' | 'terminal' | 'rosegold' | 'midnight'
+  | 'obsidian' | 'aurora' | 'sakura' | 'ice' | 'solarized' | 'tokyo' | 'gruvbox';
 
 export interface ThemePreset {
   name: AppTheme;
@@ -109,6 +111,36 @@ export const THEME_PRESETS: ThemePreset[] = [
     bgPrimary: '#110E18', bgSecondary: '#16121E', textPrimary: '#EDE9FE', textSecondary: '#C4B5FD', textMuted: '#6A5A8A' },
   { name: 'cherry', label: 'Cereja', primary: '#E11D48', hover: '#FB7185',
     bgPrimary: '#180A10', bgSecondary: '#1E0E14', textPrimary: '#FFE4E6', textSecondary: '#FDA4AF', textMuted: '#8A3A4A' },
+  { name: 'matrix', label: 'Matrix', primary: '#00FF41', hover: '#4AFF7A',
+    bgPrimary: '#000000', bgSecondary: '#040A04', textPrimary: '#D0FFD0', textSecondary: '#8ACC8A', textMuted: '#3E6B3E' },
+  { name: 'dracula', label: 'Drácula', primary: '#BD93F9', hover: '#CAA8FA',
+    bgPrimary: '#282A36', bgSecondary: '#2E303E', textPrimary: '#F8F8F2', textSecondary: '#BFBFB7', textMuted: '#6272A4' },
+  { name: 'nord', label: 'Nord', primary: '#88C0D0', hover: '#A5D0DE',
+    bgPrimary: '#2E3440', bgSecondary: '#3B4252', textPrimary: '#ECEFF4', textSecondary: '#D8DEE9', textMuted: '#4C566A' },
+  { name: 'monokai', label: 'Monokai', primary: '#F92672', hover: '#FD5C94',
+    bgPrimary: '#272822', bgSecondary: '#2E2F28', textPrimary: '#F8F8F2', textSecondary: '#CFCFC2', textMuted: '#75715E' },
+  { name: 'synthwave', label: 'Synthwave', primary: '#FF3AC4', hover: '#FF6FD1',
+    bgPrimary: '#1A0B2E', bgSecondary: '#21103A', textPrimary: '#F0E7FF', textSecondary: '#B8A3E0', textMuted: '#6D5BA8' },
+  { name: 'terminal', label: 'Terminal', primary: '#FFB000', hover: '#FFC73B',
+    bgPrimary: '#0C0A00', bgSecondary: '#120F02', textPrimary: '#FFD470', textSecondary: '#CC8800', textMuted: '#5C3E00' },
+  { name: 'rosegold', label: 'Rose Gold', primary: '#E8B4B8', hover: '#F4C2C7',
+    bgPrimary: '#1A1014', bgSecondary: '#1F151A', textPrimary: '#F5E6E8', textSecondary: '#D9A7AB', textMuted: '#8A6F74' },
+  { name: 'midnight', label: 'Meia-noite', primary: '#5E8BFF', hover: '#7FA3FF',
+    bgPrimary: '#050816', bgSecondary: '#0A0F24', textPrimary: '#E0E8FF', textSecondary: '#8B9CCE', textMuted: '#4A5580' },
+  { name: 'obsidian', label: 'Obsidiana', primary: '#FF6B35', hover: '#FF8A5E',
+    bgPrimary: '#0A0A0A', bgSecondary: '#151515', textPrimary: '#E8E8E8', textSecondary: '#A0A0A0', textMuted: '#555555' },
+  { name: 'aurora', label: 'Aurora', primary: '#5EEAD4', hover: '#86F1DE',
+    bgPrimary: '#051322', bgSecondary: '#081A2E', textPrimary: '#D0F5FC', textSecondary: '#86E7F3', textMuted: '#355E7A' },
+  { name: 'sakura', label: 'Sakura', primary: '#F9A8D4', hover: '#FBBAE0',
+    bgPrimary: '#14090F', bgSecondary: '#1A0E15', textPrimary: '#FDEAF4', textSecondary: '#E2A4BE', textMuted: '#7A4D65' },
+  { name: 'ice', label: 'Gelo', primary: '#93D5F5', hover: '#B5E3F8',
+    bgPrimary: '#0A1320', bgSecondary: '#0F1C2D', textPrimary: '#EAF6FD', textSecondary: '#9EC9DE', textMuted: '#4A6B80' },
+  { name: 'solarized', label: 'Solarized', primary: '#2AA198', hover: '#3FB5AC',
+    bgPrimary: '#002B36', bgSecondary: '#073642', textPrimary: '#FDF6E3', textSecondary: '#93A1A1', textMuted: '#586E75' },
+  { name: 'tokyo', label: 'Tokyo Night', primary: '#BB9AF7', hover: '#C9AFFB',
+    bgPrimary: '#1A1B26', bgSecondary: '#24283B', textPrimary: '#C0CAF5', textSecondary: '#A9B1D6', textMuted: '#565F89' },
+  { name: 'gruvbox', label: 'Gruvbox', primary: '#FE8019', hover: '#FABD2F',
+    bgPrimary: '#1D2021', bgSecondary: '#282828', textPrimary: '#EBDBB2', textSecondary: '#BDAE93', textMuted: '#7C6F64' },
 ];
 
 export const VALID_THEMES: AppTheme[] = THEME_PRESETS.map((t) => t.name);
