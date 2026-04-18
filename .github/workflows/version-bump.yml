@@ -108,8 +108,14 @@ jobs:
           node-version: lts/*
           cache: 'npm'
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      # Pinned to 1.94.1: rustc 1.95.0 produces Linux binaries that panic on
+      # startup with `Option::unwrap() on a None value` inside
+      # `glib::main_context_channel::dispatch` (tao event loop) when run on
+      # Fedora 43+/Arch with modern libglib. v2.36.0 shipped broken Linux
+      # artifacts because of this. Do not bump without re-testing on a modern
+      # Linux distro (not just the build runner).
+      - name: Install Rust 1.94.1
+        uses: dtolnay/rust-toolchain@1.94.1
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
