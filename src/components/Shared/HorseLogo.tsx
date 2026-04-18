@@ -41,7 +41,7 @@ export default function HorseLogo({ size = 26, animated = false, className, colo
       className={className}
       style={{
         ...maskStyle,
-        backgroundColor: color || 'currentColor',
+        backgroundColor: color || 'var(--color-accent)',
       }}
     />
   );
