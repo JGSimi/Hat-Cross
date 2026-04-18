@@ -1798,7 +1798,7 @@ checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 
 [[package]]
 name = "hat-cross"
-version = "2.36.0"
+version = "2.36.2"
 dependencies = [
  "base64 0.22.1",
  "futures",
@@ -4550,8 +4550,7 @@ dependencies = [
 [[package]]
 name = "tao"
 version = "0.34.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9103edf55f2da3c82aea4c7fab7c4241032bfeea0e71fa557d98e00e7ce7cc20"
+source = "git+https://github.com/JGSimi/tao?branch=fix-cursor-ignore-unwrap#bb268f5812a111f735da0fbadec0566324528a73"
 dependencies = [
  "bitflags 2.11.0",
  "block2",
@@ -4576,7 +4575,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "raw-window-handle",
- "tao-macros",
+ "tao-macros 0.1.3 (git+https://github.com/JGSimi/tao?branch=fix-cursor-ignore-unwrap)",
  "unicode-segmentation",
  "url",
  "windows",
@@ -4590,6 +4589,16 @@ name = "tao-macros"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4e16beb8b2ac17db28eab8bca40e62dbfbb34c0fcdc6d9826b11b7b5d047dfd"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "tao-macros"
+version = "0.1.3"
+source = "git+https://github.com/JGSimi/tao?branch=fix-cursor-ignore-unwrap#bb268f5812a111f735da0fbadec0566324528a73"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6688,7 +6697,7 @@ dependencies = [
  "raw-window-handle",
  "sha2",
  "soup3",
- "tao-macros",
+ "tao-macros 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror 2.0.18",
  "url",
  "webkit2gtk",

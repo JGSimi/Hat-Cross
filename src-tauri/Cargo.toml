@@ -33,3 +33,14 @@ futures = "0.3"
 once_cell = "1"
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png"] }
+
+# Temporary patch: tao 0.34.8 panics in CursorIgnoreEvents when a window
+# is dispatched `set_ignore_cursor_events(true)` before its GdkWindow is
+# realized (transparent+hidden windows, see tauri-apps/tao#1178). The
+# panic crosses a non-unwinding GTK main-loop boundary and aborts the
+# whole process — users on Fedora 43+ / Wayland saw the app open blank
+# and die. Our fork just replaces the bare `unwrap()` with an
+# `if let Some(_)` skip. Revert this block to crates.io once the fix
+# lands upstream and a tao release cuts through to tauri-runtime-wry.
+[patch.crates-io]
+tao = { git = "https://github.com/JGSimi/tao", branch = "fix-cursor-ignore-unwrap" }
