@@ -24,7 +24,6 @@ pub fn show_window(app: &AppHandle, label: &str) {
         let url = match label {
             "popover" => "/popover",
             "main" => "/main",
-            "analysis" => "/analysis",
             "flash" => "/flash",
             _ => "/main",
         };
@@ -47,10 +46,6 @@ pub fn show_window(app: &AppHandle, label: &str) {
                 .title("Hat")
                 .inner_size(820.0, 650.0)
                 .min_inner_size(600.0, 500.0)
-                .decorations(false),
-            "analysis" => builder
-                .title("Hat - Analise de Tela")
-                .inner_size(1000.0, 700.0)
                 .decorations(false),
             "flash" => builder
                 .title("Hat Flash")

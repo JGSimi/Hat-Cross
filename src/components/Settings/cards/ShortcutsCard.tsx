@@ -11,9 +11,9 @@ export default function ShortcutsCard() {
   // still count it here since it's a global shortcut.
   const shortcutCount = [
     settings.shortcuts.clipboard,
-    settings.shortcuts.screenCapture,
     settings.shortcuts.floatingChat,
     settings.shortcuts.adjustFlashPosition,
+    settings.shortcuts.emergencyQuit,
   ].filter((s) => s && s.trim().length > 0).length;
   const preview = `${shortcutCount} definidos`;
 
@@ -31,22 +31,25 @@ export default function ShortcutsCard() {
           }
         />
       </SettingRow>
-      <SettingRow label="Analisar tela">
-        <ShortcutRecorder
-          value={settings.shortcuts.screenCapture}
-          onChange={(v) =>
-            updateSettings({
-              shortcuts: { ...settings.shortcuts, screenCapture: v },
-            })
-          }
-        />
-      </SettingRow>
       <SettingRow label="Ajustar posição do flash">
         <ShortcutRecorder
           value={settings.shortcuts.adjustFlashPosition}
           onChange={(v) =>
             updateSettings({
               shortcuts: { ...settings.shortcuts, adjustFlashPosition: v },
+            })
+          }
+        />
+      </SettingRow>
+      <SettingRow
+        label="Fechar em emergência"
+        hint="Fecha o Hat completamente mesmo sem ele estar em foco. Útil se algo travar ou se precisar esconder o app rapidamente."
+      >
+        <ShortcutRecorder
+          value={settings.shortcuts.emergencyQuit}
+          onChange={(v) =>
+            updateSettings({
+              shortcuts: { ...settings.shortcuts, emergencyQuit: v },
             })
           }
         />

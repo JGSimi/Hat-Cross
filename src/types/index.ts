@@ -159,9 +159,9 @@ export interface PopoverSettings {
 
 export interface ShortcutSettings {
   clipboard: string;
-  screenCapture: string;
   floatingChat: string;
   adjustFlashPosition: string;
+  emergencyQuit: string;
 }
 
 export interface ClipboardSettings {
@@ -254,9 +254,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maxTokens: 4096,
   shortcuts: {
     clipboard: 'CommandOrControl+Shift+X',
-    screenCapture: 'CommandOrControl+Shift+Z',
     floatingChat: 'CommandOrControl+Shift+C',
     adjustFlashPosition: 'CommandOrControl+Shift+F',
+    emergencyQuit: 'CommandOrControl+Shift+Q',
   },
   tokenStats: {
     inputTokens: 0,

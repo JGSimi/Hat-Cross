@@ -59,7 +59,7 @@ export default function PopoverChat({ onBack }: PopoverChatProps) {
 
       {/* Chat content */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
-        <ChatWindow showScreenCapture={false} />
+        <ChatWindow />
       </div>
     </motion.div>
   );

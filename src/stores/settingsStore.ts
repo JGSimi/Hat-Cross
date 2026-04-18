@@ -122,6 +122,11 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         if (!VALID_THEMES.includes(merged.theme)) {
           merged.theme = DEFAULT_SETTINGS.theme;
         }
+        // Drop the legacy `screenCapture` shortcut field carried over from the
+        // removed screen-analysis feature so it doesn't linger in disk storage.
+        if ('screenCapture' in merged.shortcuts) {
+          delete (merged.shortcuts as Record<string, unknown>).screenCapture;
+        }
         set({ settings: merged, _hydrated: true });
       } else {
         set({ _hydrated: true });

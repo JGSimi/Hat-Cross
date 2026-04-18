@@ -23,16 +23,6 @@
         "transparent": false,
         "visible": true,
         "url": "/main"
-      },
-      {
-        "label": "analysis",
-        "title": "Hat - Análise de Tela",
-        "width": 1000,
-        "height": 700,
-        "decorations": false,
-        "transparent": false,
-        "visible": false,
-        "url": "/analysis"
       }
     ],
     "trayIcon": {

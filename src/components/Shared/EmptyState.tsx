@@ -23,7 +23,6 @@ export default function EmptyState({ onSuggestionClick }: Props) {
 
   const shortcuts = [
     { keys: formatShortcut(shortcutSettings.clipboard, platform), label: 'Clipboard' },
-    { keys: formatShortcut(shortcutSettings.screenCapture, platform), label: 'Tela' },
   ];
 
   return (

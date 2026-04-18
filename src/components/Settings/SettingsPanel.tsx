@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import WindowControls from '../Shared/WindowControls';
 import { usePlatform } from '../../hooks/usePlatform';
-import AccountCard from './cards/AccountCard';
+import AccountHeader from './AccountHeader';
 import AppearanceCard from './cards/AppearanceCard';
 import AICard from './cards/AICard';
 import ClipboardCard from './cards/ClipboardCard';
@@ -86,6 +86,25 @@ export default function SettingsPanel({ onClose }: Props) {
           zIndex: 1,
         }}
       >
+        <div
+          style={{
+            position: 'sticky',
+            top: -16,
+            zIndex: 5,
+            marginTop: -16,
+            marginLeft: -16,
+            marginRight: -16,
+            marginBottom: 12,
+            paddingTop: 16,
+            paddingLeft: 16,
+            paddingRight: 16,
+            paddingBottom: 12,
+            background: 'var(--bg-primary)',
+            borderBottom: '0.5px solid var(--border-subtle)',
+          }}
+        >
+          <AccountHeader />
+        </div>
         <motion.div
           layout
           style={{
@@ -95,7 +114,6 @@ export default function SettingsPanel({ onClose }: Props) {
             alignItems: 'start',
           }}
         >
-          <AccountCard />
           <AppearanceCard />
           <AICard />
           <ClipboardCard />

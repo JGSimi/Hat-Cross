@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Brain,
-  Camera,
   Check,
   Clipboard as ClipboardIcon,
   Coins,
@@ -350,12 +349,6 @@ function ShortcutsStep({ platform }: { platform: Platform }) {
       title: 'Processar clipboard',
       desc: 'Copia um texto, aperta o atalho, a IA responde',
       keys: formatShortcut(settings.shortcuts.clipboard, platform),
-    },
-    {
-      icon: Camera,
-      title: 'Analisar tela',
-      desc: 'Print da tela + análise da IA em um passo',
-      keys: formatShortcut(settings.shortcuts.screenCapture, platform),
     },
   ];
 

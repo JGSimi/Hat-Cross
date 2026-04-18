@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, type KeyboardEvent } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Send, Square } from 'lucide-react';
+import { Send, Square } from 'lucide-react';
 import AttachmentPreview from './AttachmentPreview';
 import ModeSelector from './ModeSelector';
 import type { ChatAttachment } from '../../types';
@@ -11,7 +11,6 @@ import { formatDraftAge } from '../../utils/markdown';
 interface Props {
   onSend: (text: string, images?: string[]) => void;
   onCancel: () => void;
-  onScreenCapture?: () => void;
   isStreaming: boolean;
   attachments: ChatAttachment[];
   onRemoveAttachment: (id: string) => void;
@@ -20,7 +19,7 @@ interface Props {
 }
 
 export default function InputArea({
-  onSend, onCancel, onScreenCapture, isStreaming,
+  onSend, onCancel, isStreaming,
   attachments, onRemoveAttachment, onAddAttachment, conversationId,
 }: Props) {
   const [text, setText] = useState('');
@@ -169,21 +168,6 @@ export default function InputArea({
           display: 'flex', alignItems: 'flex-end', gap: 6,
         }}
       >
-        {onScreenCapture && (
-          <motion.button
-            whileHover={{ scale: 1.1, color: 'var(--text-soft)' }}
-            whileTap={{ scale: 0.9 }}
-            onClick={onScreenCapture}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              padding: 4, display: 'flex', alignItems: 'center',
-              color: 'var(--text-faint)', flexShrink: 0, borderRadius: 6,
-            }}
-            aria-label="Capturar tela"
-          >
-            <Camera size={16} />
-          </motion.button>
-        )}
         <textarea
           ref={textareaRef}
           value={text}

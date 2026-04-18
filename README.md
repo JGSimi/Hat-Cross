@@ -28,8 +28,9 @@ Se o SmartScreen aparecer, clique **Mais informações** -> **Executar mesmo ass
 
 - **Multi-provider AI**: Google Gemini, OpenAI, Anthropic Claude, Inception Mercury, OpenRouter, Custom, Ollama local
 - **Popover flutuante**: chat rápido que fica sempre visível (não fecha ao perder foco)
-- **Análise de tela**: captura tela e envia para IA com análise proativa (Cmd/Ctrl+Shift+Z)
 - **Clipboard processing**: lê clipboard, processa com IA, devolve resposta (Cmd/Ctrl+Shift+X)
+- **Flash Mode**: resposta do clipboard "piscada" discretamente na tela em vez de notificação do sistema
+- **Fechamento de emergência**: atalho global (Cmd/Ctrl+Shift+Q) fecha o Hat completamente mesmo sem foco
 - **Stealth Mode**: popover quase invisível, aparece ao passar o mouse
 - **9 temas de cor**: Indigo, Azul, Roxo, Rosa, Vermelho, Laranja, Verde, Teal, Mono
 - **Auto-update**: o app verifica e instala atualizações automaticamente

@@ -7,7 +7,6 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
 import { AnimatePresence, motion } from 'framer-motion';
 import MainPage from './pages/MainPage';
-import AnalysisPage from './pages/AnalysisPage';
 import PopoverPage from './pages/PopoverPage';
 import FlashPage from './pages/FlashPage';
 import HorseLogo from './components/Shared/HorseLogo';
@@ -111,29 +110,29 @@ function App() {
   // Only in the main window — each Tauri window boots its own App instance, and
   // double-registering the same accelerator races on Linux/Windows (the second
   // call clobbers the first handler) and spawns duplicate listeners on macOS.
-  const registeredShortcuts = useRef<{ clipboard: string; screenCapture: string; floatingChat: string; adjustFlashPosition: string }>({ clipboard: '', screenCapture: '', floatingChat: '', adjustFlashPosition: '' });
+  const registeredShortcuts = useRef<{ clipboard: string; floatingChat: string; adjustFlashPosition: string; emergencyQuit: string }>({ clipboard: '', floatingChat: '', adjustFlashPosition: '', emergencyQuit: '' });
   useEffect(() => {
     if (!isMainWindow) return;
     const prev = registeredShortcuts.current;
 
     async function registerShortcuts() {
       const clipShortcut = normalizeShortcut(shortcuts.clipboard);
-      const captureShortcut = normalizeShortcut(shortcuts.screenCapture);
       const floatingChatShortcut = normalizeShortcut(shortcuts.floatingChat);
       const adjustFlashShortcut = normalizeShortcut(shortcuts.adjustFlashPosition);
+      const emergencyQuitShortcut = normalizeShortcut(shortcuts.emergencyQuit);
 
       // Unregister old shortcuts if they changed
       if (prev.clipboard && prev.clipboard !== clipShortcut) {
         try { await unregister(prev.clipboard); } catch {}
-      }
-      if (prev.screenCapture && prev.screenCapture !== captureShortcut) {
-        try { await unregister(prev.screenCapture); } catch {}
       }
       if (prev.floatingChat && prev.floatingChat !== floatingChatShortcut) {
         try { await unregister(prev.floatingChat); } catch {}
       }
       if (prev.adjustFlashPosition && prev.adjustFlashPosition !== adjustFlashShortcut) {
         try { await unregister(prev.adjustFlashPosition); } catch {}
+      }
+      if (prev.emergencyQuit && prev.emergencyQuit !== emergencyQuitShortcut) {
+        try { await unregister(prev.emergencyQuit); } catch {}
       }
 
       // Register clipboard shortcut
@@ -146,19 +145,6 @@ function App() {
         } catch (e) {
           console.error('Failed to register clipboard shortcut:', e);
           prev.clipboard = '';
-        }
-      }
-
-      // Register screen capture shortcut
-      if (captureShortcut && captureShortcut !== prev.screenCapture) {
-        try {
-          await register(captureShortcut, () => {
-            invoke('open_analysis_window').catch(() => {});
-          });
-          prev.screenCapture = captureShortcut;
-        } catch (e) {
-          console.error('Failed to register screen capture shortcut:', e);
-          prev.screenCapture = '';
         }
       }
 
@@ -199,17 +185,38 @@ function App() {
           prev.adjustFlashPosition = '';
         }
       }
+
+      // Emergency quit — flush pending saves then exit. Works without the app
+      // being focused so the user can kill it from anywhere.
+      if (emergencyQuitShortcut && emergencyQuitShortcut !== prev.emergencyQuit) {
+        try {
+          await register(emergencyQuitShortcut, async () => {
+            try {
+              flushPendingSave();
+              await useConversationStore.getState().saveConversations();
+              await useSettingsStore.getState().saveSettings();
+            } catch (e) {
+              console.error('[emergency-quit] flush failed:', e);
+            }
+            invoke('quit_app').catch(() => {});
+          });
+          prev.emergencyQuit = emergencyQuitShortcut;
+        } catch (e) {
+          console.error('Failed to register emergency-quit shortcut:', e);
+          prev.emergencyQuit = '';
+        }
+      }
     }
 
     registerShortcuts();
 
     return () => {
       if (prev.clipboard) { unregister(prev.clipboard).catch(() => {}); prev.clipboard = ''; }
-      if (prev.screenCapture) { unregister(prev.screenCapture).catch(() => {}); prev.screenCapture = ''; }
       if (prev.floatingChat) { unregister(prev.floatingChat).catch(() => {}); prev.floatingChat = ''; }
       if (prev.adjustFlashPosition) { unregister(prev.adjustFlashPosition).catch(() => {}); prev.adjustFlashPosition = ''; }
+      if (prev.emergencyQuit) { unregister(prev.emergencyQuit).catch(() => {}); prev.emergencyQuit = ''; }
     };
-  }, [shortcuts.clipboard, shortcuts.screenCapture, shortcuts.floatingChat, shortcuts.adjustFlashPosition, isMainWindow]);
+  }, [shortcuts.clipboard, shortcuts.floatingChat, shortcuts.adjustFlashPosition, shortcuts.emergencyQuit, isMainWindow]);
 
   // Flash position persistence — listens for the save event emitted by the
   // /flash route in adjust mode. Global so it works whether the user triggered
@@ -681,7 +688,6 @@ function App() {
 
       <Routes>
         <Route path="/main" element={<MainPage />} />
-        <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="/popover" element={<PopoverPage />} />
         <Route path="/flash" element={<FlashPage />} />
         <Route path="*" element={<Navigate to="/main" replace />} />

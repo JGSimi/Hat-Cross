@@ -205,7 +205,7 @@ export default function MainLayout() {
               transition={{ duration: 0.2, ease: 'easeInOut' }}
               style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}
             >
-              <ChatWindow showScreenCapture />
+              <ChatWindow />
             </motion.div>
           )}
         </AnimatePresence>

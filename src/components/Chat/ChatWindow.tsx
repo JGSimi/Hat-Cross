@@ -5,36 +5,16 @@ import InputArea from './InputArea';
 import { useChat } from '../../hooks/useChat';
 import { useChatStore } from '../../stores/chatStore';
 import { useConversationStore } from '../../stores/conversationStore';
-import { useScreenCapture } from '../../hooks/useScreenCapture';
-import { generateId } from '../../utils/markdown';
 import EmptyState from '../Shared/EmptyState';
 
-interface Props {
-  showScreenCapture?: boolean;
-}
-
-export default function ChatWindow({ showScreenCapture = true }: Props) {
+export default function ChatWindow() {
   const {
     messages, isStreaming, streamingContent, streamingThinking, sendMessage, cancel,
     isNearContextLimit, isAtContextLimit, contextUsage, maxContextMessages,
   } = useChat();
   const { pendingAttachments, removeAttachment, addAttachment, error } = useChatStore();
-  const { captureScreen } = useScreenCapture();
   const createConversation = useConversationStore((s) => s.createConversation);
   const activeConversationId = useConversationStore((s) => s.activeConversationId);
-
-  const handleScreenCapture = async () => {
-    const base64 = await captureScreen();
-    if (base64) {
-      addAttachment({
-        id: generateId(),
-        name: 'Screenshot',
-        data: base64,
-        content: null,
-        isImage: true,
-      });
-    }
-  };
 
   const handleNewChat = () => {
     useChatStore.getState().clearMessages();
@@ -216,7 +196,6 @@ export default function ChatWindow({ showScreenCapture = true }: Props) {
       <InputArea
         onSend={sendMessage}
         onCancel={cancel}
-        onScreenCapture={showScreenCapture ? handleScreenCapture : undefined}
         isStreaming={isStreaming}
         attachments={pendingAttachments}
         onRemoveAttachment={removeAttachment}
