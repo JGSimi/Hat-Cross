@@ -89,9 +89,16 @@ jobs:
             args: '--target aarch64-apple-darwin'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
-          - platform: 'ubuntu-22.04'
+          # Ubuntu 24.04 (not 22.04): binaries built on 22.04 link against
+          # glibc 2.35 / libglib 2.72 and panic on startup when run on modern
+          # distros like Fedora 43+ (glibc 2.40, libglib 2.84) — the panic
+          # surfaces inside `glib::main_context_channel::dispatch`, but the
+          # root cause is ABI drift between build-time and runtime glib.
+          # 24.04 ships glibc 2.39 / libglib 2.80 which stays compatible with
+          # current distros. Do not downgrade without re-testing on Fedora/Arch.
+          - platform: 'ubuntu-24.04'
             args: ''
-          - platform: 'ubuntu-22.04-arm'
+          - platform: 'ubuntu-24.04-arm'
             args: ''
           - platform: 'windows-latest'
             args: ''
