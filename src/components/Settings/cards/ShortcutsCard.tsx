@@ -13,6 +13,7 @@ export default function ShortcutsCard() {
     settings.shortcuts.clipboard,
     settings.shortcuts.screenCapture,
     settings.shortcuts.floatingChat,
+    settings.shortcuts.adjustFlashPosition,
   ].filter((s) => s && s.trim().length > 0).length;
   const preview = `${shortcutCount} definidos`;
 
@@ -36,6 +37,16 @@ export default function ShortcutsCard() {
           onChange={(v) =>
             updateSettings({
               shortcuts: { ...settings.shortcuts, screenCapture: v },
+            })
+          }
+        />
+      </SettingRow>
+      <SettingRow label="Ajustar posição do flash">
+        <ShortcutRecorder
+          value={settings.shortcuts.adjustFlashPosition}
+          onChange={(v) =>
+            updateSettings({
+              shortcuts: { ...settings.shortcuts, adjustFlashPosition: v },
             })
           }
         />

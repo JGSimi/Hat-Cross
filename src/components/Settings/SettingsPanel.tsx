@@ -6,6 +6,7 @@ import AccountCard from './cards/AccountCard';
 import AppearanceCard from './cards/AppearanceCard';
 import AICard from './cards/AICard';
 import ClipboardCard from './cards/ClipboardCard';
+import FlashCard from './cards/FlashCard';
 import PopoverCard from './cards/PopoverCard';
 import ShortcutsCard from './cards/ShortcutsCard';
 import NotificationsCard from './cards/NotificationsCard';
@@ -98,6 +99,7 @@ export default function SettingsPanel({ onClose }: Props) {
           <AppearanceCard />
           <AICard />
           <ClipboardCard />
+          <FlashCard />
           <PopoverCard />
           <ShortcutsCard />
           <NotificationsCard />

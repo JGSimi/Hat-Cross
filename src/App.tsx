@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import MainPage from './pages/MainPage';
 import AnalysisPage from './pages/AnalysisPage';
 import PopoverPage from './pages/PopoverPage';
+import FlashPage from './pages/FlashPage';
 import HorseLogo from './components/Shared/HorseLogo';
 import ToastContainer from './components/Shared/ToastContainer';
 import { useSettingsStore, setupSettingsSync } from './stores/settingsStore';
@@ -85,6 +86,9 @@ function App() {
     // the 5-min cycle N times in parallel.
     if (getCurrentWindow().label === 'main') {
       startAutoUpdater();
+      // Pre-create the (hidden) flash window so typewriter mode has a live
+      // webview listening to `chat-stream` before the first stream begins.
+      invoke('flash_ensure').catch((e) => console.error('[flash] ensure failed:', e));
     }
 
     // Flush pending saves on window close to prevent data loss
@@ -107,7 +111,7 @@ function App() {
   // Only in the main window — each Tauri window boots its own App instance, and
   // double-registering the same accelerator races on Linux/Windows (the second
   // call clobbers the first handler) and spawns duplicate listeners on macOS.
-  const registeredShortcuts = useRef<{ clipboard: string; screenCapture: string; floatingChat: string }>({ clipboard: '', screenCapture: '', floatingChat: '' });
+  const registeredShortcuts = useRef<{ clipboard: string; screenCapture: string; floatingChat: string; adjustFlashPosition: string }>({ clipboard: '', screenCapture: '', floatingChat: '', adjustFlashPosition: '' });
   useEffect(() => {
     if (!isMainWindow) return;
     const prev = registeredShortcuts.current;
@@ -116,6 +120,7 @@ function App() {
       const clipShortcut = normalizeShortcut(shortcuts.clipboard);
       const captureShortcut = normalizeShortcut(shortcuts.screenCapture);
       const floatingChatShortcut = normalizeShortcut(shortcuts.floatingChat);
+      const adjustFlashShortcut = normalizeShortcut(shortcuts.adjustFlashPosition);
 
       // Unregister old shortcuts if they changed
       if (prev.clipboard && prev.clipboard !== clipShortcut) {
@@ -126,6 +131,9 @@ function App() {
       }
       if (prev.floatingChat && prev.floatingChat !== floatingChatShortcut) {
         try { await unregister(prev.floatingChat); } catch {}
+      }
+      if (prev.adjustFlashPosition && prev.adjustFlashPosition !== adjustFlashShortcut) {
+        try { await unregister(prev.adjustFlashPosition); } catch {}
       }
 
       // Register clipboard shortcut
@@ -173,6 +181,24 @@ function App() {
           prev.floatingChat = '';
         }
       }
+
+      // Register "Adjust Flash Position" shortcut — opens the flash window in
+      // adjust mode straight from wherever the user is, so they don't need to
+      // dig into Settings to retune the on-screen spot.
+      if (adjustFlashShortcut && adjustFlashShortcut !== prev.adjustFlashPosition) {
+        try {
+          await register(adjustFlashShortcut, () => {
+            const pos = useSettingsStore.getState().settings.clipboard.flash.position;
+            invoke('flash_enter_adjust_mode', {
+              position: { x: pos.x, y: pos.y },
+            }).catch((e) => console.error('[flash] enter adjust via shortcut failed:', e));
+          });
+          prev.adjustFlashPosition = adjustFlashShortcut;
+        } catch (e) {
+          console.error('Failed to register adjust-flash shortcut:', e);
+          prev.adjustFlashPosition = '';
+        }
+      }
     }
 
     registerShortcuts();
@@ -181,8 +207,33 @@ function App() {
       if (prev.clipboard) { unregister(prev.clipboard).catch(() => {}); prev.clipboard = ''; }
       if (prev.screenCapture) { unregister(prev.screenCapture).catch(() => {}); prev.screenCapture = ''; }
       if (prev.floatingChat) { unregister(prev.floatingChat).catch(() => {}); prev.floatingChat = ''; }
+      if (prev.adjustFlashPosition) { unregister(prev.adjustFlashPosition).catch(() => {}); prev.adjustFlashPosition = ''; }
     };
-  }, [shortcuts.clipboard, shortcuts.screenCapture, shortcuts.floatingChat, isMainWindow]);
+  }, [shortcuts.clipboard, shortcuts.screenCapture, shortcuts.floatingChat, shortcuts.adjustFlashPosition, isMainWindow]);
+
+  // Flash position persistence — listens for the save event emitted by the
+  // /flash route in adjust mode. Global so it works whether the user triggered
+  // adjust from Settings or via the global shortcut.
+  useEffect(() => {
+    if (!isMainWindow) return;
+    const unlisten = listen<{ x: number; y: number }>('flash-position-saved', (event) => {
+      const current = useSettingsStore.getState().settings;
+      useSettingsStore.getState().updateSettings({
+        clipboard: {
+          ...current.clipboard,
+          flash: {
+            ...current.clipboard.flash,
+            position: {
+              ...current.clipboard.flash.position,
+              x: event.payload.x,
+              y: event.payload.y,
+            },
+          },
+        },
+      });
+    });
+    return () => { unlisten.then((fn) => fn()); };
+  }, [isMainWindow]);
 
   // Tray menu events
   useEffect(() => {
@@ -346,8 +397,13 @@ function App() {
           return;
         }
 
-        // Notify processing started
-        if (settings.notifications.enabled && settings.notifications.showProcessingNotification) {
+        // Notify processing started — suppressed when Flash Mode is enabled
+        // (the flash itself is the user-facing signal).
+        if (
+          !clip.flash.enabled &&
+          settings.notifications.enabled &&
+          settings.notifications.showProcessingNotification
+        ) {
           const hasImage = clipImages.length > 0;
           const preview = clipText
             ? (clipText.length > 80 ? clipText.slice(0, 80) + '...' : clipText)
@@ -418,9 +474,23 @@ function App() {
                     .catch((e) => console.error('[clipboard] writeText failed:', e));
                 }
 
-                // Notification with full response text
+                // Response delivery: Flash Mode replaces the system notification
+                // when enabled (typewriter streams are pre-armed before
+                // stream_chat_hat, so we only show non-typewriter modes here).
                 const currentNotif = useSettingsStore.getState().settings.notifications;
-                if (currentNotif.enabled && currentNotif.showResponseNotification) {
+                const currentFlash = useSettingsStore.getState().settings.clipboard.flash;
+                if (currentFlash.enabled) {
+                  if (currentFlash.timing.mode !== 'typewriter') {
+                    const preview = finalResponse.slice(0, currentFlash.previewLength);
+                    invoke('flash_show', {
+                      text: preview,
+                      position: currentFlash.position,
+                      timing: currentFlash.timing,
+                      appearance: currentFlash.appearance,
+                      streamId,
+                    }).catch((e) => console.error('[flash] show failed:', e));
+                  }
+                } else if (currentNotif.enabled && currentNotif.showResponseNotification) {
                   const notifBody = finalResponse.length > 500
                     ? finalResponse.slice(0, 500) + '...'
                     : finalResponse;
@@ -468,6 +538,18 @@ function App() {
             }
           },
         );
+
+        // Typewriter flash mode: pre-show the (empty) flash window now so the
+        // FlashPage's chat-stream listener is mounted before chunks start.
+        if (clip.flash.enabled && clip.flash.timing.mode === 'typewriter') {
+          invoke('flash_show', {
+            text: '',
+            position: clip.flash.position,
+            timing: clip.flash.timing,
+            appearance: clip.flash.appearance,
+            streamId,
+          }).catch((e) => console.error('[flash] typewriter pre-show failed:', e));
+        }
 
         await invoke('stream_chat_hat', {
           streamId,
@@ -601,6 +683,7 @@ function App() {
         <Route path="/main" element={<MainPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="/popover" element={<PopoverPage />} />
+        <Route path="/flash" element={<FlashPage />} />
         <Route path="*" element={<Navigate to="/main" replace />} />
       </Routes>
 

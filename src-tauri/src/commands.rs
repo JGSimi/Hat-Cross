@@ -1,6 +1,40 @@
-use tauri::AppHandle;
+use serde::Serialize;
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
 use crate::windows;
+
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+pub struct FlashPosition {
+    pub x: i32,
+    pub y: i32,
+}
+
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FlashTiming {
+    pub mode: String,
+    pub fade_in_ms: u32,
+    pub fade_out_ms: u32,
+    pub hold_ms: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FlashAppearance {
+    pub color: String,
+    pub opacity: u32,
+    pub font_size_px: u32,
+    pub text_shadow: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FlashShowPayload {
+    pub text: String,
+    pub timing: FlashTiming,
+    pub appearance: FlashAppearance,
+    pub stream_id: u64,
+}
 
 // Post-BYOK: the in-memory API_KEYS HashMap and the set/get provider-key
 // commands are gone. Every LLM call now goes through the Hat proxy Worker,
@@ -90,6 +124,95 @@ pub fn quit_app(app: AppHandle) {
 #[tauri::command]
 pub fn capture_screen(app: AppHandle) -> Result<String, String> {
     capture_screen_impl(&app)
+}
+
+/// Pre-creates the flash window hidden on app startup so the webview is ready
+/// to receive `chat-stream` chunks in typewriter mode (which needs the listener
+/// mounted before the stream begins). Safe to call repeatedly.
+#[tauri::command]
+pub fn flash_ensure(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = windows::ensure_flash(&app) {
+        let _ = window.set_ignore_cursor_events(true);
+    }
+    Ok(())
+}
+
+/// Creates the flash window if missing, moves it to `position`, emits the
+/// payload on `flash-show` for the `/flash` route, then reveals the window.
+/// The window is created with `visible(false)` + `focused(false)` so this
+/// never steals focus from the user's active app.
+#[tauri::command]
+pub fn flash_show(
+    app: AppHandle,
+    text: String,
+    position: FlashPosition,
+    timing: FlashTiming,
+    appearance: FlashAppearance,
+    stream_id: u64,
+) -> Result<(), String> {
+    let window = windows::ensure_flash(&app)
+        .ok_or_else(|| "Flash window not available".to_string())?;
+
+    eprintln!(
+        "[flash] show stream={} pos={}x{} mode={} text_len={}",
+        stream_id, position.x, position.y, timing.mode, text.len()
+    );
+
+    // Position BEFORE showing so the window never flashes in its default spot.
+    let _ = window.set_ignore_cursor_events(true);
+    let _ = window.set_position(PhysicalPosition::new(position.x, position.y));
+
+    let payload = FlashShowPayload { text, timing, appearance, stream_id };
+    app.emit("flash-show", payload)
+        .map_err(|e| format!("flash-show emit failed: {}", e))?;
+
+    window.show().map_err(|e| format!("flash show failed: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn flash_hide(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("flash") {
+        let _ = window.hide();
+    }
+    Ok(())
+}
+
+/// Puts the flash window into adjust mode: creates it if needed, moves to the
+/// current saved position, disables click-through so the user can drag, and
+/// tells the frontend to render drag chrome + Save/Cancel buttons.
+#[tauri::command]
+pub fn flash_enter_adjust_mode(app: AppHandle, position: FlashPosition) -> Result<(), String> {
+    let window = windows::ensure_flash(&app)
+        .ok_or_else(|| "Flash window not available".to_string())?;
+
+    let _ = window.set_ignore_cursor_events(false);
+    let _ = window.set_position(PhysicalPosition::new(position.x, position.y));
+
+    app.emit("flash-adjust-enter", ())
+        .map_err(|e| format!("flash-adjust-enter emit failed: {}", e))?;
+    window.show().map_err(|e| format!("flash show failed: {}", e))?;
+    // Deliberately NOT calling set_focus(): doing so activates the Hat app on
+    // macOS, which steals the user's foreground context. The window is still
+    // draggable + clickable thanks to accept_first_mouse=true.
+    Ok(())
+}
+
+#[tauri::command]
+pub fn flash_exit_adjust_mode(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("flash") {
+        let _ = window.set_ignore_cursor_events(true);
+        let _ = window.hide();
+    }
+    // On macOS, hiding our window surfaces whichever Hat window was next in
+    // the z-order (main/popover), pulling the user out of their workflow.
+    // Asking the app to step back into the background restores whichever
+    // external app was frontmost before adjust mode started.
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app.hide();
+    }
+    Ok(())
 }
 
 #[cfg(target_os = "macos")]

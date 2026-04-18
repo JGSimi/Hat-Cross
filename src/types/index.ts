@@ -161,6 +161,7 @@ export interface ShortcutSettings {
   clipboard: string;
   screenCapture: string;
   floatingChat: string;
+  adjustFlashPosition: string;
 }
 
 export interface ClipboardSettings {
@@ -172,6 +173,37 @@ export interface ClipboardSettings {
   appendMode: boolean; // append response below original text
   soundOnComplete: boolean;
   captureImages: boolean; // also read images from clipboard
+  flash: FlashSettings;
+}
+
+export type FlashTimingMode = 'instant' | 'fade' | 'typewriter';
+
+export interface FlashPosition {
+  x: number;
+  y: number;
+  monitorLabel?: string;
+}
+
+export interface FlashTiming {
+  mode: FlashTimingMode;
+  fadeInMs: number;
+  fadeOutMs: number;
+  holdMs: number | null; // null = automatic (~200 WPM reading speed)
+}
+
+export interface FlashAppearance {
+  color: string; // hex; '' falls back to var(--color-accent)
+  opacity: number; // 0-100
+  fontSizePx: number;
+  textShadow: boolean;
+}
+
+export interface FlashSettings {
+  enabled: boolean;
+  previewLength: number; // 50-1000
+  position: FlashPosition;
+  timing: FlashTiming;
+  appearance: FlashAppearance;
 }
 
 export interface NotificationSettings {
@@ -224,6 +256,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     clipboard: 'CommandOrControl+Shift+X',
     screenCapture: 'CommandOrControl+Shift+Z',
     floatingChat: 'CommandOrControl+Shift+C',
+    adjustFlashPosition: 'CommandOrControl+Shift+F',
   },
   tokenStats: {
     inputTokens: 0,
@@ -239,6 +272,23 @@ export const DEFAULT_SETTINGS: AppSettings = {
     appendMode: false,
     soundOnComplete: true,
     captureImages: true,
+    flash: {
+      enabled: false,
+      previewLength: 200,
+      position: { x: 40, y: 40 },
+      timing: {
+        mode: 'fade',
+        fadeInMs: 300,
+        fadeOutMs: 500,
+        holdMs: null,
+      },
+      appearance: {
+        color: '',
+        opacity: 35,
+        fontSizePx: 14,
+        textShadow: true,
+      },
+    },
   },
   notifications: {
     enabled: true,

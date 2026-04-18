@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default capabilities for Hat",
-  "windows": ["popover", "main", "analysis"],
+  "windows": ["popover", "main", "analysis", "flash"],
   "permissions": [
     "core:default",
     "clipboard-manager:allow-read-text",
@@ -50,6 +50,11 @@
     "core:window:allow-minimize",
     "core:window:allow-toggle-maximize",
     "core:window:allow-start-dragging",
-    "core:window:allow-is-maximized"
+    "core:window:allow-is-maximized",
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
+    "core:window:allow-set-ignore-cursor-events",
+    "core:window:allow-show",
+    "core:window:allow-hide"
   ]
 }
