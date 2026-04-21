@@ -542,7 +542,7 @@ function TierPills({
                   padding: '2px 6px',
                   borderRadius: '0 9px 0 7px',
                   background: 'var(--color-accent)',
-                  color: 'white',
+                  color: 'var(--on-accent)',
                   letterSpacing: 0.4,
                   textTransform: 'uppercase',
                 }}
@@ -794,7 +794,7 @@ function SignedOutGate({
           fontSize: 13,
           fontWeight: 600,
           background: 'var(--color-accent)',
-          color: 'white',
+          color: 'var(--on-accent)',
           border: 'none',
           cursor: isSigningIn ? 'default' : 'pointer',
           opacity: isSigningIn ? 0.75 : 1,

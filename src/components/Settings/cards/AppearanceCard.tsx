@@ -1,108 +1,69 @@
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Palette } from 'lucide-react';
-import { invoke } from '@tauri-apps/api/core';
-import { getVersion } from '@tauri-apps/api/app';
+import { motion } from 'framer-motion';
 import SettingsCard from './SettingsCard';
 import ThemePicker from '../ThemePicker';
-import { SubHeading, SettingRow, Toggle } from './primitives';
+import { Section } from './primitives';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import { THEME_PRESETS } from '../../../types';
 
-type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'uptodate' | 'error';
-
 export default function AppearanceCard() {
-  const { settings, updateSettings, setTheme } = useSettingsStore();
-  const [version, setVersion] = useState('');
-  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle');
-  const [updateProgress, setUpdateProgress] = useState(0);
-
-  useEffect(() => {
-    getVersion().then(setVersion).catch(() => setVersion('2.0.0'));
-  }, []);
-
-  const themeLabel = THEME_PRESETS.find((t) => t.name === settings.theme)?.label ?? settings.theme;
-
-  const handleCheckUpdate = async () => {
-    setUpdateStatus('checking');
-    try {
-      const { check } = await import('@tauri-apps/plugin-updater');
-      const update = await check();
-      if (update) {
-        setUpdateStatus('downloading');
-        let downloaded = 0;
-        let contentLength = 0;
-        await update.downloadAndInstall((event) => {
-          if (event.event === 'Started') contentLength = event.data.contentLength ?? 0;
-          if (event.event === 'Progress') {
-            downloaded += event.data.chunkLength;
-            if (contentLength > 0) setUpdateProgress(Math.round((downloaded / contentLength) * 100));
-          }
-        });
-        await useSettingsStore.getState().saveSettings();
-        const { relaunch } = await import('@tauri-apps/plugin-process');
-        await relaunch();
-      } else {
-        setUpdateStatus('uptodate');
-        setTimeout(() => setUpdateStatus('idle'), 3000);
-      }
-    } catch (e) {
-      console.error('Update check failed:', e);
-      setUpdateStatus('error');
-      setTimeout(() => setUpdateStatus('idle'), 3000);
-    }
-  };
+  const { settings, setTheme } = useSettingsStore();
+  const active = THEME_PRESETS.find((t) => t.name === settings.theme) ?? THEME_PRESETS[0];
 
   return (
     <SettingsCard
       title="Aparência"
       icon={<Palette size={14} strokeWidth={2} />}
-      preview={themeLabel}
+      preview={active.label}
     >
-      <SubHeading>Tema</SubHeading>
-      <ThemePicker current={settings.theme} onChange={setTheme} />
+      {/* Current theme — living preview of the selected palette */}
+      <motion.div
+        layoutId="theme-current-preview"
+        className="theme-current"
+        style={{
+          background: `linear-gradient(135deg, ${active.bgPrimary} 0%, ${active.bgSecondary} 100%)`,
+          borderColor: `color-mix(in srgb, ${active.primary} 28%, var(--border-subtle))`,
+          boxShadow: `0 6px 20px -10px color-mix(in srgb, ${active.primary} 45%, transparent)`,
+        }}
+      >
+        <div className="theme-current__bar" aria-hidden>
+          <i style={{ background: '#FF5F57' }} />
+          <i style={{ background: '#FEBC2E' }} />
+          <i style={{ background: '#28C840' }} />
+        </div>
+        <div className="theme-current__body">
+          <div className="theme-current__meta">
+            <div className="theme-current__label" style={{ color: active.textPrimary }}>
+              {active.label}
+            </div>
+            <div className="theme-current__sub" style={{ color: active.textMuted }}>
+              Tema atual
+            </div>
+          </div>
+          <div className="theme-current__palette">
+            <motion.span
+              layoutId="theme-current-accent"
+              className="theme-current__chip"
+              style={{
+                background: active.primary,
+                boxShadow: `0 0 12px color-mix(in srgb, ${active.primary} 55%, transparent)`,
+              }}
+            />
+            <span
+              className="theme-current__chip theme-current__chip--sm"
+              style={{ background: active.hover }}
+            />
+            <span
+              className="theme-current__chip theme-current__chip--sm"
+              style={{ background: active.textSecondary, opacity: 0.8 }}
+            />
+          </div>
+        </div>
+      </motion.div>
 
-      <SubHeading>Sistema</SubHeading>
-      <SettingRow label="Iniciar com o sistema">
-        <Toggle
-          checked={settings.autoLaunch}
-          onChange={(v) => {
-            updateSettings({ autoLaunch: v });
-            invoke('set_autostart', { enabled: v }).catch(console.error);
-          }}
-        />
-      </SettingRow>
-
-      <SubHeading>Atualizações</SubHeading>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={handleCheckUpdate}
-          disabled={updateStatus === 'checking' || updateStatus === 'downloading'}
-          style={{
-            padding: '6px 14px',
-            borderRadius: 8,
-            fontSize: 11,
-            fontWeight: 500,
-            background: 'var(--color-accent)',
-            color: 'white',
-            border: 'none',
-            cursor: updateStatus === 'checking' || updateStatus === 'downloading' ? 'default' : 'pointer',
-            opacity: updateStatus === 'checking' || updateStatus === 'downloading' ? 0.5 : 1,
-            transition: 'opacity 0.15s ease',
-          }}
-        >
-          {updateStatus === 'checking' ? 'Verificando...' :
-           updateStatus === 'downloading' ? `Baixando ${updateProgress}%` :
-           updateStatus === 'uptodate' ? 'Atualizado!' :
-           updateStatus === 'error' ? 'Erro ao verificar' :
-           'Verificar atualizações'}
-        </motion.button>
-        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-          Hat v{version}
-        </span>
-      </div>
+      <Section title="Temas" meta={`${THEME_PRESETS.length} disponíveis`}>
+        <ThemePicker current={settings.theme} onChange={setTheme} />
+      </Section>
     </SettingsCard>
   );
 }

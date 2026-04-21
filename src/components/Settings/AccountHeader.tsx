@@ -46,17 +46,7 @@ function CountUp({ value, reducedMotion }: { value: number; reducedMotion: boole
 }
 
 function Divider() {
-  return (
-    <div
-      aria-hidden
-      style={{
-        width: 1,
-        alignSelf: 'stretch',
-        background: 'var(--border-subtle)',
-        flexShrink: 0,
-      }}
-    />
-  );
+  return <div aria-hidden className="account-header__divider" />;
 }
 
 export default function AccountHeader() {
@@ -78,6 +68,7 @@ export default function AccountHeader() {
   if (!user) {
     return (
       <div
+        className="account-header"
         style={{
           background: 'var(--surface-primary)',
           border: '0.5px solid var(--border-subtle)',
@@ -154,7 +145,7 @@ export default function AccountHeader() {
             padding: '8px 14px',
             borderRadius: 9,
             background: 'var(--color-accent)',
-            color: 'white',
+            color: 'var(--on-accent)',
             border: 'none',
             fontSize: 11.5,
             fontWeight: 600,
@@ -190,27 +181,17 @@ export default function AccountHeader() {
   return (
     <>
       <div
+        className="account-header"
         style={{
           background: 'var(--surface-primary)',
           border: '0.5px solid var(--border-subtle)',
           borderRadius: 12,
           padding: '12px 14px',
-          display: 'flex',
-          alignItems: 'stretch',
-          gap: 14,
-          minHeight: 92,
         }}
       >
+        <div className="account-header__inner">
         {/* LEFT COLUMN: identity (top) + model picker (bottom) */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-            minWidth: 0,
-            flex: '1 1 0',
-          }}
-        >
+        <div className="account-header__left">
         {/* 1. Identity */}
         <div
           style={{
@@ -422,21 +403,7 @@ export default function AccountHeader() {
         <Divider />
 
         {/* RIGHT COLUMN: Balance — stretched, PIX at the bottom */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '10px 14px',
-            borderRadius: 10,
-            background:
-              'linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 14%, transparent) 0%, color-mix(in srgb, var(--color-accent) 4%, transparent) 100%)',
-            border: '0.5px solid color-mix(in srgb, var(--color-accent) 22%, transparent)',
-            minWidth: 0,
-            flex: '1 1 220px',
-            alignSelf: 'stretch',
-            gap: 8,
-          }}
-        >
+        <div className="account-header__balance">
           <div
             style={{
               fontSize: 9,
@@ -482,7 +449,7 @@ export default function AccountHeader() {
               padding: '8px 12px',
               borderRadius: 8,
               background: 'var(--color-accent)',
-              color: 'white',
+              color: 'var(--on-accent)',
               border: 'none',
               fontSize: 11.5,
               fontWeight: 600,
@@ -494,6 +461,7 @@ export default function AccountHeader() {
           >
             <CreditCard size={13} /> Recarregar via PIX
           </motion.button>
+        </div>
         </div>
       </div>
 

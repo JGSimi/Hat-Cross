@@ -3,12 +3,12 @@ import { ArrowLeft } from 'lucide-react';
 import WindowControls from '../Shared/WindowControls';
 import { usePlatform } from '../../hooks/usePlatform';
 import AccountHeader from './AccountHeader';
+import GeneralCard from './cards/GeneralCard';
 import AppearanceCard from './cards/AppearanceCard';
 import AICard from './cards/AICard';
 import ClipboardCard from './cards/ClipboardCard';
 import FlashCard from './cards/FlashCard';
 import PopoverCard from './cards/PopoverCard';
-import ShortcutsCard from './cards/ShortcutsCard';
 import NotificationsCard from './cards/NotificationsCard';
 
 interface Props {
@@ -76,8 +76,9 @@ export default function SettingsPanel({ onClose }: Props) {
         {platform !== 'macos' && <WindowControls variant="header" />}
       </div>
 
-      {/* Cards grid */}
+      {/* Cards grid — container-query driven breakpoints */}
       <div
+        className="settings-scroll"
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -105,21 +106,13 @@ export default function SettingsPanel({ onClose }: Props) {
         >
           <AccountHeader />
         </div>
-        <motion.div
-          layout
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            gap: 12,
-            alignItems: 'start',
-          }}
-        >
+        <motion.div layout className="settings-grid">
+          <GeneralCard />
           <AppearanceCard />
           <AICard />
           <ClipboardCard />
           <FlashCard />
           <PopoverCard />
-          <ShortcutsCard />
           <NotificationsCard />
         </motion.div>
       </div>

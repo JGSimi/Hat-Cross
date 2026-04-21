@@ -1,28 +1,110 @@
 import React, { useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import { usePlatform } from '../../../hooks/usePlatform';
 import { formatShortcut } from '../../../utils/formatShortcut';
 
-// ---- SubHeading ---------------------------------------------------------
+// =============================================================================
+// Settings primitives
+//
+// These components share layout & typography via CSS classes in `src/index.css`
+// (`.settings-*`). Keep visuals there so the cards themselves stay declarative
+// and every card picks up spacing/breakpoint changes for free.
+// =============================================================================
 
-export function SubHeading({ children }: { children: React.ReactNode }) {
+// ---- Section ---------------------------------------------------------------
+// Groups a sub-heading + rows. First section has no top margin so the card
+// body never has an awkward gap above the first label.
+
+export function Section({
+  title,
+  meta,
+  children,
+}: {
+  title?: string;
+  meta?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <h4
-      style={{
-        fontSize: 9.5,
-        fontWeight: 600,
-        color: 'color-mix(in srgb, var(--text-muted) 70%, var(--color-accent))',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        margin: '12px 0 8px',
-      }}
-    >
-      {children}
-    </h4>
+    <section className="settings-section">
+      {(title || meta) && (
+        <header className="settings-section__head">
+          {title && <h4 className="settings-section__title">{title}</h4>}
+          {meta && <span className="settings-section__meta">{meta}</span>}
+        </header>
+      )}
+      <div className="settings-section__body">{children}</div>
+    </section>
   );
 }
 
-// ---- SettingRow ---------------------------------------------------------
+// ---- Row -------------------------------------------------------------------
+// Label + control on one line; label flex-grows so the control never pushes it
+// into an ugly 3-line wrap on narrow cards.
+
+export function Row({
+  label,
+  hint,
+  children,
+  align = 'center',
+}: {
+  label?: React.ReactNode;
+  hint?: React.ReactNode;
+  children: React.ReactNode;
+  align?: 'center' | 'start';
+}) {
+  return (
+    <div className="settings-row">
+      <div
+        className="settings-row__main"
+        style={{ alignItems: align === 'start' ? 'flex-start' : 'center' }}
+      >
+        {label !== undefined && (
+          <label className="settings-row__label">{label}</label>
+        )}
+        <div className="settings-row__control">{children}</div>
+      </div>
+      {hint && <p className="settings-row__hint">{hint}</p>}
+    </div>
+  );
+}
+
+// ---- StackRow --------------------------------------------------------------
+// Label + optional value chip on top, content (e.g. slider) on bottom full
+// width. Ideal for range controls that need breathing room.
+
+export function StackRow({
+  label,
+  value,
+  hint,
+  children,
+}: {
+  label: React.ReactNode;
+  value?: React.ReactNode;
+  hint?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="settings-row">
+      <div className="settings-row__stackhead">
+        <label className="settings-row__label">{label}</label>
+        {value !== undefined && (
+          <span className="settings-row__value">{value}</span>
+        )}
+      </div>
+      <div className="settings-row__stackbody">{children}</div>
+      {hint && <p className="settings-row__hint">{hint}</p>}
+    </div>
+  );
+}
+
+// ---- SubHeading (back-compat shim) ----------------------------------------
+// Kept so any stray usage still compiles. Prefer `<Section>`.
+
+export function SubHeading({ children }: { children: React.ReactNode }) {
+  return <h4 className="settings-section__title settings-section__title--loose">{children}</h4>;
+}
+
+// ---- SettingRow (back-compat shim) ----------------------------------------
+// Delegates to Row so existing cards still work without a big-bang rewrite.
 
 export function SettingRow({
   label,
@@ -34,82 +116,42 @@ export function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ padding: '6px 0' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}
-      >
-        <span style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{label}</span>
-        <div style={{ flexShrink: 0 }}>{children}</div>
-      </div>
-      {hint && (
-        <p
-          style={{
-            fontSize: 10,
-            color: 'var(--text-muted)',
-            margin: '4px 0 0',
-            lineHeight: 1.4,
-          }}
-        >
-          {hint}
-        </p>
-      )}
-    </div>
+    <Row label={label} hint={hint}>
+      {children}
+    </Row>
   );
 }
 
-// ---- Toggle -------------------------------------------------------------
+// ---- Toggle ---------------------------------------------------------------
 
 export function Toggle({
   checked,
   onChange,
   disabled,
+  label,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   disabled?: boolean;
+  label?: string;
 }) {
   return (
     <button
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
-      style={{
-        width: 34,
-        height: 19,
-        borderRadius: 10,
-        background: checked ? 'var(--color-accent)' : 'var(--surface-secondary)',
-        border: 'none',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        position: 'relative',
-        transition: 'background 0.2s ease',
-        opacity: disabled ? 0.5 : 1,
-      }}
+      className={`settings-toggle ${checked ? 'is-on' : ''} ${disabled ? 'is-disabled' : ''}`}
     >
-      <motion.div
-        animate={{ x: checked ? 17 : 2 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        style={{
-          width: 13,
-          height: 13,
-          borderRadius: '50%',
-          background: 'white',
-          position: 'absolute',
-          top: 3,
-          left: 0,
-          boxShadow: 'var(--shadow-soft)',
-        }}
-      />
+      <span className="settings-toggle__thumb" aria-hidden />
     </button>
   );
 }
 
-// ---- Slider -------------------------------------------------------------
+// ---- Slider ---------------------------------------------------------------
+// Fills the row body. Callers shouldn't set a fixed width anymore — if they
+// need a compact slider inline, wrap it in a sized container.
 
 export function Slider({
   min,
@@ -117,33 +159,74 @@ export function Slider({
   step,
   value,
   onChange,
-  width = 130,
+  ariaLabel,
 }: {
   min: number;
   max: number;
   step: number;
   value: number;
   onChange: (v: number) => void;
-  width?: number;
+  ariaLabel?: string;
 }) {
+  const pct = max > min ? Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100)) : 0;
   return (
     <input
       type="range"
+      aria-label={ariaLabel}
+      className="settings-slider"
       min={min}
       max={max}
       step={step}
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
-      style={{
-        width,
-        accentColor: 'var(--color-accent)',
-        cursor: 'pointer',
-      }}
+      style={{ ['--fill' as string]: `${pct}%` }}
     />
   );
 }
 
-// ---- ShortcutRecorder ---------------------------------------------------
+// ---- PillGroup ------------------------------------------------------------
+// Segmented control: single-choice amongst a small set of options.
+
+export function PillGroup<T extends string | number>({
+  options,
+  value,
+  onChange,
+  size = 'md',
+  disabled,
+}: {
+  options: { value: T; label: string; icon?: React.ReactNode }[];
+  value: T;
+  onChange: (v: T) => void;
+  size?: 'sm' | 'md';
+  disabled?: boolean;
+}) {
+  return (
+    <div
+      className={`settings-pillgroup ${size === 'sm' ? 'is-sm' : ''} ${disabled ? 'is-disabled' : ''}`}
+      role="radiogroup"
+    >
+      {options.map((opt) => {
+        const active = opt.value === value;
+        return (
+          <button
+            key={String(opt.value)}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            disabled={disabled}
+            onClick={() => !disabled && onChange(opt.value)}
+            className={`settings-pill ${active ? 'is-active' : ''}`}
+          >
+            {opt.icon && <span className="settings-pill__icon">{opt.icon}</span>}
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---- ShortcutRecorder -----------------------------------------------------
 
 /** Maps keyboard event keys to Tauri-compatible accelerator names */
 function keyToAccelerator(e: React.KeyboardEvent): string | null {
@@ -177,29 +260,6 @@ export function ShortcutRecorder({
   const [currentKeys, setCurrentKeys] = useState('');
   const platform = usePlatform();
   const ref = useRef<HTMLButtonElement>(null);
-
-  const boxStyle: React.CSSProperties = {
-    width: 180,
-    minHeight: 28,
-    background: recording
-      ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)'
-      : 'var(--input-bg)',
-    color: recording ? 'var(--color-accent)' : 'var(--text-primary)',
-    borderRadius: 8,
-    padding: '5px 10px',
-    fontSize: 10.5,
-    border: recording
-      ? '1.5px solid var(--color-accent)'
-      : '0.5px solid var(--border-subtle)',
-    textAlign: 'center',
-    fontFamily: "'SF Mono', 'JetBrains Mono', monospace",
-    cursor: 'pointer',
-    transition: 'all 0.15s ease',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!recording) return;
@@ -262,13 +322,13 @@ export function ShortcutRecorder({
     ? (currentKeys || 'Pressione as teclas...')
     : value
       ? formatShortcut(value, platform)
-      : 'Clique para definir';
+      : 'Definir';
 
   return (
     <button
       ref={ref}
       type="button"
-      style={boxStyle}
+      className={`settings-kbd ${recording ? 'is-recording' : ''} ${!value && !recording ? 'is-empty' : ''}`}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
