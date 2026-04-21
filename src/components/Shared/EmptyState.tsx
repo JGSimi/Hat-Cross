@@ -5,18 +5,7 @@ import { usePlatform } from '../../hooks/usePlatform';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { formatShortcut } from '../../utils/formatShortcut';
 
-interface Props {
-  onSuggestionClick?: (text: string) => void;
-}
-
-const suggestions = [
-  'Resuma este texto para mim',
-  'Traduza para inglês',
-  'Explique esse conceito',
-  'Corrija este código',
-];
-
-export default function EmptyState({ onSuggestionClick }: Props) {
+export default function EmptyState() {
   const greeting = getGreeting();
   const platform = usePlatform();
   const shortcutSettings = useSettingsStore((s) => s.settings.shortcuts);
@@ -90,38 +79,6 @@ export default function EmptyState({ onSuggestionClick }: Props) {
         ))}
       </div>
 
-      {/* Suggestion chips */}
-      {onSuggestionClick && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7, type: 'spring', stiffness: 300, damping: 25 }}
-          style={{
-            display: 'flex', flexWrap: 'wrap', gap: 6,
-            justifyContent: 'center', marginTop: 20, maxWidth: 340,
-          }}
-        >
-          {suggestions.map((s) => (
-            <motion.button
-              key={s}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => onSuggestionClick(s)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 8,
-                fontSize: 11,
-                background: 'color-mix(in srgb, var(--color-accent) 8%, transparent)',
-                color: 'var(--text-secondary)',
-                border: '1px solid color-mix(in srgb, var(--color-accent) 15%, transparent)',
-                cursor: 'pointer',
-              }}
-            >
-              {s}
-            </motion.button>
-          ))}
-        </motion.div>
-      )}
     </div>
   );
 }

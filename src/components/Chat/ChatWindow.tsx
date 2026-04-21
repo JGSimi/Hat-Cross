@@ -139,7 +139,7 @@ export default function ChatWindow() {
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <EmptyState onSuggestionClick={(text) => sendMessage(text)} />
+            <EmptyState />
           </motion.div>
         ) : (
           <motion.div
