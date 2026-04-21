@@ -3,6 +3,8 @@ import { doc, getFirestore, onSnapshot } from 'firebase/firestore';
 import { firebaseApp } from '../services/auth/firebase';
 import { useAuthStore } from './authStore';
 import type { AIMode } from '../types/account';
+import type { AppTheme } from '../types';
+import { resolveUnlockedSet } from '../utils/themeUnlocks';
 
 // Defaults applied until the pricing doc loads. Must stay in sync with the
 // admin tool's DEFAULT_BRL_TO_CREDITS, but the live Firestore value wins.
@@ -16,16 +18,26 @@ export interface PricingSnapshot {
 
 interface CreditsState {
   credits: number;
+  // Cumulativo — incrementa a cada charge no backend, NUNCA decrementa.
+  // Drives theme unlocks. Se o campo ainda não existir no Firestore
+  // (backend antigo), ficamos em 0 e só os free themes aparecem.
+  creditsSpent: number;
+  // Autoritativo: array escrito pelo backend ao cruzar milestones.
+  // Combinamos com fallback derivado via resolveUnlockedSet.
+  unlockedThemes: Set<AppTheme>;
   isLoading: boolean;
   lastConsumed: number | null;
   selectedMode: AIMode;
   pricing: PricingSnapshot;
   setSelectedMode: (mode: AIMode) => void;
   markConsumed: (amount: number) => void;
+  isThemeUnlocked: (theme: AppTheme) => boolean;
 }
 
-export const useCreditsStore = create<CreditsState>((set) => ({
+export const useCreditsStore = create<CreditsState>((set, get) => ({
   credits: 0,
+  creditsSpent: 0,
+  unlockedThemes: resolveUnlockedSet(0, undefined),
   isLoading: true,
   lastConsumed: null,
   selectedMode: 'standard',
@@ -35,6 +47,7 @@ export const useCreditsStore = create<CreditsState>((set) => ({
   },
   setSelectedMode: (selectedMode) => set({ selectedMode }),
   markConsumed: (amount) => set({ lastConsumed: amount }),
+  isThemeUnlocked: (theme) => get().unlockedThemes.has(theme),
 }));
 
 const firestore = getFirestore(firebaseApp);
@@ -79,7 +92,13 @@ useAuthStore.subscribe((state, prev) => {
   }
 
   if (!state.user) {
-    useCreditsStore.setState({ credits: 0, isLoading: false, lastConsumed: null });
+    useCreditsStore.setState({
+      credits: 0,
+      creditsSpent: 0,
+      unlockedThemes: resolveUnlockedSet(0, undefined),
+      isLoading: false,
+      lastConsumed: null,
+    });
     return;
   }
 
@@ -91,8 +110,15 @@ useAuthStore.subscribe((state, prev) => {
     ref,
     (snap) => {
       const data = snap.exists() ? snap.data() : null;
+      const credits = typeof data?.credits === 'number' ? data.credits : 0;
+      const creditsSpent = typeof data?.creditsSpent === 'number' ? data.creditsSpent : 0;
+      const firestoreUnlocked = Array.isArray(data?.unlockedThemes)
+        ? (data.unlockedThemes as unknown[]).filter((v): v is string => typeof v === 'string')
+        : undefined;
       useCreditsStore.setState({
-        credits: typeof data?.credits === 'number' ? data.credits : 0,
+        credits,
+        creditsSpent,
+        unlockedThemes: resolveUnlockedSet(creditsSpent, firestoreUnlocked),
         isLoading: false,
       });
     },

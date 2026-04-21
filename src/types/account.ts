@@ -22,6 +22,21 @@ export interface HatUser {
   photoURL: string | null;
 }
 
+/**
+ * Shape do documento Firestore em `users/{uid}`. Mantido em sync com o
+ * backend hat-proxy. Campos são todos opcionais no TypeScript porque a
+ * migração é gradual — user docs antigos podem não ter creditsSpent /
+ * unlockedThemes ainda. Código consumidor deve tratar undefined como
+ * valor inicial (0 / []).
+ */
+export interface UserDoc {
+  credits?: number;
+  /** Cumulativo: soma dos créditos já descontados ao longo da vida do usuário. */
+  creditsSpent?: number;
+  /** Temas desbloqueados pelo backend ao cruzar milestones de creditsSpent. */
+  unlockedThemes?: string[];
+}
+
 export interface Transaction {
   id: string;
   type: 'spend' | 'recharge';

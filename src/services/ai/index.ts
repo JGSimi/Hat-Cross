@@ -84,6 +84,7 @@ export async function startHatStream(options: HatStreamOptions): Promise<() => v
     maxTokens,
     images,
     idToken,
+    idempotencyKey: crypto.randomUUID(),
   }).catch((e) => {
     if (done) return;
     onError(String(e));

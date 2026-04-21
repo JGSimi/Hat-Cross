@@ -1,14 +1,20 @@
-import { Palette } from 'lucide-react';
+import { Palette, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SettingsCard from './SettingsCard';
 import ThemePicker from '../ThemePicker';
 import { Section } from './primitives';
 import { useSettingsStore } from '../../../stores/settingsStore';
+import { useCreditsStore } from '../../../stores/creditsStore';
 import { THEME_PRESETS } from '../../../types';
+import { formatCredits, getProgressToNext } from '../../../utils/themeUnlocks';
 
 export default function AppearanceCard() {
   const { settings, setTheme } = useSettingsStore();
+  const unlocked = useCreditsStore((s) => s.unlockedThemes);
+  const creditsSpent = useCreditsStore((s) => s.creditsSpent);
   const active = THEME_PRESETS.find((t) => t.name === settings.theme) ?? THEME_PRESETS[0];
+  const total = THEME_PRESETS.length;
+  const progress = getProgressToNext(creditsSpent, unlocked);
 
   return (
     <SettingsCard
@@ -61,7 +67,19 @@ export default function AppearanceCard() {
         </div>
       </motion.div>
 
-      <Section title="Temas" meta={`${THEME_PRESETS.length} disponíveis`}>
+      <Section
+        title="Temas"
+        meta={
+          progress ? (
+            `${unlocked.size}/${total} · próximo em ${formatCredits(progress.remaining)}`
+          ) : (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--color-accent)' }}>
+              <Sparkles size={10} />
+              {unlocked.size}/{total} · coleção completa
+            </span>
+          )
+        }
+      >
         <ThemePicker current={settings.theme} onChange={setTheme} />
       </Section>
     </SettingsCard>

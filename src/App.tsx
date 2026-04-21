@@ -11,6 +11,7 @@ import PopoverPage from './pages/PopoverPage';
 import FlashPage from './pages/FlashPage';
 import HorseLogo from './components/Shared/HorseLogo';
 import ToastContainer from './components/Shared/ToastContainer';
+import ThemeUnlockCelebration from './components/Settings/ThemeUnlockCelebration';
 import { useSettingsStore, setupSettingsSync } from './stores/settingsStore';
 import { useChatStore } from './stores/chatStore';
 import { useConversationStore, flushPendingSave } from './stores/conversationStore';
@@ -567,6 +568,7 @@ function App() {
           maxTokens: clip.maxResponseLength || settings.maxTokens,
           images: clipImages,
           idToken: hatToken,
+          idempotencyKey: crypto.randomUUID(),
         });
       } catch (e) {
         console.error('Clipboard processing failed:', e);
@@ -694,6 +696,7 @@ function App() {
       </Routes>
 
       <ToastContainer />
+      <ThemeUnlockCelebration />
     </>
   );
 }

@@ -1,7 +1,20 @@
-import { MouseEvent, useEffect, useRef, useState } from 'react';
+import { MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check } from 'lucide-react';
-import { THEME_PRESETS, type AppTheme, type ThemePreset } from '../../types';
+import { Check, Lock, Sparkles, Gem } from 'lucide-react';
+import {
+  THEME_PRESETS,
+  type AppTheme,
+  type ThemePreset,
+  type ThemeTierInfo,
+} from '../../types';
+import { useCreditsStore } from '../../stores/creditsStore';
+import {
+  groupByTier,
+  getNextLocked,
+  getProgressToNext,
+  countUnlockedInTier,
+  formatCredits,
+} from '../../utils/themeUnlocks';
 import { runThemeTransition } from '../../utils/themeTransition';
 
 interface Props {
@@ -9,29 +22,44 @@ interface Props {
   onChange: (theme: AppTheme) => void;
 }
 
-// Lock a fresh click until the reveal completes. Without this, rapid clicks
-// spawn overlapping View Transitions — each cancels the previous, so the user
-// sees every click resolve sequentially (~1.4s each) and experiences a ~3s
-// stall before the final theme visually lands. Keeping the lockout slightly
-// under the reveal duration feels snappy without leaking races.
+// Mesmo cooldown do picker anterior — evita View Transitions sobrepostas.
 const COOLDOWN_MS = 1200;
+const TEASER_LOCKED_COUNT = 3;
 
 export default function ThemePicker({ current, onChange }: Props) {
   const [locked, setLocked] = useState(false);
   const timerRef = useRef<number | null>(null);
+  const creditsSpent = useCreditsStore((s) => s.creditsSpent);
+  const unlockedSet = useCreditsStore((s) => s.unlockedThemes);
 
   useEffect(() => () => {
     if (timerRef.current != null) window.clearTimeout(timerRef.current);
   }, []);
 
+  // Próximos 3 temas bloqueados em toda a progressão — estes aparecem
+  // "com teaser" nos seus respectivos tiers. O resto fica oculto.
+  const teaserLocked = useMemo(
+    () => new Set(getNextLocked(unlockedSet, TEASER_LOCKED_COUNT).map((t) => t.name)),
+    [unlockedSet],
+  );
+
+  const progress = useMemo(
+    () => getProgressToNext(creditsSpent, unlockedSet),
+    [creditsSpent, unlockedSet],
+  );
+
+  const groups = useMemo(() => groupByTier(), []);
+  const exclusive = useMemo(
+    () => THEME_PRESETS.find((t) => t.exclusive) ?? null,
+    [],
+  );
+
   const handleSelect = (event: MouseEvent<HTMLButtonElement>, name: AppTheme) => {
     if (locked || name === current) return;
+    if (!unlockedSet.has(name)) return;
 
     setLocked(true);
     runThemeTransition(event, () => {
-      // Apply to DOM synchronously so the View Transition captures the new
-      // palette before the callback returns — the zustand update in onChange
-      // schedules a re-render that runs later.
       document.documentElement.setAttribute('data-theme', name);
       onChange(name);
     });
@@ -44,37 +72,181 @@ export default function ThemePicker({ current, onChange }: Props) {
   };
 
   return (
-    <div className={`theme-picker ${locked ? 'is-locked' : ''}`}>
-      {THEME_PRESETS.map((theme) => (
-        <ThemeSwatch
-          key={theme.name}
-          theme={theme}
-          active={current === theme.name}
-          locked={locked}
-          onSelect={(e) => handleSelect(e, theme.name)}
-        />
-      ))}
+    <div className="theme-picker-v2">
+      <ProgressBar creditsSpent={creditsSpent} progress={progress} />
+
+      <div className={`theme-picker ${locked ? 'is-locked' : ''}`}>
+        {groups.map(({ tier, themes }) => {
+          // Tier exclusive é renderizado separado (destacado) no fim.
+          if (tier.tier === 'exclusive') return null;
+
+          const unlockedInTier = themes.filter((t) => unlockedSet.has(t.name));
+          const lockedTeasersInTier = themes.filter(
+            (t) => !unlockedSet.has(t.name) && teaserLocked.has(t.name),
+          );
+          const hiddenCount = themes.length - unlockedInTier.length - lockedTeasersInTier.length;
+          const counts = countUnlockedInTier(tier.tier, unlockedSet);
+
+          return (
+            <TierSection
+              key={tier.tier}
+              tier={tier}
+              counts={counts}
+              unlockedInTier={unlockedInTier}
+              lockedTeasers={lockedTeasersInTier}
+              hiddenCount={hiddenCount}
+              activeTheme={current}
+              pickerLocked={locked}
+              onSelect={handleSelect}
+            />
+          );
+        })}
+
+        {exclusive && (
+          <ExclusiveCard
+            theme={exclusive}
+            unlocked={unlockedSet.has(exclusive.name)}
+            active={current === exclusive.name}
+            pickerLocked={locked}
+            onSelect={handleSelect}
+          />
+        )}
+      </div>
     </div>
   );
 }
 
+// ============================================================================
+// Progress bar global — mostra próximo milestone e quanto falta
+// ============================================================================
+
+function ProgressBar({
+  creditsSpent,
+  progress,
+}: {
+  creditsSpent: number;
+  progress: ReturnType<typeof getProgressToNext>;
+}) {
+  if (!progress) {
+    return (
+      <div className="theme-progress theme-progress--complete">
+        <Sparkles size={14} />
+        <span>Todos os temas desbloqueados · Lenda viva</span>
+      </div>
+    );
+  }
+
+  const { next, progress: pct, remaining } = progress;
+  const gastosFmt = formatCredits(creditsSpent);
+  const alvoFmt = formatCredits(next.unlockAt);
+  const faltamFmt = formatCredits(remaining);
+
+  return (
+    <div className="theme-progress">
+      <div className="theme-progress__header">
+        <span className="theme-progress__label">
+          Próximo: <strong>{next.label}</strong>
+        </span>
+        <span className="theme-progress__meta">
+          {gastosFmt} / {alvoFmt} · faltam {faltamFmt}
+        </span>
+      </div>
+      <div className="theme-progress__track">
+        <motion.div
+          className="theme-progress__fill"
+          initial={{ width: 0 }}
+          animate={{ width: `${pct * 100}%` }}
+          transition={{ type: 'spring', stiffness: 120, damping: 22 }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Seção por tier — cabeçalho + grid de swatches (unlocked + teaser) + teaser
+// ============================================================================
+
+function TierSection({
+  tier,
+  counts,
+  unlockedInTier,
+  lockedTeasers,
+  hiddenCount,
+  activeTheme,
+  pickerLocked,
+  onSelect,
+}: {
+  tier: ThemeTierInfo;
+  counts: { unlocked: number; total: number };
+  unlockedInTier: ThemePreset[];
+  lockedTeasers: ThemePreset[];
+  hiddenCount: number;
+  activeTheme: AppTheme;
+  pickerLocked: boolean;
+  onSelect: (event: MouseEvent<HTMLButtonElement>, name: AppTheme) => void;
+}) {
+  // Se tudo deste tier está escondido (nem unlocked nem teaser visível),
+  // oculta a seção inteira pra não poluir. Só aparece quando o usuário se
+  // aproxima.
+  if (unlockedInTier.length === 0 && lockedTeasers.length === 0) return null;
+
+  return (
+    <section className="theme-tier">
+      <header className="theme-tier__header">
+        <span className="theme-tier__glyph" aria-hidden>{tier.glyph}</span>
+        <span className="theme-tier__title">{tier.label}</span>
+        <span className="theme-tier__tagline">· {tier.tagline}</span>
+        <span className="theme-tier__count">
+          {counts.unlocked}/{counts.total}
+        </span>
+      </header>
+
+      <div className="theme-tier__grid">
+        {unlockedInTier.map((theme) => (
+          <ThemeSwatch
+            key={theme.name}
+            theme={theme}
+            active={activeTheme === theme.name}
+            pickerLocked={pickerLocked}
+            onSelect={onSelect}
+          />
+        ))}
+        {lockedTeasers.map((theme) => (
+          <LockedSwatch key={theme.name} theme={theme} />
+        ))}
+        {hiddenCount > 0 && (
+          <div className="theme-tier__hidden" aria-label={`${hiddenCount} temas ocultos`}>
+            <Sparkles size={14} />
+            <span>+{hiddenCount} aguardam</span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ============================================================================
+// Swatch desbloqueado — comportamento idêntico ao picker anterior
+// ============================================================================
+
 function ThemeSwatch({
   theme,
   active,
-  locked,
+  pickerLocked,
   onSelect,
 }: {
   theme: ThemePreset;
   active: boolean;
-  locked: boolean;
-  onSelect: (event: MouseEvent<HTMLButtonElement>) => void;
+  pickerLocked: boolean;
+  onSelect: (event: MouseEvent<HTMLButtonElement>, name: AppTheme) => void;
 }) {
-  const disabled = locked && !active;
+  const disabled = pickerLocked && !active;
   return (
     <motion.button
       type="button"
       disabled={disabled}
-      onClick={(event) => onSelect(event)}
+      onClick={(event) => onSelect(event, theme.name)}
       whileHover={disabled ? undefined : { y: -2 }}
       whileTap={disabled ? undefined : { scale: 0.95 }}
       transition={{ type: 'spring', stiffness: 400, damping: 22 }}
@@ -91,24 +263,14 @@ function ThemeSwatch({
       aria-label={`Tema ${theme.label}`}
     >
       <span className="theme-swatch__window" aria-hidden>
-        {/* Faux macOS traffic lights — pure decoration */}
         <span className="theme-swatch__tl">
           <i />
           <i />
           <i />
         </span>
-
-        {/* Text line previews */}
         <span className="theme-swatch__line theme-swatch__line--1" />
         <span className="theme-swatch__line theme-swatch__line--2" />
-
-        {/* Accent color corner bubble */}
         <span className="theme-swatch__dot" />
-
-        {/* Selection indicators — crossfade handoff from old swatch to new:
-            the previous active's ring pulses outward as it fades, the new
-            swatch's ring springs in with a slight scale. Reads clearly as
-            "the selection moved" without a confusing flight path. */}
         <AnimatePresence>
           {active && (
             <motion.span
@@ -143,9 +305,6 @@ function ThemeSwatch({
             </motion.span>
           )}
         </AnimatePresence>
-        {/* Activation burst — a radial flash on the swatch that JUST became
-            active. Re-keyed on `active` so React remounts and the animation
-            replays each time the swatch is picked. */}
         {active && (
           <motion.span
             key="burst"
@@ -157,8 +316,148 @@ function ThemeSwatch({
           />
         )}
       </span>
-
       <span className="theme-swatch__label">{theme.label}</span>
     </motion.button>
+  );
+}
+
+// ============================================================================
+// Swatch bloqueado (teaser) — blur + cadeado + milestone
+// ============================================================================
+
+function LockedSwatch({ theme }: { theme: ThemePreset }) {
+  // Visual diferenciado por tema — em vez de janelinha borrada,
+  // mostramos a paleta real em faixas verticais. Cada tema fica
+  // reconhecível mesmo bloqueado, criando desejo concreto.
+  return (
+    <div
+      className="theme-swatch theme-swatch--locked"
+      style={{
+        ['--swatch-bg' as string]: theme.bgPrimary,
+        ['--swatch-bg-2' as string]: theme.bgSecondary,
+        ['--swatch-primary' as string]: theme.primary,
+        ['--swatch-hover' as string]: theme.hover,
+        ['--swatch-text' as string]: theme.textPrimary,
+        ['--swatch-text-2' as string]: theme.textSecondary,
+        ['--swatch-muted' as string]: theme.textMuted,
+      }}
+      aria-label={`${theme.label} — bloqueado, gaste ${formatCredits(theme.unlockAt)} créditos`}
+      title={`${theme.label} · desbloqueia em ${theme.unlockAt.toLocaleString('pt-BR')} créditos`}
+    >
+      <span className="theme-lock-preview" aria-hidden>
+        <span className="theme-lock-preview__stripes">
+          <i style={{ background: theme.primary }} />
+          <i style={{ background: theme.hover }} />
+          <i style={{ background: theme.bgSecondary }} />
+          <i style={{ background: theme.textSecondary }} />
+        </span>
+        <span className="theme-lock-preview__scrim" />
+        <span className="theme-lock-preview__icon">
+          <Lock size={14} strokeWidth={2.4} />
+        </span>
+      </span>
+      <span className="theme-swatch__label theme-swatch__label--locked">
+        {formatCredits(theme.unlockAt)}
+      </span>
+    </div>
+  );
+}
+
+// ============================================================================
+// Card exclusivo — destaque com moldura animada
+// ============================================================================
+
+function ExclusiveCard({
+  theme,
+  unlocked,
+  active,
+  pickerLocked,
+  onSelect,
+}: {
+  theme: ThemePreset;
+  unlocked: boolean;
+  active: boolean;
+  pickerLocked: boolean;
+  onSelect: (event: MouseEvent<HTMLButtonElement>, name: AppTheme) => void;
+}) {
+  return (
+    <section className="theme-exclusive">
+      <header className="theme-exclusive__header">
+        <span className="theme-exclusive__glyph" aria-hidden>❈</span>
+        <span className="theme-exclusive__title">Exclusivo · 1M créditos</span>
+        <span className="theme-exclusive__tagline">
+          Uma só peça no catálogo inteiro
+        </span>
+      </header>
+      <div className="theme-exclusive__swatch-wrap">
+        {unlocked ? (
+          <motion.button
+            type="button"
+            disabled={pickerLocked && !active}
+            onClick={(e) => onSelect(e, theme.name)}
+            whileHover={pickerLocked && !active ? undefined : { y: -3 }}
+            whileTap={pickerLocked && !active ? undefined : { scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+            className={`theme-swatch theme-swatch--exclusive ${active ? 'is-active' : ''}`}
+            style={{
+              ['--swatch-bg' as string]: theme.bgPrimary,
+              ['--swatch-bg-2' as string]: theme.bgSecondary,
+              ['--swatch-primary' as string]: theme.primary,
+              ['--swatch-text' as string]: theme.textPrimary,
+              ['--swatch-muted' as string]: theme.textMuted,
+            }}
+            aria-pressed={active}
+            aria-label={`Tema exclusivo ${theme.label}`}
+          >
+            <span className="theme-swatch__window theme-swatch__window--prisma" aria-hidden>
+              <span className="theme-swatch__tl">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span className="theme-swatch__line theme-swatch__line--1" />
+              <span className="theme-swatch__line theme-swatch__line--2" />
+              <span className="theme-swatch__dot" />
+              <AnimatePresence>
+                {active && (
+                  <motion.span
+                    key="ring"
+                    className="theme-swatch__ring"
+                    initial={{ scale: 0.72, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 1.22, opacity: 0 }}
+                    transition={{
+                      scale: { type: 'spring', stiffness: 360, damping: 22 },
+                      opacity: { duration: 0.25 },
+                    }}
+                    aria-hidden
+                  />
+                )}
+              </AnimatePresence>
+            </span>
+            <span className="theme-swatch__label">{theme.label}</span>
+          </motion.button>
+        ) : (
+          <div
+            className="theme-swatch theme-swatch--exclusive-locked"
+            aria-label={`${theme.label} — bloqueado, 1M créditos gastos`}
+          >
+            <span className="theme-exclusive-locked" aria-hidden>
+              <span className="theme-exclusive-locked__aura" />
+              <span className="theme-exclusive-locked__gem">
+                <Gem size={30} strokeWidth={1.6} />
+              </span>
+              <span className="theme-exclusive-locked__sparkles">
+                <i /><i /><i /><i />
+              </span>
+            </span>
+            <span className="theme-exclusive-locked__label">
+              <Lock size={11} strokeWidth={2.5} />
+              1.000.000 créditos gastos
+            </span>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

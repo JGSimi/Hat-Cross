@@ -70,6 +70,7 @@ pub async fn stream_chat_hat(
     max_tokens: u32,
     images: Vec<String>,
     id_token: String,
+    idempotency_key: String,
 ) -> Result<(), String> {
     let cancel_flag = register_stream(stream_id);
 
@@ -84,6 +85,7 @@ pub async fn stream_chat_hat(
         max_tokens,
         &images,
         &id_token,
+        &idempotency_key,
     )
     .await;
 
@@ -122,6 +124,7 @@ async fn stream_chat_hat_impl(
     max_tokens: u32,
     images: &[String],
     id_token: &str,
+    idempotency_key: &str,
 ) -> Result<(), String> {
     // OpenAI-style content array when images are present on the last turn;
     // the Worker translates this into Gemini's native inlineData format.
@@ -184,6 +187,14 @@ async fn stream_chat_hat_impl(
         HeaderValue::from_str(&format!("Bearer {}", id_token))
             .map_err(|e| format!("Token inválido: {}", e))?,
     );
+    // Idempotency-Key: UUID gerado pelo cliente a cada submit. O Worker usa
+    // pra impedir double-debit em retries automáticos (reqwest, TCP RST, etc).
+    // O valor vem do TS via crypto.randomUUID() — um por submit, mesmo em retry.
+    if !idempotency_key.is_empty() {
+        if let Ok(v) = HeaderValue::from_str(idempotency_key) {
+            headers.insert("Idempotency-Key", v);
+        }
+    }
 
     let response = client
         .post(HAT_PROXY_URL)
