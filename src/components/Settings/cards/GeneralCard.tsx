@@ -91,12 +91,14 @@ export default function GeneralCard() {
             role="radiogroup"
             aria-label={t('general.language.title')}
             style={{
+              position: 'relative',
               display: 'inline-flex',
               background: 'var(--surface-secondary)',
               border: '0.5px solid var(--border-subtle)',
               borderRadius: 999,
               padding: 3,
               gap: 2,
+              isolation: 'isolate',
             }}
           >
             {SUPPORTED_LANGUAGES.map((lang) => {
@@ -109,7 +111,8 @@ export default function GeneralCard() {
                   aria-checked={isActive}
                   type="button"
                   onClick={() => handleLanguageChange(lang)}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={isActive ? undefined : { y: -1 }}
+                  whileTap={{ scale: 0.94 }}
                   transition={{ type: 'spring', stiffness: 420, damping: 26 }}
                   style={{
                     position: 'relative',
@@ -120,16 +123,50 @@ export default function GeneralCard() {
                     borderRadius: 999,
                     fontSize: 10.5,
                     fontWeight: isActive ? 600 : 500,
-                    background: isActive ? 'var(--color-accent)' : 'transparent',
                     color: isActive ? 'var(--on-accent)' : 'var(--text-muted)',
+                    background: 'transparent',
                     border: 'none',
                     cursor: 'pointer',
                     letterSpacing: 0.2,
-                    boxShadow: isActive ? '0 2px 6px var(--accent-glow)' : 'none',
-                    transition: 'background 0.18s ease, color 0.18s ease',
+                    zIndex: 1,
+                    // color muda rapidamente pra acompanhar a slide da pílula
+                    transition: 'color 0.22s ease',
                   }}
                 >
-                  <span style={{ fontSize: 11 }}>{info.flag}</span>
+                  {/* Pílula ativa compartilhada — desliza suave entre posições
+                      via layoutId do Framer Motion. Um único elemento no DOM
+                      que "viaja" da tab antiga pra nova. */}
+                  {isActive && (
+                    <motion.span
+                      layoutId="lang-pill-bg"
+                      aria-hidden
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        borderRadius: 999,
+                        background: 'var(--color-accent)',
+                        boxShadow:
+                          '0 2px 8px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.2)',
+                        zIndex: -1,
+                      }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 440,
+                        damping: 34,
+                        mass: 0.8,
+                      }}
+                    />
+                  )}
+                  <motion.span
+                    style={{ fontSize: 11, display: 'inline-flex' }}
+                    animate={{
+                      scale: isActive ? 1.12 : 1,
+                      filter: isActive ? 'saturate(1.15)' : 'saturate(0.85)',
+                    }}
+                    transition={{ type: 'spring', stiffness: 360, damping: 22 }}
+                  >
+                    {info.flag}
+                  </motion.span>
                   {info.short}
                 </motion.button>
               );
