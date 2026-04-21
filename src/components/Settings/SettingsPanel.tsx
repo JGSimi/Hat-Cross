@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import WindowControls from '../Shared/WindowControls';
 import { usePlatform } from '../../hooks/usePlatform';
 import AccountHeader from './AccountHeader';
@@ -17,6 +18,7 @@ interface Props {
 
 export default function SettingsPanel({ onClose }: Props) {
   const platform = usePlatform();
+  const { t } = useTranslation('settings');
 
   return (
     <motion.div
@@ -48,7 +50,7 @@ export default function SettingsPanel({ onClose }: Props) {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           onClick={onClose}
-          aria-label="Voltar"
+          aria-label={t('panel.close')}
           style={{
             padding: 6,
             borderRadius: 6,
@@ -71,7 +73,7 @@ export default function SettingsPanel({ onClose }: Props) {
             flex: 1,
           }}
         >
-          Configurações
+          {t('panel.title')}
         </h2>
         {platform !== 'macos' && <WindowControls variant="header" />}
       </div>

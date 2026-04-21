@@ -1,4 +1,5 @@
 import type React from 'react';
+import i18n from '../i18n';
 
 export function normalizeForSearch(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -61,7 +62,7 @@ export function formatTime(ts: number): string {
 
 export function formatFullTimestamp(ts: number): string {
   const d = new Date(ts);
-  return d.toLocaleString('pt-BR', {
+  return d.toLocaleString(i18n.language, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

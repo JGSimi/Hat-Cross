@@ -1,4 +1,5 @@
 import { Clipboard } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import SettingsCard from './SettingsCard';
 import { Row, Section, StackRow, Toggle, Slider, ShortcutRecorder } from './primitives';
 import { useSettingsStore } from '../../../stores/settingsStore';
@@ -6,11 +7,11 @@ import { useSettingsStore } from '../../../stores/settingsStore';
 export default function ClipboardCard() {
   const { settings, updateSettings } = useSettingsStore();
   const clip = settings.clipboard;
+  const { t, i18n } = useTranslation('settings');
   const update = (partial: Partial<typeof clip>) => {
     updateSettings({ clipboard: { ...clip, ...partial } });
   };
 
-  // Count bool toggles (6 main flags shown as N/6).
   const togglesActive =
     Number(clip.enabled) +
     Number(clip.captureImages) +
@@ -18,16 +19,16 @@ export default function ClipboardCard() {
     Number(clip.appendMode) +
     Number(clip.soundOnComplete) +
     Number(clip.useCustomPrompt);
-  const preview = `${togglesActive}/6 ativas`;
+  const preview = t('clipboard.previewActive', { n: togglesActive });
 
   return (
     <SettingsCard
-      title="Clipboard"
+      title={t('clipboard.title')}
       icon={<Clipboard size={14} strokeWidth={2} />}
       preview={preview}
     >
-      <Section title="Atalho">
-        <Row label="Processar clipboard">
+      <Section title={t('clipboard.shortcut')}>
+        <Row label={t('clipboard.shortcutProcess')}>
           <ShortcutRecorder
             value={settings.shortcuts.clipboard}
             onChange={(v) =>
@@ -37,24 +38,20 @@ export default function ClipboardCard() {
         </Row>
       </Section>
 
-      <Section title="Captura">
-        <Row label="Processamento ativo">
+      <Section title={t('clipboard.capture')}>
+        <Row label={t('clipboard.captureActive')}>
           <Toggle checked={clip.enabled} onChange={(v) => update({ enabled: v })} />
         </Row>
         <Row
-          label="Capturar imagens do clipboard"
-          hint={
-            clip.captureImages
-              ? 'Imagens copiadas (screenshots, prints) também são enviadas para a IA junto com o texto.'
-              : undefined
-          }
+          label={t('clipboard.captureImages')}
+          hint={clip.captureImages ? t('clipboard.captureImagesHint') : undefined}
         >
           <Toggle
             checked={clip.captureImages}
             onChange={(v) => update({ captureImages: v })}
           />
         </Row>
-        <Row label="Som ao completar">
+        <Row label={t('clipboard.soundOnComplete')}>
           <Toggle
             checked={clip.soundOnComplete}
             onChange={(v) => update({ soundOnComplete: v })}
@@ -62,20 +59,16 @@ export default function ClipboardCard() {
         </Row>
       </Section>
 
-      <Section title="Resposta">
-        <Row label="Copiar resposta para o clipboard">
+      <Section title={t('clipboard.response')}>
+        <Row label={t('clipboard.copyToClipboard')}>
           <Toggle
             checked={clip.copyResponseToClipboard}
             onChange={(v) => update({ copyResponseToClipboard: v })}
           />
         </Row>
         <Row
-          label="Modo anexar (original + resposta)"
-          hint={
-            clip.appendMode
-              ? 'O texto original é mantido, com a resposta adicionada abaixo, separada por "---".'
-              : undefined
-          }
+          label={t('clipboard.appendMode')}
+          hint={clip.appendMode ? t('clipboard.appendModeHint') : undefined}
         >
           <Toggle
             checked={clip.appendMode}
@@ -83,8 +76,8 @@ export default function ClipboardCard() {
           />
         </Row>
         <StackRow
-          label="Tamanho máximo da resposta"
-          value={`${clip.maxResponseLength.toLocaleString('pt-BR')} chars`}
+          label={t('clipboard.maxResponseLength')}
+          value={`${clip.maxResponseLength.toLocaleString(i18n.language)} chars`}
         >
           <Slider
             min={256}
@@ -96,13 +89,13 @@ export default function ClipboardCard() {
         </StackRow>
       </Section>
 
-      <Section title="Prompt customizado">
+      <Section title={t('clipboard.customPrompt')}>
         <Row
-          label="Usar prompt customizado"
+          label={t('clipboard.useCustomPrompt')}
           hint={
             clip.useCustomPrompt
-              ? 'Este prompt será usado ao invés do prompt do sistema ao processar o clipboard.'
-              : 'Quando desativado, usa o prompt do sistema (card "IA").'
+              ? t('clipboard.useCustomPromptHintOn')
+              : t('clipboard.useCustomPromptHintOff')
           }
         >
           <Toggle
@@ -114,7 +107,7 @@ export default function ClipboardCard() {
           <textarea
             value={clip.customPrompt}
             onChange={(e) => update({ customPrompt: e.target.value })}
-            placeholder="Ex: Traduza para inglês. Responda apenas com a tradução, sem explicações."
+            placeholder={t('clipboard.customPromptPlaceholder')}
             rows={3}
             style={{
               width: '100%',

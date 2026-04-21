@@ -1,0 +1,34 @@
+{
+  "title": "Clipboard",
+  "search": "Buscar no histórico…",
+  "pinned": "Fixados",
+  "all": "Todos",
+  "recent": "Recentes",
+  "older": "Antigos",
+  "empty": {
+    "title": "Sem histórico ainda",
+    "body": "Cada clipboard processado aparece aqui. Copie um texto e use o atalho.",
+    "back": "Voltar ao chat"
+  },
+  "noResults": {
+    "title": "Nada encontrado",
+    "body": "Tente buscar por outro termo."
+  },
+  "entry": {
+    "original": "Original",
+    "response": "Resposta",
+    "copy": "Copiar",
+    "pin": "Fixar",
+    "unpin": "Desafixar",
+    "delete": "Excluir"
+  },
+  "filters": {
+    "all": "Todos",
+    "pinned": "Fixados",
+    "byProvider": "Por provedor"
+  },
+  "sort": {
+    "newest": "Mais recentes",
+    "oldest": "Mais antigos"
+  }
+}

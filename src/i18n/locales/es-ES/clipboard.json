@@ -1,0 +1,34 @@
+{
+  "title": "Portapapeles",
+  "search": "Buscar en el historial…",
+  "pinned": "Anclados",
+  "all": "Todos",
+  "recent": "Recientes",
+  "older": "Antiguos",
+  "empty": {
+    "title": "Sin historial todavía",
+    "body": "Cada portapapeles procesado aparece aquí. Copia un texto y usa el atajo.",
+    "back": "Volver al chat"
+  },
+  "noResults": {
+    "title": "Nada encontrado",
+    "body": "Prueba con otro término."
+  },
+  "entry": {
+    "original": "Original",
+    "response": "Respuesta",
+    "copy": "Copiar",
+    "pin": "Anclar",
+    "unpin": "Desanclar",
+    "delete": "Eliminar"
+  },
+  "filters": {
+    "all": "Todos",
+    "pinned": "Anclados",
+    "byProvider": "Por proveedor"
+  },
+  "sort": {
+    "newest": "Más recientes",
+    "oldest": "Más antiguos"
+  }
+}

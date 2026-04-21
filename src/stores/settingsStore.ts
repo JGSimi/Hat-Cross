@@ -1,13 +1,21 @@
 import { create } from 'zustand';
 import { LazyStore } from '@tauri-apps/plugin-store';
 import { emit, listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
+import i18n from '../i18n';
 import {
   type AppSettings,
   type AppTheme,
+  type AppLanguage,
   type TokenUsage,
   DEFAULT_SETTINGS,
   VALID_THEMES,
 } from '../types';
+import {
+  DEFAULT_SYSTEM_PROMPTS,
+  matchesDefaultPrompt,
+  SUPPORTED_LANGUAGES,
+} from '../i18n/defaults';
 
 // --- Tauri persistent store ---
 
@@ -55,6 +63,13 @@ interface SettingsState {
   setShowSettingsPanel: (show: boolean) => void;
   updateSettings: (partial: Partial<AppSettings>) => void;
   setTheme: (theme: AppTheme) => void;
+  /**
+   * Muda o idioma da UI. Se o systemPrompt atual for um default conhecido
+   * (não foi customizado), também troca pro default do novo idioma pra IA
+   * passar a responder no idioma escolhido. Retorna `true` se o prompt foi
+   * auto-trocado, `false` se ficou preservado por ser customizado.
+   */
+  setLanguage: (lang: AppLanguage) => boolean;
   updateTokenStats: (usage: Partial<TokenUsage>) => void;
   resetTokenStats: () => void;
   loadSettings: () => Promise<void>;
@@ -82,6 +97,23 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       settings: { ...state.settings, theme },
     }));
     get().saveSettings();
+  },
+
+  setLanguage: (lang) => {
+    const { settings } = get();
+    const isKnownDefault = matchesDefaultPrompt(settings.systemPrompt) !== null;
+    const newPrompt = isKnownDefault
+      ? DEFAULT_SYSTEM_PROMPTS[lang]
+      : settings.systemPrompt;
+    set({
+      settings: { ...settings, language: lang, systemPrompt: newPrompt },
+    });
+    get().saveSettings();
+    i18n.changeLanguage(lang).catch(() => {});
+    // Rust side: tenta regenerar o tray na nova língua. Silencia erro se
+    // o comando ainda não foi registrado (build antigo durante transição).
+    invoke('set_tray_language', { lang }).catch(() => {});
+    return isKnownDefault;
   },
 
   updateTokenStats: (usage) => {
@@ -122,14 +154,23 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         if (!VALID_THEMES.includes(merged.theme)) {
           merged.theme = DEFAULT_SETTINGS.theme;
         }
+        // Idioma precisa ser um dos suportados, caso contrário cai em pt-BR
+        // pra preservar comportamento de usuários antigos sem o campo.
+        if (!SUPPORTED_LANGUAGES.includes(merged.language)) {
+          merged.language = 'pt-BR';
+        }
         // Drop the legacy `screenCapture` shortcut field carried over from the
         // removed screen-analysis feature so it doesn't linger in disk storage.
         if ('screenCapture' in merged.shortcuts) {
           delete (merged.shortcuts as Record<string, unknown>).screenCapture;
         }
         set({ settings: merged, _hydrated: true });
+        // Sync i18n + tray com o idioma carregado.
+        i18n.changeLanguage(merged.language).catch(() => {});
+        invoke('set_tray_language', { lang: merged.language }).catch(() => {});
       } else {
         set({ _hydrated: true });
+        i18n.changeLanguage(DEFAULT_SETTINGS.language).catch(() => {});
       }
     } catch (err) {
       console.error('[SettingsStore] Failed to load settings:', err);

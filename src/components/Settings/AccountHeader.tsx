@@ -7,6 +7,7 @@ import {
   useTransform,
 } from 'framer-motion';
 import { LogOut, Loader2, CreditCard, Zap, Sparkles, Brain } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../stores/authStore';
 import { useCreditsStore } from '../../stores/creditsStore';
 import { AI_MODES, type AIMode } from '../../types/account';
@@ -23,24 +24,25 @@ const MODE_TINT: Record<AIMode, { icon: typeof Zap; hue: string; soft: string }>
 // Animated integer counter — springs from previous value to current so the
 // balance feels alive when a credit debit lands from the Firestore listener.
 function CountUp({ value, reducedMotion }: { value: number; reducedMotion: boolean | null }) {
+  const { i18n } = useTranslation();
   const motionValue = useMotionValue(value);
   const spring = useSpring(motionValue, {
     stiffness: 140,
     damping: 22,
     mass: 0.4,
   });
-  const rounded = useTransform(spring, (v) => Math.round(v).toLocaleString('pt-BR'));
-  const [display, setDisplay] = useState(Math.round(value).toLocaleString('pt-BR'));
+  const rounded = useTransform(spring, (v) => Math.round(v).toLocaleString(i18n.language));
+  const [display, setDisplay] = useState(Math.round(value).toLocaleString(i18n.language));
 
   useEffect(() => {
     if (reducedMotion) {
-      setDisplay(Math.round(value).toLocaleString('pt-BR'));
+      setDisplay(Math.round(value).toLocaleString(i18n.language));
       return;
     }
     motionValue.set(value);
     const unsub = rounded.on('change', setDisplay);
     return unsub;
-  }, [value, motionValue, rounded, reducedMotion]);
+  }, [value, motionValue, rounded, reducedMotion, i18n.language]);
 
   return <>{display}</>;
 }
@@ -63,6 +65,7 @@ export default function AccountHeader() {
 
   const [recharging, setRecharging] = useState(false);
   const reducedMotion = useReducedMotion();
+  const { t } = useTranslation('account');
 
   // --- NOT SIGNED IN: compact inline Google button + error -----------------
   if (!user) {
@@ -106,7 +109,7 @@ export default function AccountHeader() {
               letterSpacing: -0.1,
             }}
           >
-            Não conectado
+            {t('notConnected')}
           </div>
           <div
             style={{
@@ -116,7 +119,7 @@ export default function AccountHeader() {
               lineHeight: 1.4,
             }}
           >
-            Entre com Google para usar créditos Hat
+            {t('signInHint')}
           </div>
           {signInError && (
             <div
@@ -165,11 +168,11 @@ export default function AccountHeader() {
               >
                 <Loader2 size={13} />
               </motion.div>
-              Abrindo...
+              {t('signingIn')}
             </>
           ) : (
             <>
-              <GoogleIcon size={13} /> Entrar com Google
+              <GoogleIcon size={13} /> {t('signIn')}
             </>
           )}
         </motion.button>
@@ -272,9 +275,9 @@ export default function AccountHeader() {
                 letterSpacing: -0.1,
                 lineHeight: 1.25,
               }}
-              title={user.displayName ?? 'Usuário'}
+              title={user.displayName ?? t('user')}
             >
-              {user.displayName ?? 'Usuário'}
+              {user.displayName ?? t('user')}
             </div>
             <div
               style={{
@@ -304,8 +307,8 @@ export default function AccountHeader() {
                 whileTap={{ scale: 0.9 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                 onClick={signOut}
-                aria-label="Sair"
-                title="Sair"
+                aria-label={t('signOut')}
+                title={t('signOut')}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -414,7 +417,7 @@ export default function AccountHeader() {
               lineHeight: 1,
             }}
           >
-            Disponível
+            {t('available')}
           </div>
           <div
             style={{
@@ -440,7 +443,7 @@ export default function AccountHeader() {
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 400, damping: 26 }}
             onClick={() => setRecharging(true)}
-            title="Recarregar via PIX"
+            title={t('recharge')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -459,7 +462,7 @@ export default function AccountHeader() {
               alignSelf: 'stretch',
             }}
           >
-            <CreditCard size={13} /> Recarregar via PIX
+            <CreditCard size={13} /> {t('recharge')}
           </motion.button>
         </div>
         </div>

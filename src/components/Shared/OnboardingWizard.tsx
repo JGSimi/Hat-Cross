@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   ArrowRight,
@@ -47,6 +48,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
   const platform = usePlatform();
   const reducedMotion = useReducedMotion();
+  const { t } = useTranslation('onboarding');
 
   const goNext = () => {
     if (stepIdx < STEPS.length - 1) setStepIdx((i) => i + 1);
@@ -68,7 +70,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
   };
 
   const isTerminal = step === 'done';
-  const primaryLabel = isTerminal ? 'Começar a usar' : 'Próximo';
+  const primaryLabel = isTerminal ? t('finish') : t('next');
 
   return (
     <motion.div
@@ -149,7 +151,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
             <motion.button
               whileHover={{ opacity: 1 }}
               onClick={onComplete}
-              aria-label="Pular tutorial"
+              aria-label={t('skipAria')}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -163,7 +165,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
                 fontFamily: 'inherit',
               }}
             >
-              Pular
+              {t('skip')}
             </motion.button>
           )}
         </div>
@@ -240,7 +242,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
               fontFamily: 'inherit',
             }}
           >
-            <ArrowLeft size={12} /> Voltar
+            <ArrowLeft size={12} /> {t('back')}
           </button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -299,6 +301,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
 // ---- Steps ----
 
 function WelcomeStep({ reducedMotion }: { reducedMotion: boolean }) {
+  const { t } = useTranslation('onboarding');
   return (
     <div>
       <motion.div
@@ -318,7 +321,7 @@ function WelcomeStep({ reducedMotion }: { reducedMotion: boolean }) {
           letterSpacing: -0.5,
         }}
       >
-        Bem-vindo ao Hat
+        {t('welcome.title')}
       </h1>
       <p
         style={{
@@ -329,7 +332,7 @@ function WelcomeStep({ reducedMotion }: { reducedMotion: boolean }) {
           maxWidth: 340,
         }}
       >
-        Um assistente de IA que vive na sua barra de menus. Um atalho e você já tá conversando com modelos de ponta — sem abrir aba de navegador, sem configurar nada.
+        {t('welcome.body')}
       </p>
     </div>
   );
@@ -337,25 +340,26 @@ function WelcomeStep({ reducedMotion }: { reducedMotion: boolean }) {
 
 function ShortcutsStep({ platform }: { platform: Platform }) {
   const settings = useSettingsStore((s) => s.settings);
+  const { t } = useTranslation('onboarding');
   const rows = [
     {
       icon: MessageSquare,
-      title: 'Chat flutuante',
-      desc: 'Janela sempre por cima pra conversar rápido',
+      title: t('shortcuts.row1Title'),
+      desc: t('shortcuts.row1Desc'),
       keys: formatShortcut(settings.shortcuts.floatingChat, platform),
     },
     {
       icon: ClipboardIcon,
-      title: 'Processar clipboard',
-      desc: 'Copia um texto, aperta o atalho, a IA responde',
+      title: t('shortcuts.row2Title'),
+      desc: t('shortcuts.row2Desc'),
       keys: formatShortcut(settings.shortcuts.clipboard, platform),
     },
   ];
 
   return (
     <div>
-      <h2 style={stepTitle}>Três atalhos pra tudo</h2>
-      <p style={stepLede}>Cada recurso tem um atalho global. Funciona em qualquer app.</p>
+      <h2 style={stepTitle}>{t('shortcuts.title')}</h2>
+      <p style={stepLede}>{t('shortcuts.lede')}</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 22, textAlign: 'left' }}>
         {rows.map((row) => (
@@ -409,17 +413,22 @@ function ShortcutsStep({ platform }: { platform: Platform }) {
       </div>
 
       <p style={{ ...stepFoot, marginTop: 14 }}>
-        Personalize em <span style={{ color: 'var(--text-secondary)' }}>Configurações → Atalhos</span>.
+        <Trans
+          t={t}
+          i18nKey="shortcuts.foot"
+          components={{ strong: <span style={{ color: 'var(--text-secondary)' }} /> }}
+        />
       </p>
     </div>
   );
 }
 
 function ModesStep() {
+  const { t } = useTranslation('onboarding');
   return (
     <div>
-      <h2 style={stepTitle}>Escolha o cérebro certo</h2>
-      <p style={stepLede}>Três modos de IA pra balancear velocidade, custo e capacidade.</p>
+      <h2 style={stepTitle}>{t('modes.title')}</h2>
+      <p style={stepLede}>{t('modes.lede')}</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 22, textAlign: 'left' }}>
         {AI_MODES.map((mode) => {
@@ -466,7 +475,7 @@ function ModesStep() {
         })}
       </div>
 
-      <p style={{ ...stepFoot, marginTop: 14 }}>Cada modo consome créditos em quantidades diferentes.</p>
+      <p style={{ ...stepFoot, marginTop: 14 }}>{t('modes.foot')}</p>
     </div>
   );
 }
@@ -476,11 +485,12 @@ function CreditsStep() {
   const exampleBrl = pricing.tierBrls[0] ?? 5;
   const exampleCredits = Math.floor(exampleBrl * pricing.brlToCredits);
   const exampleMessages = Math.round(exampleCredits / 10);
+  const { t, i18n } = useTranslation('onboarding');
 
   const bullets = [
-    'Cada mensagem consome créditos — quanto mais potente o modo, mais consumo.',
-    'Você recarrega via PIX direto com o criador do Hat, em segundos.',
-    'Seu saldo fica sincronizado na nuvem — abre em qualquer máquina.',
+    t('credits.bullet1'),
+    t('credits.bullet2'),
+    t('credits.bullet3'),
   ];
 
   return (
@@ -507,7 +517,7 @@ function CreditsStep() {
         <Coins size={26} />
       </motion.div>
 
-      <h2 style={stepTitle}>Como funcionam os créditos</h2>
+      <h2 style={stepTitle}>{t('credits.title')}</h2>
 
       <ul
         style={{
@@ -568,7 +578,7 @@ function CreditsStep() {
         }}
       >
         <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-bright)', letterSpacing: -0.3 }}>
-          R$ {exampleBrl}
+          {t('credits.brl', { amount: exampleBrl })}
         </div>
         <div style={{ textAlign: 'right' }}>
           <div
@@ -579,10 +589,10 @@ function CreditsStep() {
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            {exampleCredits.toLocaleString('pt-BR')} créditos
+            {t('credits.creditsCount', { count: exampleCredits.toLocaleString(i18n.language) })}
           </div>
           <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-            ~{exampleMessages.toLocaleString('pt-BR')} mensagens Hat
+            {t('credits.messagesCount', { count: exampleMessages.toLocaleString(i18n.language) })}
           </div>
         </div>
       </div>
@@ -603,6 +613,7 @@ function SigninStep({
   onSignIn: () => void;
   onSkip: () => void;
 }) {
+  const { t } = useTranslation('onboarding');
   if (user) {
     return (
       <div>
@@ -623,13 +634,16 @@ function SigninStep({
         >
           <Check size={28} style={{ color: 'var(--success)' }} />
         </motion.div>
-        <h2 style={stepTitle}>Você já está logado</h2>
+        <h2 style={stepTitle}>{t('signin.titleSigned')}</h2>
         <p style={stepLede}>
-          Entrou como{' '}
-          <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-            {user.displayName ?? user.email}
-          </span>
-          . Seus créditos já estão sincronizados.
+          <Trans
+            t={t}
+            i18nKey="signin.ledeSigned"
+            values={{ name: user.displayName ?? user.email ?? '' }}
+            components={{
+              strong: <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }} />,
+            }}
+          />
         </p>
       </div>
     );
@@ -637,10 +651,8 @@ function SigninStep({
 
   return (
     <div>
-      <h2 style={stepTitle}>Ative seus créditos</h2>
-      <p style={stepLede}>
-        Entre com Google pra ter seu saldo, histórico de conversas e modelos de ponta — tudo sincronizado.
-      </p>
+      <h2 style={stepTitle}>{t('signin.titleGuest')}</h2>
+      <p style={stepLede}>{t('signin.ledeGuest')}</p>
 
       <motion.button
         whileHover={{ scale: 1.02 }}
@@ -676,11 +688,11 @@ function SigninStep({
             >
               <Loader2 size={14} />
             </motion.div>
-            Abrindo navegador...
+            {t('signin.opening')}
           </>
         ) : (
           <>
-            <GoogleIcon size={14} /> Entrar com Google
+            <GoogleIcon size={14} /> {t('signin.googleButton')}
           </>
         )}
       </motion.button>
@@ -716,7 +728,7 @@ function SigninStep({
           textUnderlineOffset: 3,
         }}
       >
-        Fazer isso depois
+        {t('signin.skip')}
       </button>
     </div>
   );
@@ -725,6 +737,7 @@ function SigninStep({
 function DoneStep({ platform }: { platform: Platform }) {
   const settings = useSettingsStore((s) => s.settings);
   const mainHotkey = formatShortcut(settings.shortcuts.floatingChat, platform).join(' + ');
+  const { t } = useTranslation('onboarding');
 
   return (
     <div>
@@ -747,27 +760,32 @@ function DoneStep({ platform }: { platform: Platform }) {
         <Check size={32} style={{ color: 'var(--success)' }} />
       </motion.div>
 
-      <h2 style={stepTitle}>Tudo pronto!</h2>
+      <h2 style={stepTitle}>{t('done.title')}</h2>
       <p style={stepLede}>
-        Chame o Hat a qualquer momento com{' '}
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 3,
-            padding: '2px 6px',
-            borderRadius: 6,
-            background: 'var(--surface-secondary)',
-            border: '0.5px solid var(--border-subtle)',
-            color: 'var(--text-bright)',
-            fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
-            fontSize: 10.5,
-            fontWeight: 600,
+        <Trans
+          t={t}
+          i18nKey="done.body"
+          values={{ hotkey: mainHotkey }}
+          components={{
+            kbd: (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 3,
+                  padding: '2px 6px',
+                  borderRadius: 6,
+                  background: 'var(--surface-secondary)',
+                  border: '0.5px solid var(--border-subtle)',
+                  color: 'var(--text-bright)',
+                  fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+                  fontSize: 10.5,
+                  fontWeight: 600,
+                }}
+              />
+            ),
           }}
-        >
-          {mainHotkey}
-        </span>
-        . Para recarregar créditos, vá em Configurações → Conta.
+        />
       </p>
     </div>
   );

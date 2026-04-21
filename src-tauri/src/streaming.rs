@@ -216,9 +216,9 @@ async fn stream_chat_hat_impl(
     consume_openai_sse(app, stream_id, cancel_flag, response).await
 }
 
-// Translates Worker-level HTTP errors into user-friendly PT-BR messages.
-// The Worker returns 402 when the balance is too low (bounce before starting
-// the stream), 401 on bad/missing JWT, 500 on Gemini upstream failures.
+// Traduz erros HTTP do Worker em CÓDIGOS (não strings PT-BR) — o cliente
+// resolve via i18n para a língua corrente. Formato: `error:<code>[:detail]`.
+// O TS identifica pelo prefixo `error:` e faz lookup em errors.json.
 fn map_hat_proxy_error(status: u16, body: &str) -> String {
     let detail = serde_json::from_str::<serde_json::Value>(body)
         .ok()
@@ -226,11 +226,11 @@ fn map_hat_proxy_error(status: u16, body: &str) -> String {
         .unwrap_or_default();
 
     match status {
-        401 => "Sessão expirada. Faça login de novo para continuar.".to_string(),
-        402 => "Créditos insuficientes. Recarregue via PIX na aba Conta.".to_string(),
-        429 => "Muitas requisições em pouco tempo. Aguarde alguns segundos.".to_string(),
-        500..=599 => format!("Erro no Hat ({}): {}", status, detail),
-        _ => format!("Erro do Hat ({}): {}", status, detail),
+        401 => "error:sessionExpired".to_string(),
+        402 => "error:insufficientCredits".to_string(),
+        429 => "error:rateLimited".to_string(),
+        500..=599 => format!("error:serverError:{}:{}", status, detail),
+        _ => format!("error:unknownError:{}:{}", status, detail),
     }
 }
 

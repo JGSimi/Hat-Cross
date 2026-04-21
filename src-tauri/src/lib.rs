@@ -41,6 +41,7 @@ pub fn run() {
             oauth::open_external_url,
             tray::rebuild_tray_menu,
             tray::set_tray_icon,
+            tray::set_tray_language,
         ])
         .setup(|app| {
             tray::setup_tray(app)?;

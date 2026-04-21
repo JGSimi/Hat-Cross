@@ -1,0 +1,40 @@
+{
+  "tiers": {
+    "free":      { "label": "Free",       "tagline": "Starter themes to kick off" },
+    "spark":     { "label": "Spark",      "tagline": "First glimmers" },
+    "glow":      { "label": "Glow",       "tagline": "IDE classics" },
+    "ember":     { "label": "Ember",      "tagline": "Extended palette" },
+    "flame":     { "label": "Flame",      "tagline": "Living nature" },
+    "radiant":   { "label": "Radiant",    "tagline": "Cities & emotions" },
+    "brilliant": { "label": "Brilliant",  "tagline": "Souls & movements" },
+    "stellar":   { "label": "Stellar",    "tagline": "Art & time" },
+    "cosmic":    { "label": "Cosmic",     "tagline": "Noble materials" },
+    "nebula":    { "label": "Nebula",     "tagline": "Flavors & fantasy" },
+    "galactic":  { "label": "Galactic",   "tagline": "Deep futurism" },
+    "mythic":    { "label": "Mythic",     "tagline": "Pure nostalgia" },
+    "exclusive": { "label": "Exclusive",  "tagline": "One of a kind" }
+  },
+  "progress": {
+    "nextLabel": "Next: <strong>{{name}}</strong>",
+    "nextMeta": "{{spent}} / {{target}} · {{remaining}} to go",
+    "allUnlocked": "All themes unlocked · Living legend",
+    "tierCount": "{{unlocked}}/{{total}}",
+    "hiddenTeaser": "+{{count}} waiting"
+  },
+  "exclusive": {
+    "title": "Exclusive · 1M credits",
+    "tagline": "The only one in the entire catalog",
+    "lockedLabel": "1,000,000 credits spent"
+  },
+  "unlockCelebration": {
+    "newBadge": "New theme unlocked",
+    "exclusiveBadge": "Exclusive theme unlocked",
+    "exclusiveSub": "One of a kind · living legend",
+    "subCredits": "{{count}} credits spent",
+    "applyNow": "Apply now",
+    "viewInPicker": "View in picker",
+    "queueRemaining": "+{{count}} queued"
+  },
+  "lockedAria": "{{label}} — locked, spend {{amount}} credits",
+  "lockedTitle": "{{label}} · unlocks at {{amount}} credits"
+}

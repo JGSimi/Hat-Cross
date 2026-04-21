@@ -1,0 +1,142 @@
+{
+  "panel": {
+    "title": "Configurações",
+    "close": "Voltar"
+  },
+  "general": {
+    "title": "Geral",
+    "preview": "Geral",
+    "shortcut": {
+      "title": "Atalho",
+      "emergencyQuit": "Fechar em emergência",
+      "emergencyQuitHint": "Fecha o Hat completamente mesmo sem ele estar em foco. Útil se algo travar ou se precisar esconder o app rapidamente."
+    },
+    "system": {
+      "title": "Sistema",
+      "autoLaunch": "Iniciar com o sistema"
+    },
+    "language": {
+      "title": "Idioma",
+      "hint": "Troca toda a interface. A IA passa a responder no idioma escolhido (a menos que você tenha customizado o prompt do sistema)."
+    },
+    "updates": {
+      "title": "Atualizações",
+      "check": "Verificar atualizações",
+      "checking": "Verificando…",
+      "downloading": "Baixando {{progress}}%",
+      "upToDate": "Atualizado",
+      "error": "Erro ao verificar"
+    }
+  },
+  "ai": {
+    "title": "IA",
+    "previewTokens": "temp {{temp}} · {{tokens}} tokens",
+    "systemPrompt": "Prompt do sistema",
+    "parameters": "Parâmetros",
+    "temperature": "Temperatura",
+    "maxTokens": "Máximo de tokens",
+    "chatLimits": "Limites da conversa",
+    "context": "Contexto da IA",
+    "contextUnit": "{{count}} msgs",
+    "contextHint": "Quantidade de mensagens enviadas como contexto. Valores menores economizam tokens e mantêm respostas mais focadas.",
+    "autoNewChat": "Nova conversa automática ao atingir limite",
+    "maxConversations": "Máx. conversas",
+    "maxMessagesPerConversation": "Máx. msgs/conversa",
+    "maxMessagesHint": "Conversas antigas (não fixadas) são removidas ao ultrapassar o limite. Valores altos podem causar lentidão.",
+    "promptChangedToast": "Prompt customizado mantido — edite manualmente se quiser respostas em {{language}}."
+  },
+  "appearance": {
+    "title": "Aparência",
+    "currentTheme": "Tema atual",
+    "themes": "Temas",
+    "themesMetaNext": "{{unlocked}}/{{total}} · próximo em {{remaining}}",
+    "themesMetaComplete": "{{unlocked}}/{{total}} · coleção completa"
+  },
+  "clipboard": {
+    "title": "Clipboard",
+    "previewActive": "{{n}}/6 ativas",
+    "shortcut": "Atalho",
+    "shortcutProcess": "Processar clipboard",
+    "capture": "Captura",
+    "captureActive": "Processamento ativo",
+    "captureImages": "Capturar imagens do clipboard",
+    "captureImagesHint": "Imagens copiadas (screenshots, prints) também são enviadas para a IA junto com o texto.",
+    "soundOnComplete": "Som ao completar",
+    "response": "Resposta",
+    "copyToClipboard": "Copiar resposta para o clipboard",
+    "appendMode": "Modo anexar (original + resposta)",
+    "appendModeHint": "O texto original é mantido, com a resposta adicionada abaixo, separada por \"---\".",
+    "maxResponseLength": "Tamanho máximo da resposta",
+    "customPrompt": "Prompt customizado",
+    "useCustomPrompt": "Usar prompt customizado",
+    "useCustomPromptHintOn": "Este prompt será usado ao invés do prompt do sistema ao processar o clipboard.",
+    "useCustomPromptHintOff": "Quando desativado, usa o prompt do sistema (card \"IA\").",
+    "customPromptPlaceholder": "Ex: Traduza para inglês. Responda apenas com a tradução, sem explicações."
+  },
+  "flash": {
+    "title": "Flash Mode",
+    "previewOn": "Ativo",
+    "previewOff": "Desativado",
+    "shortcut": "Atalho",
+    "shortcutAdjust": "Ajustar posição do flash",
+    "activation": "Ativação",
+    "flashMode": "Flash Mode",
+    "flashModeHint": "A resposta é \"piscada\" discretamente na posição abaixo em vez de abrir a notificação do sistema.",
+    "content": "Conteúdo",
+    "preview": "Prévia",
+    "position": "Posição",
+    "positionHint": "Clique em Ajustar e arraste a janela até a posição ideal.",
+    "adjust": "Ajustar",
+    "timing": "Tempo",
+    "timingMode": "Modo",
+    "timingInstant": "Instant",
+    "timingFade": "Fade",
+    "timingTypewriter": "Typewriter",
+    "fadeIn": "Fade in",
+    "fadeOut": "Fade out",
+    "durationAuto": "Duração automática",
+    "durationFixed": "Duração fixa",
+    "durationAutoHint": "O tempo adapta ao tamanho da resposta.",
+    "duration": "Duração",
+    "appearance": "Aparência",
+    "color": "Cor",
+    "colorPick": "Escolher cor",
+    "colorUseTheme": "Usar cor do tema atual",
+    "colorThemeLabel": "Tema",
+    "opacity": "Opacidade",
+    "fontSize": "Tamanho",
+    "textShadow": "Sombra para legibilidade",
+    "textShadowHint": "Adiciona um contorno sutil para o texto não sumir em fundos claros."
+  },
+  "popover": {
+    "title": "Popover",
+    "shortcut": "Atalho",
+    "shortcutOpen": "Abrir chat flutuante",
+    "stealth": "Modo furtivo",
+    "stealthEnable": "Ativar modo furtivo",
+    "stealthHover": "Opacidade ao passar o mouse",
+    "disguise": "Disfarce",
+    "disguiseShow": "Mostrar relógio como disfarce",
+    "disguiseHint": "O chat aparece como um widget de relógio. Clique no relógio para revelar.",
+    "stealthOn": "Stealth on",
+    "stealthOff": "Stealth off",
+    "disguiseOn": "Disfarce on",
+    "size": "Tamanho",
+    "width": "Largura",
+    "height": "Altura"
+  },
+  "notifications": {
+    "title": "Notificações",
+    "previewActive": "{{count}} ativas",
+    "previewDisabled": "desativadas",
+    "enabled": "Notificações ativas",
+    "types": "Tipos",
+    "processing": "Processamento do clipboard",
+    "response": "Resposta do clipboard",
+    "chatResponse": "Resposta de chat (sem foco)",
+    "errors": "Erros",
+    "clipboardEmpty": "Clipboard vazio",
+    "updates": "Atualizações",
+    "osNote": "O tempo de exibição é controlado pelo sistema operacional."
+  }
+}

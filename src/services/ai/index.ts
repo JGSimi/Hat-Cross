@@ -2,6 +2,17 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type { ConversationTurn, StreamChunk } from '../../types';
 import type { AIMode } from '../../types/account';
+import i18n from '../../i18n';
+
+// Resolve erros que vêm do Rust no formato `error:<code>[:extra]` para
+// strings no idioma atual. Se a string não começar com `error:` (ex: um
+// throw inesperado), retorna ela como está.
+function localizeStreamError(raw: string): string {
+  if (!raw.startsWith('error:')) return raw;
+  const [, code] = raw.split(':');
+  if (!code) return i18n.t('errors:unknownError');
+  return i18n.t(`errors:${code}`, { defaultValue: raw });
+}
 
 // Monotonic counter for stream IDs. The backend uses this to route cancel
 // requests to the correct stream and to tag emitted chunks so concurrent
@@ -71,7 +82,7 @@ export async function startHatStream(options: HatStreamOptions): Promise<() => v
   });
 
   unlistenError = await listen<string>('chat-stream-error', (event) => {
-    onError(event.payload);
+    onError(localizeStreamError(event.payload));
     cleanup();
   });
 
@@ -87,7 +98,7 @@ export async function startHatStream(options: HatStreamOptions): Promise<() => v
     idempotencyKey: crypto.randomUUID(),
   }).catch((e) => {
     if (done) return;
-    onError(String(e));
+    onError(localizeStreamError(String(e)));
     cleanup();
   });
 

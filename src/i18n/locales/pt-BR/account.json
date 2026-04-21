@@ -1,0 +1,41 @@
+{
+  "notConnected": "Não conectado",
+  "signInHint": "Entre com Google para usar créditos Hat",
+  "signIn": "Entrar com Google",
+  "signingIn": "Abrindo…",
+  "signOut": "Sair",
+  "user": "Usuário",
+  "available": "Disponível",
+  "recharge": "Recarregar via PIX",
+  "rechargeTitle": "Recarga de créditos",
+  "rechargeAmounts": "Valores de recarga",
+  "popular": "Popular",
+  "pixKey": "Chave PIX",
+  "tapToCopy": "Toque para copiar",
+  "copied": "Copiado",
+  "couldNotCopy": "Não consegui copiar. Selecione manualmente.",
+  "couldNotOpenWhatsApp": "Não consegui abrir o WhatsApp. Copie o link manualmente.",
+  "sendProof": "Enviar comprovante via WhatsApp",
+  "currentBalance": "Saldo atual:",
+  "creditsSuffix": "créditos",
+  "messagesEstimate": "~{{count}} mensagens",
+  "creditsBrief": "{{count}} créd.",
+  "forAmount": "por",
+  "viaPix": "via PIX",
+  "signedOutGate": {
+    "title": "Entre pra recarregar",
+    "body": "Seu saldo fica ligado à conta Google. Entre pra ver preços e copiar a chave PIX.",
+    "signIn": "Entrar com Google",
+    "signingIn": "Abrindo navegador…"
+  },
+  "celebration": {
+    "creditsAdded": "+{{count}} créditos",
+    "sub": "Recebidos! Bom Hat pra você."
+  },
+  "whatsapp": {
+    "greeting": "Oi João! Recarreguei créditos Hat via PIX.",
+    "amount": "Valor: R$ {{brl}}",
+    "email": "Meu email: {{email}}",
+    "proof": "Segue o comprovante:"
+  }
+}

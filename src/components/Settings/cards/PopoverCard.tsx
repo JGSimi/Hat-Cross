@@ -1,4 +1,5 @@
 import { MessageSquare } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import SettingsCard from './SettingsCard';
 import { Section, Row, StackRow, Toggle, Slider, ShortcutRecorder } from './primitives';
 import { useSettingsStore } from '../../../stores/settingsStore';
@@ -6,26 +7,27 @@ import { useSettingsStore } from '../../../stores/settingsStore';
 export default function PopoverCard() {
   const { settings, updateSettings } = useSettingsStore();
   const popover = settings.popover;
+  const { t } = useTranslation('settings');
 
   const updatePopover = (partial: Partial<typeof popover>) => {
     updateSettings({ popover: { ...popover, ...partial } });
   };
 
   const preview = [
-    popover.stealthMode ? 'Stealth on' : 'Stealth off',
-    popover.disguiseMode ? 'Disfarce on' : null,
+    popover.stealthMode ? t('popover.stealthOn') : t('popover.stealthOff'),
+    popover.disguiseMode ? t('popover.disguiseOn') : null,
   ]
     .filter(Boolean)
     .join(' · ');
 
   return (
     <SettingsCard
-      title="Popover"
+      title={t('popover.title')}
       icon={<MessageSquare size={14} strokeWidth={2} />}
       preview={preview}
     >
-      <Section title="Atalho">
-        <Row label="Abrir chat flutuante">
+      <Section title={t('popover.shortcut')}>
+        <Row label={t('popover.shortcutOpen')}>
           <ShortcutRecorder
             value={settings.shortcuts.floatingChat}
             onChange={(v) =>
@@ -37,8 +39,8 @@ export default function PopoverCard() {
         </Row>
       </Section>
 
-      <Section title="Modo furtivo">
-        <Row label="Ativar modo furtivo">
+      <Section title={t('popover.stealth')}>
+        <Row label={t('popover.stealthEnable')}>
           <Toggle
             checked={popover.stealthMode}
             onChange={(v) => updatePopover({ stealthMode: v })}
@@ -46,7 +48,7 @@ export default function PopoverCard() {
         </Row>
         {popover.stealthMode && (
           <StackRow
-            label="Opacidade ao passar o mouse"
+            label={t('popover.stealthHover')}
             value={`${Math.round(popover.stealthHoverOpacity * 100)}%`}
           >
             <Slider
@@ -60,14 +62,10 @@ export default function PopoverCard() {
         )}
       </Section>
 
-      <Section title="Disfarce">
+      <Section title={t('popover.disguise')}>
         <Row
-          label="Mostrar relógio como disfarce"
-          hint={
-            popover.disguiseMode
-              ? 'O chat aparece como um widget de relógio. Clique no relógio para revelar.'
-              : undefined
-          }
+          label={t('popover.disguiseShow')}
+          hint={popover.disguiseMode ? t('popover.disguiseHint') : undefined}
         >
           <Toggle
             checked={popover.disguiseMode}
@@ -76,8 +74,8 @@ export default function PopoverCard() {
         </Row>
       </Section>
 
-      <Section title="Tamanho">
-        <StackRow label="Largura" value={`${popover.width}px`}>
+      <Section title={t('popover.size')}>
+        <StackRow label={t('popover.width')} value={`${popover.width}px`}>
           <Slider
             min={300}
             max={800}
@@ -86,7 +84,7 @@ export default function PopoverCard() {
             onChange={(v) => updatePopover({ width: v })}
           />
         </StackRow>
-        <StackRow label="Altura" value={`${popover.height}px`}>
+        <StackRow label={t('popover.height')} value={`${popover.height}px`}>
           <Slider
             min={350}
             max={900}

@@ -1,25 +1,42 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Settings2, Check, AlertCircle, RefreshCw, Download } from 'lucide-react';
+import { Settings2, Check, AlertCircle, RefreshCw, Download, Languages } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
+import { useTranslation } from 'react-i18next';
 import SettingsCard from './SettingsCard';
 import { Row, Section, Toggle, ShortcutRecorder } from './primitives';
 import { useSettingsStore } from '../../../stores/settingsStore';
+import { useToastStore } from '../../../stores/toastStore';
+import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES, type AppLanguage } from '../../../i18n/defaults';
 
 type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'uptodate' | 'error';
 
 export default function GeneralCard() {
-  const { settings, updateSettings } = useSettingsStore();
+  const { settings, updateSettings, setLanguage } = useSettingsStore();
   const [version, setVersion] = useState('');
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle');
   const [updateProgress, setUpdateProgress] = useState(0);
+  const { t } = useTranslation('settings');
+  const showToast = useToastStore((s) => s.showToast);
 
   useEffect(() => {
     getVersion().then(setVersion).catch(() => setVersion(''));
   }, []);
 
-  const preview = version ? `v${version}` : 'Geral';
+  const preview = version ? `v${version}` : t('general.preview');
+
+  const handleLanguageChange = (lang: AppLanguage) => {
+    if (lang === settings.language) return;
+    const autoSwapped = setLanguage(lang);
+    if (!autoSwapped) {
+      showToast(
+        t('ai.promptChangedToast', { language: LANGUAGE_LABELS[lang].native }),
+        'info',
+        { duration: 5000 },
+      );
+    }
+  };
 
   const handleCheckUpdate = async () => {
     setUpdateStatus('checking');
@@ -55,15 +72,76 @@ export default function GeneralCard() {
 
   return (
     <SettingsCard
-      title="Geral"
+      title={t('general.title')}
       icon={<Settings2 size={14} strokeWidth={2} />}
       preview={preview}
       defaultOpen
     >
-      <Section title="Atalho">
+      <Section title={t('general.language.title')}>
         <Row
-          label="Fechar em emergência"
-          hint="Fecha o Hat completamente mesmo sem ele estar em foco. Útil se algo travar ou se precisar esconder o app rapidamente."
+          label={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Languages size={12} />
+              {LANGUAGE_LABELS[settings.language].native}
+            </span>
+          }
+          hint={t('general.language.hint')}
+        >
+          <div
+            role="radiogroup"
+            aria-label={t('general.language.title')}
+            style={{
+              display: 'inline-flex',
+              background: 'var(--surface-secondary)',
+              border: '0.5px solid var(--border-subtle)',
+              borderRadius: 999,
+              padding: 3,
+              gap: 2,
+            }}
+          >
+            {SUPPORTED_LANGUAGES.map((lang) => {
+              const isActive = settings.language === lang;
+              const info = LANGUAGE_LABELS[lang];
+              return (
+                <motion.button
+                  key={lang}
+                  role="radio"
+                  aria-checked={isActive}
+                  type="button"
+                  onClick={() => handleLanguageChange(lang)}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+                  style={{
+                    position: 'relative',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '4px 10px',
+                    borderRadius: 999,
+                    fontSize: 10.5,
+                    fontWeight: isActive ? 600 : 500,
+                    background: isActive ? 'var(--color-accent)' : 'transparent',
+                    color: isActive ? 'var(--on-accent)' : 'var(--text-muted)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    letterSpacing: 0.2,
+                    boxShadow: isActive ? '0 2px 6px var(--accent-glow)' : 'none',
+                    transition: 'background 0.18s ease, color 0.18s ease',
+                  }}
+                >
+                  <span style={{ fontSize: 11 }}>{info.flag}</span>
+                  {info.short}
+                </motion.button>
+              );
+            })}
+          </div>
+        </Row>
+      </Section>
+
+      <Section title={t('general.shortcut.title')}>
+        <Row
+          label={t('general.shortcut.emergencyQuit')}
+          hint={t('general.shortcut.emergencyQuitHint')}
         >
           <ShortcutRecorder
             value={settings.shortcuts.emergencyQuit}
@@ -76,8 +154,8 @@ export default function GeneralCard() {
         </Row>
       </Section>
 
-      <Section title="Sistema">
-        <Row label="Iniciar com o sistema">
+      <Section title={t('general.system.title')}>
+        <Row label={t('general.system.autoLaunch')}>
           <Toggle
             checked={settings.autoLaunch}
             onChange={(v) => {
@@ -88,7 +166,7 @@ export default function GeneralCard() {
         </Row>
       </Section>
 
-      <Section title="Atualizações" meta={version ? `v${version}` : undefined}>
+      <Section title={t('general.updates.title')} meta={version ? `v${version}` : undefined}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <motion.button
             whileHover={{ scale: updateBusy ? 1 : 1.02 }}
@@ -138,11 +216,11 @@ export default function GeneralCard() {
             {updateStatus === 'uptodate' && <Check size={12} />}
             {updateStatus === 'error' && <AlertCircle size={12} />}
             {updateStatus === 'idle' && <RefreshCw size={12} />}
-            {updateStatus === 'checking' ? 'Verificando…' :
-             updateStatus === 'downloading' ? `Baixando ${updateProgress}%` :
-             updateStatus === 'uptodate' ? 'Atualizado' :
-             updateStatus === 'error' ? 'Erro ao verificar' :
-             'Verificar atualizações'}
+            {updateStatus === 'checking' ? t('general.updates.checking') :
+             updateStatus === 'downloading' ? t('general.updates.downloading', { progress: updateProgress }) :
+             updateStatus === 'uptodate' ? t('general.updates.upToDate') :
+             updateStatus === 'error' ? t('general.updates.error') :
+             t('general.updates.check')}
           </motion.button>
         </div>
       </Section>

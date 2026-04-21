@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import HorseLogo from './HorseLogo';
 import { getGreeting } from '../../utils/markdown';
 import { usePlatform } from '../../hooks/usePlatform';
@@ -6,12 +7,16 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { formatShortcut } from '../../utils/formatShortcut';
 
 export default function EmptyState() {
+  // `i18n.language` acesso só pra re-renderizar quando o idioma mudar
+  // (getGreeting é função pura que lê i18n.t, mas React não sabe disso).
+  const { t, i18n } = useTranslation('chat');
+  void i18n.language;
   const greeting = getGreeting();
   const platform = usePlatform();
   const shortcutSettings = useSettingsStore((s) => s.settings.shortcuts);
 
   const shortcuts = [
-    { keys: formatShortcut(shortcutSettings.clipboard, platform), label: 'Clipboard' },
+    { keys: formatShortcut(shortcutSettings.clipboard, platform), label: t('shortcuts.clipboard') },
   ];
 
   return (
@@ -50,7 +55,7 @@ export default function EmptyState() {
         transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.4 }}
         style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 24px 0' }}
       >
-        Como posso ajudar?
+        {t('empty.subtitle')}
       </motion.p>
 
       {/* Shortcut badges */}

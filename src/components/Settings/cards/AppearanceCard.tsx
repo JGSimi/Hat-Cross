@@ -1,5 +1,6 @@
 import { Palette, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import SettingsCard from './SettingsCard';
 import ThemePicker from '../ThemePicker';
 import { Section } from './primitives';
@@ -15,10 +16,11 @@ export default function AppearanceCard() {
   const active = THEME_PRESETS.find((t) => t.name === settings.theme) ?? THEME_PRESETS[0];
   const total = THEME_PRESETS.length;
   const progress = getProgressToNext(creditsSpent, unlocked);
+  const { t } = useTranslation('settings');
 
   return (
     <SettingsCard
-      title="Aparência"
+      title={t('appearance.title')}
       icon={<Palette size={14} strokeWidth={2} />}
       preview={active.label}
     >
@@ -43,7 +45,7 @@ export default function AppearanceCard() {
               {active.label}
             </div>
             <div className="theme-current__sub" style={{ color: active.textMuted }}>
-              Tema atual
+              {t('appearance.currentTheme')}
             </div>
           </div>
           <div className="theme-current__palette">
@@ -68,14 +70,18 @@ export default function AppearanceCard() {
       </motion.div>
 
       <Section
-        title="Temas"
+        title={t('appearance.themes')}
         meta={
           progress ? (
-            `${unlocked.size}/${total} · próximo em ${formatCredits(progress.remaining)}`
+            t('appearance.themesMetaNext', {
+              unlocked: unlocked.size,
+              total,
+              remaining: formatCredits(progress.remaining),
+            })
           ) : (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--color-accent)' }}>
               <Sparkles size={10} />
-              {unlocked.size}/{total} · coleção completa
+              {t('appearance.themesMetaComplete', { unlocked: unlocked.size, total })}
             </span>
           )
         }

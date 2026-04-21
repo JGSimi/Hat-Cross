@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { THEME_PRESETS, type AppTheme, type ThemePreset } from '../../types';
 import { useCreditsStore } from '../../stores/creditsStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -44,6 +45,7 @@ export default function ThemeUnlockCelebration() {
   const setShowSettings = useSettingsStore((s) => s.setShowSettingsPanel);
   const [queue, setQueue] = useState<ThemePreset[]>([]);
   const seenRef = useRef<Set<string> | null>(null);
+  const { t, i18n } = useTranslation('themes');
 
   // Boot: quando o user entra ou o primeiro snapshot chega, estabelece
   // a baseline. Nada é celebrado nesse momento — só depois.
@@ -186,8 +188,8 @@ export default function ThemeUnlockCelebration() {
           <Sparkles size={11} />
           <span>
             {current.exclusive
-              ? 'Tema exclusivo desbloqueado'
-              : 'Novo tema desbloqueado'}
+              ? t('unlockCelebration.exclusiveBadge')
+              : t('unlockCelebration.newBadge')}
           </span>
         </div>
 
@@ -215,8 +217,10 @@ export default function ThemeUnlockCelebration() {
           <div className="unlock-celebration__label">{current.label}</div>
           <div className="unlock-celebration__sub">
             {current.exclusive
-              ? '1 peça única no catálogo · lenda viva'
-              : `${current.unlockAt.toLocaleString('pt-BR')} créditos gastos`}
+              ? t('unlockCelebration.exclusiveSub')
+              : t('unlockCelebration.subCredits', {
+                  count: current.unlockAt.toLocaleString(i18n.language),
+                })}
           </div>
         </div>
 
@@ -226,20 +230,20 @@ export default function ThemeUnlockCelebration() {
             className="unlock-celebration__btn unlock-celebration__btn--primary"
             onClick={() => applyNow(current.name)}
           >
-            Aplicar agora
+            {t('unlockCelebration.applyNow')}
           </button>
           <button
             type="button"
             className="unlock-celebration__btn"
             onClick={viewInPicker}
           >
-            Ver no picker
+            {t('unlockCelebration.viewInPicker')}
           </button>
         </div>
 
         {queue.length > 1 && (
           <div className="unlock-celebration__queue">
-            +{queue.length - 1} na fila
+            {t('unlockCelebration.queueRemaining', { count: queue.length - 1 })}
           </div>
         )}
       </motion.div>

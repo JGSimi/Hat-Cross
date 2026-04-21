@@ -1,0 +1,9 @@
+{
+  "sessionExpired": "Sessão expirada. Entre novamente.",
+  "insufficientCredits": "Créditos insuficientes. Recarregue pra continuar.",
+  "rateLimited": "Muitas requisições. Tente em alguns segundos.",
+  "serverError": "Erro no servidor. Tente de novo em instantes.",
+  "networkError": "Sem conexão com o Hat.",
+  "unknownError": "Algo deu errado. Tente novamente.",
+  "generic": "Erro"
+}

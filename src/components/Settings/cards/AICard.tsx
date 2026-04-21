@@ -1,10 +1,12 @@
 import { Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import SettingsCard from './SettingsCard';
 import { Row, Section, StackRow, Slider, Toggle } from './primitives';
 import { useSettingsStore } from '../../../stores/settingsStore';
 
 export default function AICard() {
   const { settings, updateSettings } = useSettingsStore();
+  const { t, i18n } = useTranslation('settings');
   const limits = settings.chatLimits ?? {
     maxContextMessages: 40,
     maxConversations: 50,
@@ -19,15 +21,15 @@ export default function AICard() {
     ? `${Math.round(settings.maxTokens / 1024)}k`
     : `${settings.maxTokens}`;
 
-  const preview = `temp ${settings.temperature.toFixed(1)} · ${tokensPreview} tokens`;
+  const preview = t('ai.previewTokens', { temp: settings.temperature.toFixed(1), tokens: tokensPreview });
 
   return (
     <SettingsCard
-      title="IA"
+      title={t('ai.title')}
       icon={<Sparkles size={14} strokeWidth={2} />}
       preview={preview}
     >
-      <Section title="Prompt do sistema">
+      <Section title={t('ai.systemPrompt')}>
         <textarea
           value={settings.systemPrompt}
           onChange={(e) => updateSettings({ systemPrompt: e.target.value })}
@@ -47,8 +49,8 @@ export default function AICard() {
         />
       </Section>
 
-      <Section title="Parâmetros">
-        <StackRow label="Temperatura" value={settings.temperature.toFixed(1)}>
+      <Section title={t('ai.parameters')}>
+        <StackRow label={t('ai.temperature')} value={settings.temperature.toFixed(1)}>
           <Slider
             min={0}
             max={2}
@@ -57,7 +59,7 @@ export default function AICard() {
             onChange={(v) => updateSettings({ temperature: v })}
           />
         </StackRow>
-        <StackRow label="Máximo de tokens" value={settings.maxTokens.toLocaleString('pt-BR')}>
+        <StackRow label={t('ai.maxTokens')} value={settings.maxTokens.toLocaleString(i18n.language)}>
           <Slider
             min={256}
             max={32768}
@@ -68,11 +70,11 @@ export default function AICard() {
         </StackRow>
       </Section>
 
-      <Section title="Limites da conversa">
+      <Section title={t('ai.chatLimits')}>
         <StackRow
-          label="Contexto da IA"
-          value={`${limits.maxContextMessages} msgs`}
-          hint="Quantidade de mensagens enviadas como contexto. Valores menores economizam tokens e mantêm respostas mais focadas."
+          label={t('ai.context')}
+          value={t('ai.contextUnit', { count: limits.maxContextMessages })}
+          hint={t('ai.contextHint')}
         >
           <Slider
             min={10}
@@ -82,13 +84,13 @@ export default function AICard() {
             onChange={(v) => updateLimits({ maxContextMessages: v })}
           />
         </StackRow>
-        <Row label="Nova conversa automática ao atingir limite">
+        <Row label={t('ai.autoNewChat')}>
           <Toggle
             checked={limits.autoNewChatOnLimit}
             onChange={(v) => updateLimits({ autoNewChatOnLimit: v })}
           />
         </Row>
-        <StackRow label="Máx. conversas" value={String(limits.maxConversations)}>
+        <StackRow label={t('ai.maxConversations')} value={String(limits.maxConversations)}>
           <Slider
             min={10}
             max={200}
@@ -98,9 +100,9 @@ export default function AICard() {
           />
         </StackRow>
         <StackRow
-          label="Máx. msgs/conversa"
+          label={t('ai.maxMessagesPerConversation')}
           value={String(limits.maxMessagesPerConversation)}
-          hint="Conversas antigas (não fixadas) são removidas ao ultrapassar o limite. Valores altos podem causar lentidão."
+          hint={t('ai.maxMessagesHint')}
         >
           <Slider
             min={50}

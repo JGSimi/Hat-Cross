@@ -1,0 +1,142 @@
+{
+  "panel": {
+    "title": "Ajustes",
+    "close": "Atrás"
+  },
+  "general": {
+    "title": "General",
+    "preview": "General",
+    "shortcut": {
+      "title": "Atajo",
+      "emergencyQuit": "Cierre de emergencia",
+      "emergencyQuitHint": "Cierra Hat por completo incluso sin estar enfocado. Útil si algo se traba o necesitas ocultar la app rápidamente."
+    },
+    "system": {
+      "title": "Sistema",
+      "autoLaunch": "Iniciar con el sistema"
+    },
+    "language": {
+      "title": "Idioma",
+      "hint": "Cambia toda la interfaz. La IA responderá en el idioma elegido (a menos que hayas personalizado el prompt del sistema)."
+    },
+    "updates": {
+      "title": "Actualizaciones",
+      "check": "Buscar actualizaciones",
+      "checking": "Buscando…",
+      "downloading": "Descargando {{progress}}%",
+      "upToDate": "Actualizado",
+      "error": "Error al buscar"
+    }
+  },
+  "ai": {
+    "title": "IA",
+    "previewTokens": "temp {{temp}} · {{tokens}} tokens",
+    "systemPrompt": "Prompt del sistema",
+    "parameters": "Parámetros",
+    "temperature": "Temperatura",
+    "maxTokens": "Máx. tokens",
+    "chatLimits": "Límites de la conversación",
+    "context": "Contexto de la IA",
+    "contextUnit": "{{count}} msjs",
+    "contextHint": "Cantidad de mensajes enviados como contexto. Valores más bajos ahorran tokens y mantienen respuestas más enfocadas.",
+    "autoNewChat": "Nueva conversación automática al alcanzar el límite",
+    "maxConversations": "Máx. conversaciones",
+    "maxMessagesPerConversation": "Máx. msjs/conversación",
+    "maxMessagesHint": "Las conversaciones antiguas (no ancladas) se eliminan al superar el límite. Valores altos pueden causar lentitud.",
+    "promptChangedToast": "Prompt personalizado conservado — edítalo manualmente si quieres respuestas en {{language}}."
+  },
+  "appearance": {
+    "title": "Apariencia",
+    "currentTheme": "Tema actual",
+    "themes": "Temas",
+    "themesMetaNext": "{{unlocked}}/{{total}} · próximo en {{remaining}}",
+    "themesMetaComplete": "{{unlocked}}/{{total}} · colección completa"
+  },
+  "clipboard": {
+    "title": "Portapapeles",
+    "previewActive": "{{n}}/6 activas",
+    "shortcut": "Atajo",
+    "shortcutProcess": "Procesar portapapeles",
+    "capture": "Captura",
+    "captureActive": "Procesamiento activo",
+    "captureImages": "Capturar imágenes del portapapeles",
+    "captureImagesHint": "Las imágenes copiadas (capturas de pantalla, etc.) también se envían a la IA junto con el texto.",
+    "soundOnComplete": "Sonido al completar",
+    "response": "Respuesta",
+    "copyToClipboard": "Copiar respuesta al portapapeles",
+    "appendMode": "Modo anexar (original + respuesta)",
+    "appendModeHint": "El texto original se conserva, con la respuesta añadida debajo, separada por \"---\".",
+    "maxResponseLength": "Longitud máxima de la respuesta",
+    "customPrompt": "Prompt personalizado",
+    "useCustomPrompt": "Usar prompt personalizado",
+    "useCustomPromptHintOn": "Este prompt se usará en lugar del prompt del sistema al procesar el portapapeles.",
+    "useCustomPromptHintOff": "Si está desactivado, usa el prompt del sistema (tarjeta \"IA\").",
+    "customPromptPlaceholder": "Ej: Traduce al inglés. Responde solo con la traducción, sin explicaciones."
+  },
+  "flash": {
+    "title": "Flash Mode",
+    "previewOn": "Activo",
+    "previewOff": "Desactivado",
+    "shortcut": "Atajo",
+    "shortcutAdjust": "Ajustar posición del flash",
+    "activation": "Activación",
+    "flashMode": "Flash Mode",
+    "flashModeHint": "La respuesta se \"flashea\" discretamente en la posición abajo en vez de abrir una notificación del sistema.",
+    "content": "Contenido",
+    "preview": "Vista previa",
+    "position": "Posición",
+    "positionHint": "Haz clic en Ajustar y arrastra la ventana a la posición ideal.",
+    "adjust": "Ajustar",
+    "timing": "Tiempo",
+    "timingMode": "Modo",
+    "timingInstant": "Instant",
+    "timingFade": "Fade",
+    "timingTypewriter": "Typewriter",
+    "fadeIn": "Fade in",
+    "fadeOut": "Fade out",
+    "durationAuto": "Duración automática",
+    "durationFixed": "Duración fija",
+    "durationAutoHint": "El tiempo se adapta al tamaño de la respuesta.",
+    "duration": "Duración",
+    "appearance": "Apariencia",
+    "color": "Color",
+    "colorPick": "Elegir color",
+    "colorUseTheme": "Usar color del tema actual",
+    "colorThemeLabel": "Tema",
+    "opacity": "Opacidad",
+    "fontSize": "Tamaño",
+    "textShadow": "Sombra para legibilidad",
+    "textShadowHint": "Agrega un contorno sutil para que el texto no se pierda en fondos claros."
+  },
+  "popover": {
+    "title": "Popover",
+    "shortcut": "Atajo",
+    "shortcutOpen": "Abrir chat flotante",
+    "stealth": "Modo sigilo",
+    "stealthEnable": "Activar modo sigilo",
+    "stealthHover": "Opacidad al pasar el cursor",
+    "disguise": "Disfraz",
+    "disguiseShow": "Mostrar reloj como disfraz",
+    "disguiseHint": "El chat aparece como un widget de reloj. Haz clic en el reloj para revelar.",
+    "stealthOn": "Sigilo on",
+    "stealthOff": "Sigilo off",
+    "disguiseOn": "Disfraz on",
+    "size": "Tamaño",
+    "width": "Ancho",
+    "height": "Alto"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "previewActive": "{{count}} activas",
+    "previewDisabled": "desactivadas",
+    "enabled": "Notificaciones activas",
+    "types": "Tipos",
+    "processing": "Procesamiento del portapapeles",
+    "response": "Respuesta del portapapeles",
+    "chatResponse": "Respuesta de chat (sin foco)",
+    "errors": "Errores",
+    "clipboardEmpty": "Portapapeles vacío",
+    "updates": "Actualizaciones",
+    "osNote": "El tiempo de visualización lo controla el sistema operativo."
+  }
+}

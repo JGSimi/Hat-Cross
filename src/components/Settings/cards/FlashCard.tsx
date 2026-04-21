@@ -1,19 +1,21 @@
 import { Zap } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { useTranslation } from 'react-i18next';
 import SettingsCard from './SettingsCard';
 import { Row, Section, StackRow, Toggle, Slider, PillGroup, ShortcutRecorder } from './primitives';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import type { FlashTimingMode } from '../../../types';
 
-const TIMING_OPTIONS: { value: FlashTimingMode; label: string }[] = [
-  { value: 'instant', label: 'Instant' },
-  { value: 'fade', label: 'Fade' },
-  { value: 'typewriter', label: 'Typewriter' },
-];
-
 export default function FlashCard() {
   const { settings, updateSettings } = useSettingsStore();
   const flash = settings.clipboard.flash;
+  const { t } = useTranslation('settings');
+
+  const TIMING_OPTIONS: { value: FlashTimingMode; label: string }[] = [
+    { value: 'instant', label: t('flash.timingInstant') },
+    { value: 'fade', label: t('flash.timingFade') },
+    { value: 'typewriter', label: t('flash.timingTypewriter') },
+  ];
 
   const updateShortcut = (v: string) =>
     updateSettings({
@@ -38,24 +40,22 @@ export default function FlashCard() {
   };
 
   const handleAdjustPosition = () => {
-    // The global listener in App.tsx persists the new position once the user
-    // hits Save in the flash window — no local listener needed here.
     invoke('flash_enter_adjust_mode', {
       position: { x: flash.position.x, y: flash.position.y },
     }).catch((e) => console.error('[flash] enter adjust failed:', e));
   };
 
-  const preview = flash.enabled ? 'Ativo' : 'Desativado';
+  const preview = flash.enabled ? t('flash.previewOn') : t('flash.previewOff');
   const holdIsAuto = flash.timing.holdMs === null;
 
   return (
     <SettingsCard
-      title="Flash Mode"
+      title={t('flash.title')}
       icon={<Zap size={14} strokeWidth={2} />}
       preview={preview}
     >
-      <Section title="Atalho">
-        <Row label="Ajustar posição do flash">
+      <Section title={t('flash.shortcut')}>
+        <Row label={t('flash.shortcutAdjust')}>
           <ShortcutRecorder
             value={settings.shortcuts.adjustFlashPosition}
             onChange={updateShortcut}
@@ -63,21 +63,17 @@ export default function FlashCard() {
         </Row>
       </Section>
 
-      <Section title="Ativação">
+      <Section title={t('flash.activation')}>
         <Row
-          label="Flash Mode"
-          hint={
-            flash.enabled
-              ? 'A resposta é "piscada" discretamente na posição abaixo em vez de abrir a notificação do sistema.'
-              : undefined
-          }
+          label={t('flash.flashMode')}
+          hint={flash.enabled ? t('flash.flashModeHint') : undefined}
         >
           <Toggle checked={flash.enabled} onChange={(v) => update({ enabled: v })} />
         </Row>
       </Section>
 
-      <Section title="Conteúdo">
-        <StackRow label="Prévia" value={`${flash.previewLength} chars`}>
+      <Section title={t('flash.content')}>
+        <StackRow label={t('flash.preview')} value={`${flash.previewLength} chars`}>
           <Slider
             min={50}
             max={1000}
@@ -88,10 +84,10 @@ export default function FlashCard() {
         </StackRow>
       </Section>
 
-      <Section title="Posição">
+      <Section title={t('flash.position')}>
         <Row
           label={`X: ${flash.position.x} · Y: ${flash.position.y}`}
-          hint="Clique em Ajustar e arraste a janela até a posição ideal."
+          hint={t('flash.positionHint')}
         >
           <button
             onClick={handleAdjustPosition}
@@ -111,13 +107,13 @@ export default function FlashCard() {
               opacity: flash.enabled ? 1 : 0.6,
             }}
           >
-            Ajustar
+            {t('flash.adjust')}
           </button>
         </Row>
       </Section>
 
-      <Section title="Tempo">
-        <Row label="Modo">
+      <Section title={t('flash.timing')}>
+        <Row label={t('flash.timingMode')}>
           <PillGroup<FlashTimingMode>
             options={TIMING_OPTIONS}
             value={flash.timing.mode}
@@ -126,7 +122,7 @@ export default function FlashCard() {
           />
         </Row>
         {flash.timing.mode === 'fade' && (
-          <StackRow label="Fade in" value={`${flash.timing.fadeInMs}ms`}>
+          <StackRow label={t('flash.fadeIn')} value={`${flash.timing.fadeInMs}ms`}>
             <Slider
               min={50}
               max={1200}
@@ -137,8 +133,8 @@ export default function FlashCard() {
           </StackRow>
         )}
         <Row
-          label={holdIsAuto ? 'Duração automática' : 'Duração fixa'}
-          hint={holdIsAuto ? 'O tempo adapta ao tamanho da resposta.' : undefined}
+          label={holdIsAuto ? t('flash.durationAuto') : t('flash.durationFixed')}
+          hint={holdIsAuto ? t('flash.durationAutoHint') : undefined}
         >
           <Toggle
             checked={holdIsAuto}
@@ -146,7 +142,7 @@ export default function FlashCard() {
           />
         </Row>
         {!holdIsAuto && (
-          <StackRow label="Duração" value={`${flash.timing.holdMs ?? 4000}ms`}>
+          <StackRow label={t('flash.duration')} value={`${flash.timing.holdMs ?? 4000}ms`}>
             <Slider
               min={500}
               max={15000}
@@ -157,7 +153,7 @@ export default function FlashCard() {
           </StackRow>
         )}
         {flash.timing.mode !== 'instant' && (
-          <StackRow label="Fade out" value={`${flash.timing.fadeOutMs}ms`}>
+          <StackRow label={t('flash.fadeOut')} value={`${flash.timing.fadeOutMs}ms`}>
             <Slider
               min={50}
               max={1500}
@@ -169,8 +165,8 @@ export default function FlashCard() {
         )}
       </Section>
 
-      <Section title="Aparência">
-        <Row label="Cor">
+      <Section title={t('flash.appearance')}>
+        <Row label={t('flash.color')}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <label
               style={{
@@ -185,7 +181,7 @@ export default function FlashCard() {
                 overflow: 'hidden',
                 boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.08)',
               }}
-              title="Escolher cor"
+              title={t('flash.colorPick')}
             >
               <input
                 type="color"
@@ -203,7 +199,7 @@ export default function FlashCard() {
             </label>
             <button
               onClick={() => updateAppearance({ color: '' })}
-              title="Usar cor do tema atual"
+              title={t('flash.colorUseTheme')}
               style={{
                 background: flash.appearance.color ? 'transparent' : 'var(--surface-elevated)',
                 color: flash.appearance.color ? 'var(--text-muted)' : 'var(--text-bright)',
@@ -216,11 +212,11 @@ export default function FlashCard() {
                 transition: 'all 0.15s ease',
               }}
             >
-              Tema
+              {t('flash.colorThemeLabel')}
             </button>
           </div>
         </Row>
-        <StackRow label="Opacidade" value={`${flash.appearance.opacity}%`}>
+        <StackRow label={t('flash.opacity')} value={`${flash.appearance.opacity}%`}>
           <Slider
             min={10}
             max={100}
@@ -229,7 +225,7 @@ export default function FlashCard() {
             onChange={(v) => updateAppearance({ opacity: v })}
           />
         </StackRow>
-        <StackRow label="Tamanho" value={`${flash.appearance.fontSizePx}px`}>
+        <StackRow label={t('flash.fontSize')} value={`${flash.appearance.fontSizePx}px`}>
           <Slider
             min={10}
             max={32}
@@ -239,8 +235,8 @@ export default function FlashCard() {
           />
         </StackRow>
         <Row
-          label="Sombra para legibilidade"
-          hint="Adiciona um contorno sutil para o texto não sumir em fundos claros."
+          label={t('flash.textShadow')}
+          hint={t('flash.textShadowHint')}
         >
           <Toggle
             checked={flash.appearance.textShadow}

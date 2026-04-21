@@ -1,0 +1,41 @@
+{
+  "notConnected": "Not connected",
+  "signInHint": "Sign in with Google to use Hat credits",
+  "signIn": "Sign in with Google",
+  "signingIn": "Opening…",
+  "signOut": "Sign out",
+  "user": "User",
+  "available": "Available",
+  "recharge": "Top up via PIX",
+  "rechargeTitle": "Credit top-up",
+  "rechargeAmounts": "Top-up amounts",
+  "popular": "Popular",
+  "pixKey": "PIX key",
+  "tapToCopy": "Tap to copy",
+  "copied": "Copied",
+  "couldNotCopy": "Couldn't copy. Please select manually.",
+  "couldNotOpenWhatsApp": "Couldn't open WhatsApp. Copy the link manually.",
+  "sendProof": "Send receipt via WhatsApp",
+  "currentBalance": "Current balance:",
+  "creditsSuffix": "credits",
+  "messagesEstimate": "~{{count}} messages",
+  "creditsBrief": "{{count}} crd.",
+  "forAmount": "for",
+  "viaPix": "via PIX",
+  "signedOutGate": {
+    "title": "Sign in to top up",
+    "body": "Your balance is tied to your Google account. Sign in to see pricing and copy the PIX key.",
+    "signIn": "Sign in with Google",
+    "signingIn": "Opening browser…"
+  },
+  "celebration": {
+    "creditsAdded": "+{{count}} credits",
+    "sub": "Received! Enjoy Hat."
+  },
+  "whatsapp": {
+    "greeting": "Hi João! I topped up Hat credits via PIX.",
+    "amount": "Amount: R$ {{brl}}",
+    "email": "My email: {{email}}",
+    "proof": "Here's the receipt:"
+  }
+}

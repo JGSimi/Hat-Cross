@@ -1,0 +1,55 @@
+{
+  "actions": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "previous": "Anterior",
+    "confirm": "Confirmar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "copy": "Copiar",
+    "copied": "Copiado!",
+    "continue": "Continuar",
+    "skip": "Pular",
+    "retry": "Tentar de novo",
+    "done": "Concluído",
+    "apply": "Aplicar",
+    "open": "Abrir",
+    "search": "Buscar",
+    "clear": "Limpar",
+    "select": "Selecionar",
+    "ok": "OK"
+  },
+  "states": {
+    "loading": "Carregando…",
+    "saving": "Salvando…",
+    "error": "Erro",
+    "success": "Sucesso",
+    "empty": "Vazio"
+  },
+  "units": {
+    "characters": "caracteres",
+    "chars": "chars",
+    "tokens": "tokens",
+    "messages": "mensagens",
+    "seconds": "segundos",
+    "minutes": "minutos",
+    "hours": "horas",
+    "days_one": "{{count}} dia",
+    "days_other": "{{count}} dias"
+  },
+  "time": {
+    "yesterday": "Ontem",
+    "today": "Hoje",
+    "now": "agora",
+    "draftAgeYesterday": "rascunho de ontem",
+    "draftAgeDays": "rascunho de {{count}} dias"
+  },
+  "placeholders": {
+    "search": "Buscar…",
+    "typeHere": "Digite aqui…",
+    "optional": "Opcional"
+  }
+}

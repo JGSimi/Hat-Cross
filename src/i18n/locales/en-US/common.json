@@ -1,0 +1,55 @@
+{
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "continue": "Continue",
+    "skip": "Skip",
+    "retry": "Try again",
+    "done": "Done",
+    "apply": "Apply",
+    "open": "Open",
+    "search": "Search",
+    "clear": "Clear",
+    "select": "Select",
+    "ok": "OK"
+  },
+  "states": {
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "error": "Error",
+    "success": "Success",
+    "empty": "Empty"
+  },
+  "units": {
+    "characters": "characters",
+    "chars": "chars",
+    "tokens": "tokens",
+    "messages": "messages",
+    "seconds": "seconds",
+    "minutes": "minutes",
+    "hours": "hours",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days"
+  },
+  "time": {
+    "yesterday": "Yesterday",
+    "today": "Today",
+    "now": "now",
+    "draftAgeYesterday": "draft from yesterday",
+    "draftAgeDays": "{{count}}-day-old draft"
+  },
+  "placeholders": {
+    "search": "Search…",
+    "typeHere": "Type here…",
+    "optional": "Optional"
+  }
+}

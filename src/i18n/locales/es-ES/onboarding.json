@@ -1,0 +1,47 @@
+{
+  "skip": "Saltar",
+  "skipAria": "Saltar tutorial",
+  "back": "Atrás",
+  "next": "Siguiente",
+  "finish": "Empezar",
+  "welcome": {
+    "title": "Bienvenido a Hat",
+    "body": "Un asistente de IA que vive en tu barra de menús. Un atajo y ya estás hablando con modelos de última generación — sin pestañas del navegador, sin configurar nada."
+  },
+  "shortcuts": {
+    "title": "Tres atajos para todo",
+    "lede": "Cada función tiene un atajo global. Funciona en cualquier app.",
+    "row1Title": "Chat flotante",
+    "row1Desc": "Ventana siempre encima para hablar rápido",
+    "row2Title": "Procesar portapapeles",
+    "row2Desc": "Copias un texto, pulsas el atajo, la IA responde",
+    "foot": "Personaliza en <strong>Ajustes → Atajos</strong>."
+  },
+  "modes": {
+    "title": "Elige el cerebro correcto",
+    "lede": "Tres modos de IA para balancear velocidad, costo y capacidad.",
+    "foot": "Cada modo consume créditos en cantidades diferentes."
+  },
+  "credits": {
+    "title": "Cómo funcionan los créditos",
+    "bullet1": "Cada mensaje consume créditos — cuanto más potente el modo, más consumo.",
+    "bullet2": "Recargas vía PIX directamente con el creador de Hat, en segundos.",
+    "bullet3": "Tu saldo queda sincronizado en la nube — ábrelo en cualquier máquina.",
+    "brl": "R$ {{amount}}",
+    "creditsCount": "{{count}} créditos",
+    "messagesCount": "~{{count}} mensajes Hat"
+  },
+  "signin": {
+    "titleGuest": "Activa tus créditos",
+    "ledeGuest": "Inicia sesión con Google para tener tu saldo, historial de conversaciones y modelos de última generación — todo sincronizado.",
+    "googleButton": "Entrar con Google",
+    "opening": "Abriendo navegador…",
+    "skip": "Hacerlo después",
+    "titleSigned": "Ya has iniciado sesión",
+    "ledeSigned": "Entraste como <strong>{{name}}</strong>. Tus créditos ya están sincronizados."
+  },
+  "done": {
+    "title": "¡Listo!",
+    "body": "Llama a Hat cuando quieras con <kbd>{{hotkey}}</kbd>. Para recargar créditos, ve a Ajustes → Cuenta."
+  }
+}

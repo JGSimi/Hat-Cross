@@ -1,0 +1,40 @@
+{
+  "tiers": {
+    "free":      { "label": "Free",       "tagline": "Temas base para começar" },
+    "spark":     { "label": "Faísca",     "tagline": "Primeiros brilhos" },
+    "glow":      { "label": "Brilho",     "tagline": "Clássicos de IDE" },
+    "ember":     { "label": "Brasa",      "tagline": "Palheta estendida" },
+    "flame":     { "label": "Chama",      "tagline": "Natureza viva" },
+    "radiant":   { "label": "Radiante",   "tagline": "Cidades & emoções" },
+    "brilliant": { "label": "Brilhante",  "tagline": "Almas & movimentos" },
+    "stellar":   { "label": "Estelar",    "tagline": "Arte & tempo" },
+    "cosmic":    { "label": "Cósmico",    "tagline": "Materiais nobres" },
+    "nebula":    { "label": "Nebulosa",   "tagline": "Sabores & fantasia" },
+    "galactic":  { "label": "Galáctico",  "tagline": "Futurismo profundo" },
+    "mythic":    { "label": "Mítico",     "tagline": "Nostalgia pura" },
+    "exclusive": { "label": "Exclusivo",  "tagline": "Uma só peça" }
+  },
+  "progress": {
+    "nextLabel": "Próximo: <strong>{{name}}</strong>",
+    "nextMeta": "{{spent}} / {{target}} · faltam {{remaining}}",
+    "allUnlocked": "Todos os temas desbloqueados · Lenda viva",
+    "tierCount": "{{unlocked}}/{{total}}",
+    "hiddenTeaser": "+{{count}} aguardam"
+  },
+  "exclusive": {
+    "title": "Exclusivo · 1M créditos",
+    "tagline": "Uma só peça no catálogo inteiro",
+    "lockedLabel": "1.000.000 créditos gastos"
+  },
+  "unlockCelebration": {
+    "newBadge": "Novo tema desbloqueado",
+    "exclusiveBadge": "Tema exclusivo desbloqueado",
+    "exclusiveSub": "1 peça única no catálogo · lenda viva",
+    "subCredits": "{{count}} créditos gastos",
+    "applyNow": "Aplicar agora",
+    "viewInPicker": "Ver no picker",
+    "queueRemaining": "+{{count}} na fila"
+  },
+  "lockedAria": "{{label}} — bloqueado, gaste {{amount}} créditos",
+  "lockedTitle": "{{label}} · desbloqueia em {{amount}} créditos"
+}

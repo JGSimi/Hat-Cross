@@ -1,0 +1,47 @@
+{
+  "skip": "Skip",
+  "skipAria": "Skip tutorial",
+  "back": "Back",
+  "next": "Next",
+  "finish": "Start using",
+  "welcome": {
+    "title": "Welcome to Hat",
+    "body": "An AI assistant that lives in your menu bar. One shortcut and you're chatting with top-tier models — no browser tab, no setup."
+  },
+  "shortcuts": {
+    "title": "Three shortcuts for everything",
+    "lede": "Each feature has a global shortcut. Works in any app.",
+    "row1Title": "Floating chat",
+    "row1Desc": "Always-on-top window to chat fast",
+    "row2Title": "Process clipboard",
+    "row2Desc": "Copy text, press the shortcut, the AI answers",
+    "foot": "Customize in <strong>Settings → Shortcuts</strong>."
+  },
+  "modes": {
+    "title": "Pick the right brain",
+    "lede": "Three AI modes balancing speed, cost, and capability.",
+    "foot": "Each mode uses a different amount of credits."
+  },
+  "credits": {
+    "title": "How credits work",
+    "bullet1": "Every message uses credits — the more powerful the mode, the more it costs.",
+    "bullet2": "You top up via PIX directly with Hat's creator, in seconds.",
+    "bullet3": "Your balance stays synced in the cloud — open it on any machine.",
+    "brl": "R$ {{amount}}",
+    "creditsCount": "{{count}} credits",
+    "messagesCount": "~{{count}} Hat messages"
+  },
+  "signin": {
+    "titleGuest": "Activate your credits",
+    "ledeGuest": "Sign in with Google to get your balance, chat history, and top-tier models — all synced.",
+    "googleButton": "Sign in with Google",
+    "opening": "Opening browser…",
+    "skip": "Do this later",
+    "titleSigned": "You're already signed in",
+    "ledeSigned": "Signed in as <strong>{{name}}</strong>. Your credits are already synced."
+  },
+  "done": {
+    "title": "All set!",
+    "body": "Call Hat any time with <kbd>{{hotkey}}</kbd>. To top up credits, go to Settings → Account."
+  }
+}

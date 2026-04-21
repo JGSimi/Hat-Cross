@@ -1,4 +1,5 @@
 import { Bell } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import SettingsCard from './SettingsCard';
 import { Row, Section, Toggle } from './primitives';
 import { useSettingsStore } from '../../../stores/settingsStore';
@@ -6,6 +7,7 @@ import { useSettingsStore } from '../../../stores/settingsStore';
 export default function NotificationsCard() {
   const { settings, updateSettings } = useSettingsStore();
   const notif = settings.notifications;
+  const { t } = useTranslation('settings');
 
   const update = (partial: Partial<typeof notif>) => {
     updateSettings({ notifications: { ...notif, ...partial } });
@@ -22,22 +24,24 @@ export default function NotificationsCard() {
       ].filter(Boolean).length
     : 0;
 
-  const preview = notif.enabled ? `${activeCount} ativas` : 'desativadas';
+  const preview = notif.enabled
+    ? t('notifications.previewActive', { count: activeCount })
+    : t('notifications.previewDisabled');
 
   return (
     <SettingsCard
-      title="Notificações"
+      title={t('notifications.title')}
       icon={<Bell size={14} strokeWidth={2} />}
       preview={preview}
     >
       <Section>
-        <Row label="Notificações ativas">
+        <Row label={t('notifications.enabled')}>
           <Toggle checked={notif.enabled} onChange={(v) => update({ enabled: v })} />
         </Row>
       </Section>
 
       <Section
-        title="Tipos"
+        title={t('notifications.types')}
         meta={notif.enabled ? `${activeCount}/6` : undefined}
       >
         <div
@@ -47,42 +51,42 @@ export default function NotificationsCard() {
             transition: 'opacity 0.2s ease',
           }}
         >
-          <Row label="Processamento do clipboard">
+          <Row label={t('notifications.processing')}>
             <Toggle
               checked={notif.showProcessingNotification}
               onChange={(v) => update({ showProcessingNotification: v })}
               disabled={!notif.enabled}
             />
           </Row>
-          <Row label="Resposta do clipboard">
+          <Row label={t('notifications.response')}>
             <Toggle
               checked={notif.showResponseNotification}
               onChange={(v) => update({ showResponseNotification: v })}
               disabled={!notif.enabled}
             />
           </Row>
-          <Row label="Resposta de chat (sem foco)">
+          <Row label={t('notifications.chatResponse')}>
             <Toggle
               checked={notif.showChatResponseNotification}
               onChange={(v) => update({ showChatResponseNotification: v })}
               disabled={!notif.enabled}
             />
           </Row>
-          <Row label="Erros">
+          <Row label={t('notifications.errors')}>
             <Toggle
               checked={notif.showErrorNotification}
               onChange={(v) => update({ showErrorNotification: v })}
               disabled={!notif.enabled}
             />
           </Row>
-          <Row label="Clipboard vazio">
+          <Row label={t('notifications.clipboardEmpty')}>
             <Toggle
               checked={notif.showClipboardEmptyNotification}
               onChange={(v) => update({ showClipboardEmptyNotification: v })}
               disabled={!notif.enabled}
             />
           </Row>
-          <Row label="Atualizações">
+          <Row label={t('notifications.updates')}>
             <Toggle
               checked={notif.showUpdateNotification}
               onChange={(v) => update({ showUpdateNotification: v })}
@@ -100,7 +104,7 @@ export default function NotificationsCard() {
           lineHeight: 1.5,
         }}
       >
-        O tempo de exibição é controlado pelo sistema operacional.
+        {t('notifications.osNote')}
       </p>
     </SettingsCard>
   );

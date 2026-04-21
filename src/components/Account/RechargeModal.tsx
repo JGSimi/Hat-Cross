@@ -17,9 +17,11 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../stores/authStore';
 import { useCreditsStore } from '../../stores/creditsStore';
 import { useToastStore } from '../../stores/toastStore';
+import i18n from '../../i18n';
 
 interface Props {
   open: boolean;
@@ -48,10 +50,12 @@ function buildTiers(tierBrls: number[], brlToCredits: number): Tier[] {
 }
 
 function whatsappUrl(brl: number | null, email: string | null): string {
-  const lines = ['Oi João! Recarreguei créditos Hat via PIX.', ''];
-  if (brl != null) lines.push(`Valor: R$ ${brl}`);
-  if (email) lines.push(`Meu email: ${email}`);
-  lines.push('', 'Segue o comprovante:');
+  const t = (key: string, opts?: Record<string, unknown>) =>
+    i18n.t(key, { ns: 'account', ...opts });
+  const lines = [t('whatsapp.greeting'), ''];
+  if (brl != null) lines.push(t('whatsapp.amount', { brl }));
+  if (email) lines.push(t('whatsapp.email', { email }));
+  lines.push('', t('whatsapp.proof'));
   return `${WHATSAPP_BASE}?text=${encodeURIComponent(lines.join('\n'))}`;
 }
 
@@ -64,6 +68,7 @@ export default function RechargeModal({ open, onClose }: Props) {
   const creditsLoading = useCreditsStore((s) => s.isLoading);
   const showToast = useToastStore((s) => s.showToast);
   const reducedMotion = useReducedMotion();
+  const { t } = useTranslation('account');
 
   const tiers = useMemo(
     () => buildTiers(pricing.tierBrls, pricing.brlToCredits),
@@ -120,7 +125,7 @@ export default function RechargeModal({ open, onClose }: Props) {
       setPixCopied(true);
       setTimeout(() => setPixCopied(false), 2000);
     } catch {
-      showToast('Não consegui copiar. Selecione manualmente.', 'error');
+      showToast(t('couldNotCopy'), 'error');
     }
   };
 
@@ -128,7 +133,7 @@ export default function RechargeModal({ open, onClose }: Props) {
     if (!selectedTier) return;
     const url = whatsappUrl(selectedTier.brl, user?.email ?? null);
     invoke('open_external_url', { url }).catch(() => {
-      showToast('Não consegui abrir o WhatsApp. Copie o link manualmente.', 'error', {
+      showToast(t('couldNotOpenWhatsApp'), 'error', {
         duration: 5000,
       });
     });
@@ -195,7 +200,7 @@ export default function RechargeModal({ open, onClose }: Props) {
                 backdropFilter: 'blur(8px)',
                 WebkitBackdropFilter: 'blur(8px)',
               }}
-              aria-label="Fechar"
+              aria-label={t('common:actions.close', 'Fechar')}
             >
               <X size={14} />
             </motion.button>
@@ -224,7 +229,7 @@ export default function RechargeModal({ open, onClose }: Props) {
                     />
 
                     {/* Divider with centered label */}
-                    <SectionDivider>Chave PIX</SectionDivider>
+                    <SectionDivider>{t('pixKey')}</SectionDivider>
 
                     {/* PIX pill */}
                     <PixPill
@@ -266,7 +271,7 @@ export default function RechargeModal({ open, onClose }: Props) {
                       }}
                     >
                       <MessageCircle size={15} strokeWidth={2.2} />
-                      Enviar comprovante via WhatsApp
+                      {t('sendProof')}
                     </motion.button>
 
                     {/* Saldo atual */}
@@ -279,9 +284,9 @@ export default function RechargeModal({ open, onClose }: Props) {
                         textAlign: 'center',
                       }}
                     >
-                      Saldo atual:{' '}
+                      {t('currentBalance')}{' '}
                       <span style={{ color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
-                        {creditsLoading ? '…' : credits.toLocaleString('pt-BR')}
+                        {creditsLoading ? '…' : credits.toLocaleString(i18n.language)}
                       </span>
                     </div>
                   </div>
@@ -316,6 +321,7 @@ function Hero({
   reducedMotion: boolean;
 }) {
   const creditsValue = selectedTier?.credits ?? 0;
+  const { t, i18n } = useTranslation('account');
 
   return (
     <div
@@ -406,7 +412,7 @@ function Hero({
               letterSpacing: -0.2,
             }}
           >
-            créditos
+            {t('creditsSuffix')}
           </div>
         </div>
 
@@ -420,7 +426,7 @@ function Hero({
             gap: 6,
           }}
         >
-          <span>por</span>
+          <span>{t('forAmount')}</span>
           <AnimatePresence mode="wait">
             <motion.span
               key={selectedTier?.brl ?? 'none'}
@@ -441,10 +447,10 @@ function Hero({
               R$ {selectedTier?.brl ?? 0}
             </motion.span>
           </AnimatePresence>
-          <span style={{ color: 'var(--text-muted)' }}>via PIX</span>
+          <span style={{ color: 'var(--text-muted)' }}>{t('viaPix')}</span>
           {selectedTier && (
             <span style={{ color: 'var(--text-muted)', marginLeft: 'auto', fontSize: 11 }}>
-              ~{selectedTier.messages.toLocaleString('pt-BR')} mensagens
+              {t('messagesEstimate', { count: selectedTier.messages.toLocaleString(i18n.language) })}
             </span>
           )}
         </div>
@@ -460,20 +466,21 @@ function AnimatedNumber({
   value: number;
   reducedMotion: boolean;
 }) {
+  const { i18n } = useTranslation();
   const mv = useMotionValue(value);
   const spring = useSpring(mv, { stiffness: 120, damping: 20, mass: 0.5 });
-  const rounded = useTransform(spring, (v) => Math.round(v).toLocaleString('pt-BR'));
-  const [display, setDisplay] = useState(Math.round(value).toLocaleString('pt-BR'));
+  const rounded = useTransform(spring, (v) => Math.round(v).toLocaleString(i18n.language));
+  const [display, setDisplay] = useState(Math.round(value).toLocaleString(i18n.language));
 
   useEffect(() => {
     if (reducedMotion) {
-      setDisplay(Math.round(value).toLocaleString('pt-BR'));
+      setDisplay(Math.round(value).toLocaleString(i18n.language));
       return;
     }
     mv.set(value);
     const unsub = rounded.on('change', setDisplay);
     return unsub;
-  }, [value, mv, rounded, reducedMotion]);
+  }, [value, mv, rounded, reducedMotion, i18n.language]);
 
   return <>{display}</>;
 }
@@ -487,10 +494,11 @@ function TierPills({
   selected: number | null;
   onSelect: (brl: number) => void;
 }) {
+  const { t, i18n } = useTranslation('account');
   return (
     <div
       role="radiogroup"
-      aria-label="Valores de recarga"
+      aria-label={t('rechargeAmounts')}
       style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -498,14 +506,14 @@ function TierPills({
         margin: '18px 0 4px',
       }}
     >
-      {tiers.map((t) => {
-        const active = t.brl === selected;
+      {tiers.map((tr) => {
+        const active = tr.brl === selected;
         return (
           <motion.button
-            key={t.brl}
+            key={tr.brl}
             role="radio"
             aria-checked={active}
-            onClick={() => onSelect(t.brl)}
+            onClick={() => onSelect(tr.brl)}
             whileHover={{ y: -1 }}
             whileTap={{ scale: 0.96 }}
             transition={{ type: 'spring', stiffness: 420, damping: 28 }}
@@ -531,7 +539,7 @@ function TierPills({
               transition: 'box-shadow 0.18s ease',
             }}
           >
-            {t.popular && !active && (
+            {tr.popular && !active && (
               <div
                 style={{
                   position: 'absolute',
@@ -547,7 +555,7 @@ function TierPills({
                   textTransform: 'uppercase',
                 }}
               >
-                Popular
+                {t('popular')}
               </div>
             )}
             <div
@@ -559,7 +567,7 @@ function TierPills({
                 lineHeight: 1.1,
               }}
             >
-              R$ {t.brl}
+              R$ {tr.brl}
             </div>
             <div
               style={{
@@ -570,7 +578,7 @@ function TierPills({
                 letterSpacing: 0.1,
               }}
             >
-              {t.credits.toLocaleString('pt-BR')} créd.
+              {t('creditsBrief', { count: tr.credits.toLocaleString(i18n.language) })}
             </div>
           </motion.button>
         );
@@ -615,6 +623,7 @@ function PixPill({
   copied: boolean;
   onCopy: () => void;
 }) {
+  const { t } = useTranslation('account');
   return (
     <motion.button
       type="button"
@@ -695,7 +704,7 @@ function PixPill({
             transition: 'color 0.2s ease',
           }}
         >
-          {copied ? 'Copiado' : 'Toque para copiar'}
+          {copied ? t('copied') : t('tapToCopy')}
         </div>
         <div
           style={{
@@ -750,6 +759,7 @@ function SignedOutGate({
   onSignIn: () => void;
   isSigningIn: boolean;
 }) {
+  const { t } = useTranslation('account');
   return (
     <div
       style={{
@@ -778,10 +788,10 @@ function SignedOutGate({
         <CreditCard size={24} />
       </div>
       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-bright)', marginBottom: 6 }}>
-        Entre pra recarregar
+        {t('signedOutGate.title')}
       </div>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 auto 18px', maxWidth: 320, lineHeight: 1.5 }}>
-        Seu saldo fica ligado à conta Google. Entre pra ver preços e copiar a chave PIX.
+        {t('signedOutGate.body')}
       </p>
       <motion.button
         whileHover={{ scale: 1.02 }}
@@ -802,7 +812,7 @@ function SignedOutGate({
           boxShadow: '0 4px 16px color-mix(in srgb, var(--color-accent) 40%, transparent)',
         }}
       >
-        {isSigningIn ? 'Abrindo navegador...' : 'Entrar com Google'}
+        {isSigningIn ? t('signedOutGate.signingIn') : t('signedOutGate.signIn')}
       </motion.button>
     </div>
   );
@@ -815,6 +825,7 @@ function CelebrationOverlay({
   delta: number;
   reducedMotion: boolean;
 }) {
+  const { t, i18n } = useTranslation('account');
   const sparkles = reducedMotion
     ? []
     : Array.from({ length: 10 }).map((_, i) => ({
@@ -887,10 +898,10 @@ function CelebrationOverlay({
           marginBottom: 4,
         }}
       >
-        +{delta.toLocaleString('pt-BR')} créditos
+        {t('celebration.creditsAdded', { count: delta.toLocaleString(i18n.language) })}
       </div>
       <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-        Recebidos! Bom Hat pra você.
+        {t('celebration.sub')}
       </div>
     </motion.div>
   );

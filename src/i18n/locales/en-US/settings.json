@@ -1,0 +1,142 @@
+{
+  "panel": {
+    "title": "Settings",
+    "close": "Back"
+  },
+  "general": {
+    "title": "General",
+    "preview": "General",
+    "shortcut": {
+      "title": "Shortcut",
+      "emergencyQuit": "Emergency quit",
+      "emergencyQuitHint": "Closes Hat completely even when it's not focused. Useful if something freezes or you need to hide the app quickly."
+    },
+    "system": {
+      "title": "System",
+      "autoLaunch": "Start with system"
+    },
+    "language": {
+      "title": "Language",
+      "hint": "Switches the whole interface. The AI starts responding in the chosen language (unless you customized the system prompt)."
+    },
+    "updates": {
+      "title": "Updates",
+      "check": "Check for updates",
+      "checking": "Checking…",
+      "downloading": "Downloading {{progress}}%",
+      "upToDate": "Up to date",
+      "error": "Check failed"
+    }
+  },
+  "ai": {
+    "title": "AI",
+    "previewTokens": "temp {{temp}} · {{tokens}} tokens",
+    "systemPrompt": "System prompt",
+    "parameters": "Parameters",
+    "temperature": "Temperature",
+    "maxTokens": "Max tokens",
+    "chatLimits": "Chat limits",
+    "context": "AI context",
+    "contextUnit": "{{count}} msgs",
+    "contextHint": "Number of messages sent as context. Lower values save tokens and keep responses more focused.",
+    "autoNewChat": "Auto-start new chat when limit is reached",
+    "maxConversations": "Max conversations",
+    "maxMessagesPerConversation": "Max msgs/conversation",
+    "maxMessagesHint": "Older (unpinned) conversations are removed when the limit is exceeded. High values can cause slowdowns.",
+    "promptChangedToast": "Custom prompt kept — edit it manually if you want answers in {{language}}."
+  },
+  "appearance": {
+    "title": "Appearance",
+    "currentTheme": "Current theme",
+    "themes": "Themes",
+    "themesMetaNext": "{{unlocked}}/{{total}} · next in {{remaining}}",
+    "themesMetaComplete": "{{unlocked}}/{{total}} · complete collection"
+  },
+  "clipboard": {
+    "title": "Clipboard",
+    "previewActive": "{{n}}/6 active",
+    "shortcut": "Shortcut",
+    "shortcutProcess": "Process clipboard",
+    "capture": "Capture",
+    "captureActive": "Processing active",
+    "captureImages": "Capture clipboard images",
+    "captureImagesHint": "Copied images (screenshots, prints) are also sent to the AI along with the text.",
+    "soundOnComplete": "Sound on complete",
+    "response": "Response",
+    "copyToClipboard": "Copy response to clipboard",
+    "appendMode": "Append mode (original + response)",
+    "appendModeHint": "The original text is kept, with the response added below, separated by \"---\".",
+    "maxResponseLength": "Max response length",
+    "customPrompt": "Custom prompt",
+    "useCustomPrompt": "Use custom prompt",
+    "useCustomPromptHintOn": "This prompt will be used instead of the system prompt when processing clipboard.",
+    "useCustomPromptHintOff": "When disabled, uses the system prompt (\"AI\" card).",
+    "customPromptPlaceholder": "E.g. Translate to English. Reply with the translation only, no explanations."
+  },
+  "flash": {
+    "title": "Flash Mode",
+    "previewOn": "On",
+    "previewOff": "Off",
+    "shortcut": "Shortcut",
+    "shortcutAdjust": "Adjust flash position",
+    "activation": "Activation",
+    "flashMode": "Flash Mode",
+    "flashModeHint": "The response is \"flashed\" discreetly at the position below instead of opening a system notification.",
+    "content": "Content",
+    "preview": "Preview",
+    "position": "Position",
+    "positionHint": "Click Adjust and drag the window to the ideal position.",
+    "adjust": "Adjust",
+    "timing": "Timing",
+    "timingMode": "Mode",
+    "timingInstant": "Instant",
+    "timingFade": "Fade",
+    "timingTypewriter": "Typewriter",
+    "fadeIn": "Fade in",
+    "fadeOut": "Fade out",
+    "durationAuto": "Auto duration",
+    "durationFixed": "Fixed duration",
+    "durationAutoHint": "Time adapts to the response length.",
+    "duration": "Duration",
+    "appearance": "Appearance",
+    "color": "Color",
+    "colorPick": "Pick color",
+    "colorUseTheme": "Use current theme color",
+    "colorThemeLabel": "Theme",
+    "opacity": "Opacity",
+    "fontSize": "Size",
+    "textShadow": "Readability shadow",
+    "textShadowHint": "Adds a subtle outline so the text doesn't vanish on bright backgrounds."
+  },
+  "popover": {
+    "title": "Popover",
+    "shortcut": "Shortcut",
+    "shortcutOpen": "Open floating chat",
+    "stealth": "Stealth mode",
+    "stealthEnable": "Enable stealth mode",
+    "stealthHover": "Hover opacity",
+    "disguise": "Disguise",
+    "disguiseShow": "Show as clock disguise",
+    "disguiseHint": "The chat appears as a clock widget. Click the clock to reveal.",
+    "stealthOn": "Stealth on",
+    "stealthOff": "Stealth off",
+    "disguiseOn": "Disguise on",
+    "size": "Size",
+    "width": "Width",
+    "height": "Height"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "previewActive": "{{count}} active",
+    "previewDisabled": "disabled",
+    "enabled": "Notifications enabled",
+    "types": "Types",
+    "processing": "Clipboard processing",
+    "response": "Clipboard response",
+    "chatResponse": "Chat response (out of focus)",
+    "errors": "Errors",
+    "clipboardEmpty": "Clipboard empty",
+    "updates": "Updates",
+    "osNote": "Display time is controlled by the operating system."
+  }
+}

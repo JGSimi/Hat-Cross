@@ -1,6 +1,7 @@
 import { MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Lock, Sparkles, Gem } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   THEME_PRESETS,
   type AppTheme,
@@ -127,11 +128,12 @@ function ProgressBar({
   creditsSpent: number;
   progress: ReturnType<typeof getProgressToNext>;
 }) {
+  const { t } = useTranslation('themes');
   if (!progress) {
     return (
       <div className="theme-progress theme-progress--complete">
         <Sparkles size={14} />
-        <span>Todos os temas desbloqueados · Lenda viva</span>
+        <span>{t('progress.allUnlocked')}</span>
       </div>
     );
   }
@@ -145,10 +147,15 @@ function ProgressBar({
     <div className="theme-progress">
       <div className="theme-progress__header">
         <span className="theme-progress__label">
-          Próximo: <strong>{next.label}</strong>
+          <Trans
+            t={t}
+            i18nKey="progress.nextLabel"
+            values={{ name: next.label }}
+            components={{ strong: <strong /> }}
+          />
         </span>
         <span className="theme-progress__meta">
-          {gastosFmt} / {alvoFmt} · faltam {faltamFmt}
+          {t('progress.nextMeta', { spent: gastosFmt, target: alvoFmt, remaining: faltamFmt })}
         </span>
       </div>
       <div className="theme-progress__track">
@@ -189,14 +196,18 @@ function TierSection({
   // Se tudo deste tier está escondido (nem unlocked nem teaser visível),
   // oculta a seção inteira pra não poluir. Só aparece quando o usuário se
   // aproxima.
+  const { t } = useTranslation('themes');
   if (unlockedInTier.length === 0 && lockedTeasers.length === 0) return null;
+
+  const tierLabel = t(`tiers.${tier.tier}.label`, { defaultValue: tier.label });
+  const tierTagline = t(`tiers.${tier.tier}.tagline`, { defaultValue: tier.tagline });
 
   return (
     <section className="theme-tier">
       <header className="theme-tier__header">
         <span className="theme-tier__glyph" aria-hidden>{tier.glyph}</span>
-        <span className="theme-tier__title">{tier.label}</span>
-        <span className="theme-tier__tagline">· {tier.tagline}</span>
+        <span className="theme-tier__title">{tierLabel}</span>
+        <span className="theme-tier__tagline">· {tierTagline}</span>
         <span className="theme-tier__count">
           {counts.unlocked}/{counts.total}
         </span>
@@ -216,9 +227,9 @@ function TierSection({
           <LockedSwatch key={theme.name} theme={theme} />
         ))}
         {hiddenCount > 0 && (
-          <div className="theme-tier__hidden" aria-label={`${hiddenCount} temas ocultos`}>
+          <div className="theme-tier__hidden" aria-label={t('progress.hiddenTeaser', { count: hiddenCount })}>
             <Sparkles size={14} />
-            <span>+{hiddenCount} aguardam</span>
+            <span>{t('progress.hiddenTeaser', { count: hiddenCount })}</span>
           </div>
         )}
       </div>
@@ -260,7 +271,7 @@ function ThemeSwatch({
       }}
       title={theme.label}
       aria-pressed={active}
-      aria-label={`Tema ${theme.label}`}
+      aria-label={theme.label}
     >
       <span className="theme-swatch__window" aria-hidden>
         <span className="theme-swatch__tl">
@@ -326,6 +337,7 @@ function ThemeSwatch({
 // ============================================================================
 
 function LockedSwatch({ theme }: { theme: ThemePreset }) {
+  const { t, i18n } = useTranslation('themes');
   // Visual diferenciado por tema — em vez de janelinha borrada,
   // mostramos a paleta real em faixas verticais. Cada tema fica
   // reconhecível mesmo bloqueado, criando desejo concreto.
@@ -341,8 +353,11 @@ function LockedSwatch({ theme }: { theme: ThemePreset }) {
         ['--swatch-text-2' as string]: theme.textSecondary,
         ['--swatch-muted' as string]: theme.textMuted,
       }}
-      aria-label={`${theme.label} — bloqueado, gaste ${formatCredits(theme.unlockAt)} créditos`}
-      title={`${theme.label} · desbloqueia em ${theme.unlockAt.toLocaleString('pt-BR')} créditos`}
+      aria-label={t('lockedAria', { label: theme.label, amount: formatCredits(theme.unlockAt) })}
+      title={t('lockedTitle', {
+        label: theme.label,
+        amount: theme.unlockAt.toLocaleString(i18n.language),
+      })}
     >
       <span className="theme-lock-preview" aria-hidden>
         <span className="theme-lock-preview__stripes">
@@ -380,13 +395,14 @@ function ExclusiveCard({
   pickerLocked: boolean;
   onSelect: (event: MouseEvent<HTMLButtonElement>, name: AppTheme) => void;
 }) {
+  const { t } = useTranslation('themes');
   return (
     <section className="theme-exclusive">
       <header className="theme-exclusive__header">
         <span className="theme-exclusive__glyph" aria-hidden>❈</span>
-        <span className="theme-exclusive__title">Exclusivo · 1M créditos</span>
+        <span className="theme-exclusive__title">{t('exclusive.title')}</span>
         <span className="theme-exclusive__tagline">
-          Uma só peça no catálogo inteiro
+          {t('exclusive.tagline')}
         </span>
       </header>
       <div className="theme-exclusive__swatch-wrap">
@@ -440,7 +456,7 @@ function ExclusiveCard({
         ) : (
           <div
             className="theme-swatch theme-swatch--exclusive-locked"
-            aria-label={`${theme.label} — bloqueado, 1M créditos gastos`}
+            aria-label={t('lockedAria', { label: theme.label, amount: '1.000.000' })}
           >
             <span className="theme-exclusive-locked" aria-hidden>
               <span className="theme-exclusive-locked__aura" />
@@ -453,7 +469,7 @@ function ExclusiveCard({
             </span>
             <span className="theme-exclusive-locked__label">
               <Lock size={11} strokeWidth={2.5} />
-              1.000.000 créditos gastos
+              {t('exclusive.lockedLabel')}
             </span>
           </div>
         )}

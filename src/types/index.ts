@@ -703,6 +703,7 @@ export interface ChatLimits {
 export interface AppSettings {
   autoLaunch: boolean;
   theme: AppTheme;
+  language: AppLanguage;
   popover: PopoverSettings;
   systemPrompt: string;
   temperature: number;
@@ -715,9 +716,16 @@ export interface AppSettings {
   onboardingCompleted: boolean;
 }
 
+import type { AppLanguage } from '../i18n/defaults';
+import { detectInitialLanguage, DEFAULT_SYSTEM_PROMPTS } from '../i18n/defaults';
+export type { AppLanguage };
+
+const INITIAL_LANGUAGE = detectInitialLanguage();
+
 export const DEFAULT_SETTINGS: AppSettings = {
   autoLaunch: false,
   theme: 'lavender',
+  language: INITIAL_LANGUAGE,
   popover: {
     width: 380,
     height: 480,
@@ -726,7 +734,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     disguiseMode: true,
     disguiseWidget: 'clock',
   },
-  systemPrompt: 'Você é um assistente de IA útil e conciso. Responda em português brasileiro.',
+  systemPrompt: DEFAULT_SYSTEM_PROMPTS[INITIAL_LANGUAGE],
   temperature: 0.7,
   maxTokens: 4096,
   shortcuts: {

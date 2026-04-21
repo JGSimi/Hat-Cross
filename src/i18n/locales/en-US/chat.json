@@ -1,0 +1,41 @@
+{
+  "greeting": {
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "evening": "Good evening",
+    "default": "Hello"
+  },
+  "empty": {
+    "subtitle": "How can I help?"
+  },
+  "input": {
+    "placeholder": "Ask anything…",
+    "send": "Send",
+    "stop": "Stop",
+    "attach": "Attach",
+    "chars": "{{count}} chars"
+  },
+  "conversation": {
+    "new": "New conversation",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "rename": "Rename",
+    "delete": "Delete",
+    "clearHistory": "Clear history"
+  },
+  "sidebar": {
+    "recent": "Recent",
+    "pinned": "Pinned",
+    "newChat": "New chat",
+    "search": "Search conversations…",
+    "empty": "No conversations yet",
+    "emptyHint": "Start a new conversation above"
+  },
+  "shortcuts": {
+    "clipboard": "Clipboard",
+    "floatingChat": "Floating chat"
+  },
+  "flash": {
+    "label": "Flash"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "title": "Clipboard",
+  "search": "Search history…",
+  "pinned": "Pinned",
+  "all": "All",
+  "recent": "Recent",
+  "older": "Older",
+  "empty": {
+    "title": "No history yet",
+    "body": "Every processed clipboard shows up here. Copy some text and use the shortcut.",
+    "back": "Back to chat"
+  },
+  "noResults": {
+    "title": "Nothing found",
+    "body": "Try another search term."
+  },
+  "entry": {
+    "original": "Original",
+    "response": "Response",
+    "copy": "Copy",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "delete": "Delete"
+  },
+  "filters": {
+    "all": "All",
+    "pinned": "Pinned",
+    "byProvider": "By provider"
+  },
+  "sort": {
+    "newest": "Newest",
+    "oldest": "Oldest"
+  }
+}

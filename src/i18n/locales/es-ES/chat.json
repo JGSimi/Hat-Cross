@@ -1,0 +1,41 @@
+{
+  "greeting": {
+    "morning": "Buenos días",
+    "afternoon": "Buenas tardes",
+    "evening": "Buenas noches",
+    "default": "Hola"
+  },
+  "empty": {
+    "subtitle": "¿En qué te ayudo?"
+  },
+  "input": {
+    "placeholder": "Pregunta lo que sea…",
+    "send": "Enviar",
+    "stop": "Detener",
+    "attach": "Adjuntar",
+    "chars": "{{count}} chars"
+  },
+  "conversation": {
+    "new": "Nueva conversación",
+    "pin": "Anclar",
+    "unpin": "Desanclar",
+    "rename": "Renombrar",
+    "delete": "Eliminar",
+    "clearHistory": "Limpiar historial"
+  },
+  "sidebar": {
+    "recent": "Recientes",
+    "pinned": "Anclados",
+    "newChat": "Nueva conversación",
+    "search": "Buscar conversaciones…",
+    "empty": "Todavía no hay conversaciones",
+    "emptyHint": "Empieza una nueva conversación arriba"
+  },
+  "shortcuts": {
+    "clipboard": "Portapapeles",
+    "floatingChat": "Chat flotante"
+  },
+  "flash": {
+    "label": "Flash"
+  }
+}
