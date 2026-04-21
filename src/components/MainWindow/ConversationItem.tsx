@@ -1,6 +1,7 @@
 import { Pin, MoreHorizontal, Trash2, PenLine } from 'lucide-react';
 import { useState, useRef, useEffect, memo, useMemo } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import type { Conversation, Message } from '../../types';
 import { formatTimestamp } from '../../utils/markdown';
 import { useToastStore } from '../../stores/toastStore';
@@ -64,6 +65,7 @@ function ConversationItemInner({
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const menuRef = useRef<HTMLDivElement>(null);
   const reducedMotion = useReducedMotion();
+  const { t } = useTranslation('chat');
 
   const msgCount = conversation.messages.length;
   const preview = useMemo(() => buildPreview(conversation.messages), [conversation.messages]);
@@ -265,13 +267,13 @@ function ConversationItemInner({
                   letterSpacing: 0.1,
                 }}
               >
-                Começar a conversar…
+                {t('conversation.start')}
               </span>
             )}
 
             {!isEmpty && (
               <span
-                aria-label={`${msgCount} mensagens`}
+                aria-label={t('conversation.messagesCount', { count: msgCount })}
                 style={{
                   flexShrink: 0,
                   fontSize: 9,
@@ -306,7 +308,7 @@ function ConversationItemInner({
               setMenuFlipped(rect.bottom + menuHeight > window.innerHeight);
               setShowMenu(!showMenu);
             }}
-            aria-label="Opções da conversa"
+            aria-label={t('conversation.options')}
             style={{
               padding: 3,
               borderRadius: 4,
@@ -349,14 +351,14 @@ function ConversationItemInner({
                     onPin();
                     setShowMenu(false);
                     useToastStore.getState().showToast(
-                      conversation.isPinned ? 'Conversa desafixada' : 'Conversa fixada',
+                      conversation.isPinned ? t('conversation.unpinned') : t('conversation.pinned'),
                       'info',
                     );
                   }}
                   style={menuButton}
                 >
                   <Pin size={11} />
-                  {conversation.isPinned ? 'Desafixar' : 'Fixar'}
+                  {conversation.isPinned ? t('conversation.unpin') : t('conversation.pin')}
                 </motion.button>
                 <motion.button
                   whileHover={{ backgroundColor: 'var(--surface-hover)' }}
@@ -368,7 +370,7 @@ function ConversationItemInner({
                   style={menuButton}
                 >
                   <PenLine size={11} />
-                  Renomear
+                  {t('conversation.rename')}
                 </motion.button>
                 <motion.button
                   whileHover={{ backgroundColor: 'color-mix(in srgb, var(--error) 10%, transparent)' }}
@@ -379,7 +381,7 @@ function ConversationItemInner({
                       setShowMenu(false);
                       setConfirmingDelete(false);
                       clearTimeout(deleteTimerRef.current);
-                      useToastStore.getState().showToast('Conversa excluída', 'success');
+                      useToastStore.getState().showToast(t('conversation.deleted'), 'success');
                     } else {
                       setConfirmingDelete(true);
                       clearTimeout(deleteTimerRef.current);
@@ -396,7 +398,7 @@ function ConversationItemInner({
                   }}
                 >
                   <Trash2 size={11} />
-                  {confirmingDelete ? 'Tem certeza?' : 'Excluir'}
+                  {confirmingDelete ? t('conversation.confirmDelete') : t('conversation.delete')}
                 </motion.button>
               </motion.div>
             )}

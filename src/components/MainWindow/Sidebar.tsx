@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Search, Settings, Trash2, HardDrive, Clipboard, PanelLeftClose } from 'lucide-react';
 import { getVersion } from '@tauri-apps/api/app';
+import { useTranslation } from 'react-i18next';
 import ConversationItem from './ConversationItem';
 import { useConversations } from '../../hooks/useConversations';
 import { useConversationStore } from '../../stores/conversationStore';
@@ -9,7 +10,7 @@ import { useClipboardStore } from '../../stores/clipboardStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useToastStore } from '../../stores/toastStore';
 import { usePlatform } from '../../hooks/usePlatform';
-import { groupByDate } from '../../utils/dateGroups';
+import { groupByDate, dateGroupLabel } from '../../utils/dateGroups';
 import WindowControls from '../Shared/WindowControls';
 import type { Conversation } from '../../types';
 
@@ -44,6 +45,7 @@ export default function Sidebar({
   const [showStorageInfo, setShowStorageInfo] = useState(false);
   const platform = usePlatform();
   const clipboardCount = useClipboardStore((s) => s.entries.length);
+  const { t, i18n } = useTranslation('chat');
 
   useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
 
@@ -71,11 +73,11 @@ export default function Sidebar({
     if (confirmClearAll) {
       clearAllConversations();
       setConfirmClearAll(false);
-      useToastStore.getState().showToast('Todas as conversas removidas', 'success');
+      useToastStore.getState().showToast(t('sidebar.clearedAll'), 'success');
     } else {
       setConfirmClearAll(true);
     }
-  }, [confirmClearAll, clearAllConversations]);
+  }, [confirmClearAll, clearAllConversations, t]);
 
   const renderConversation = (conv: Conversation) => (
     <ConversationItem
@@ -131,7 +133,7 @@ export default function Sidebar({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => onViewChange('clipboard')}
-            title="Clipboard"
+            title={t('sidebar.openClipboard')}
             style={{
               padding: 5, borderRadius: 6,
               background: clipboardCount > 0 ? 'color-mix(in srgb, var(--color-accent) 8%, transparent)' : 'transparent',
@@ -156,7 +158,7 @@ export default function Sidebar({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => createConversation()}
-            title="Nova conversa"
+            title={t('sidebar.newChat')}
             style={{
               padding: 5, borderRadius: 6,
               background: 'var(--glass-secondary)',
@@ -172,7 +174,7 @@ export default function Sidebar({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={onToggleCollapse}
-            title="Ocultar sidebar"
+            title={t('sidebar.hideSidebar')}
             style={{
               padding: 5, borderRadius: 6,
               background: 'transparent',
@@ -201,8 +203,8 @@ export default function Sidebar({
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar..."
-            aria-label="Buscar conversas"
+            placeholder={t('sidebar.search')}
+            aria-label={t('sidebar.searchAria')}
             style={{
               flex: 1, background: 'transparent', fontSize: 11,
               color: 'var(--text-primary)', border: 'none',
@@ -211,7 +213,7 @@ export default function Sidebar({
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              aria-label="Limpar busca"
+              aria-label={t('sidebar.clearSearch')}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 color: 'var(--text-muted)', padding: 0, display: 'flex',
@@ -228,7 +230,7 @@ export default function Sidebar({
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {pinned.length > 0 && (
           <>
-            <SectionHeader label="Fixadas" count={pinned.length} />
+            <SectionHeader label={t('sidebar.pinned')} count={pinned.length} />
             {pinned.map(renderConversation)}
           </>
         )}
@@ -236,7 +238,7 @@ export default function Sidebar({
         {recentGrouped.size > 0 && (
           Array.from(recentGrouped.entries()).map(([group, convs]) => (
             <div key={group}>
-              <SectionHeader label={group} count={convs.length} />
+              <SectionHeader label={dateGroupLabel(group)} count={convs.length} />
               {convs.map(renderConversation)}
             </div>
           ))
@@ -247,7 +249,9 @@ export default function Sidebar({
             padding: '32px 14px', fontSize: 11,
             color: 'var(--text-muted)', textAlign: 'center',
           }}>
-            {searchQuery ? `Nenhum resultado para "${searchQuery}"` : 'Nenhuma conversa'}
+            {searchQuery
+              ? t('sidebar.noResults', { query: searchQuery })
+              : t('sidebar.noConversations')}
           </p>
         )}
       </div>
@@ -267,15 +271,15 @@ export default function Sidebar({
               background: 'color-mix(in srgb, var(--color-accent) 3%, transparent)',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)' }}>
-                <span>Conversas</span>
+                <span>{t('sidebar.storageConversations')}</span>
                 <span style={{ color: 'var(--text-secondary)' }}>{storageStats.totalConversations}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)' }}>
-                <span>Mensagens</span>
-                <span style={{ color: 'var(--text-secondary)' }}>{storageStats.totalMessages.toLocaleString()}</span>
+                <span>{t('sidebar.storageMessages')}</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{storageStats.totalMessages.toLocaleString(i18n.language)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)' }}>
-                <span>Armazenamento</span>
+                <span>{t('sidebar.storageSize')}</span>
                 <span style={{ color: 'var(--text-secondary)' }}>{formatStorageSize(storageStats.estimatedSizeKB)}</span>
               </div>
               <div style={{
@@ -302,7 +306,7 @@ export default function Sidebar({
                   }}
                 >
                   <Trash2 size={9} />
-                  {confirmClearAll ? 'Tem certeza? Clique novamente' : 'Limpar todas as conversas'}
+                  {confirmClearAll ? t('sidebar.confirmClearAll') : t('sidebar.clearAll')}
                 </button>
               )}
             </div>
@@ -330,11 +334,11 @@ export default function Sidebar({
             }}
           >
             <Settings size={12} />
-            <span>Configurações</span>
+            <span>{t('sidebar.settings')}</span>
           </button>
           <button
             onClick={() => setShowStorageInfo(!showStorageInfo)}
-            title="Info de armazenamento"
+            title={t('sidebar.storageInfo')}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: showStorageInfo ? 'var(--color-accent)' : 'var(--text-muted)',

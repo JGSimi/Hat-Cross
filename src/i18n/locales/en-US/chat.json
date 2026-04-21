@@ -9,7 +9,8 @@
     "subtitle": "How can I help?"
   },
   "input": {
-    "placeholder": "Ask anything…",
+    "placeholder": "Message…",
+    "ariaLabel": "Message",
     "send": "Send",
     "stop": "Stop",
     "attach": "Attach",
@@ -19,17 +20,42 @@
     "new": "New conversation",
     "pin": "Pin",
     "unpin": "Unpin",
+    "pinned": "Conversation pinned",
+    "unpinned": "Conversation unpinned",
     "rename": "Rename",
     "delete": "Delete",
-    "clearHistory": "Clear history"
+    "deleted": "Conversation deleted",
+    "confirmDelete": "Are you sure?",
+    "clearHistory": "Clear history",
+    "start": "Start chatting…",
+    "messagesCount": "{{count}} messages",
+    "options": "Conversation options"
   },
   "sidebar": {
-    "recent": "Recent",
     "pinned": "Pinned",
     "newChat": "New chat",
-    "search": "Search conversations…",
-    "empty": "No conversations yet",
-    "emptyHint": "Start a new conversation above"
+    "openClipboard": "Clipboard",
+    "hideSidebar": "Hide sidebar",
+    "search": "Search…",
+    "searchAria": "Search conversations",
+    "clearSearch": "Clear search",
+    "noResults": "No results for \"{{query}}\"",
+    "noConversations": "No conversations",
+    "settings": "Settings",
+    "storageInfo": "Storage info",
+    "storageConversations": "Conversations",
+    "storageMessages": "Messages",
+    "storageSize": "Storage",
+    "clearAll": "Clear all conversations",
+    "confirmClearAll": "Are you sure? Click again",
+    "clearedAll": "All conversations removed"
+  },
+  "dateGroups": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "thisWeek": "This week",
+    "thisMonth": "This month",
+    "older": "Older"
   },
   "shortcuts": {
     "clipboard": "Clipboard",

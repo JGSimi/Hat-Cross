@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, type KeyboardEvent } from 'react';
 import { motion } from 'framer-motion';
 import { Send, Square } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import AttachmentPreview from './AttachmentPreview';
 import ModeSelector from './ModeSelector';
 import type { ChatAttachment } from '../../types';
@@ -28,6 +29,7 @@ export default function InputArea({
   const [draftChipLabel, setDraftChipLabel] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const shouldAnimatePlunger = useRef(false);
+  const { t } = useTranslation('chat');
   // Session-only tracker so the plunger animation fires at most once per conversation per session.
   const hydratedIds = useRef(new Set<string>());
   const hasContent = text.trim().length > 0 || attachments.length > 0;
@@ -176,8 +178,8 @@ export default function InputArea({
           onKeyDown={handleKeyDown}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholder="Mensagem..."
-          aria-label="Mensagem"
+          placeholder={t('input.placeholder')}
+          aria-label={t('input.ariaLabel')}
           rows={1}
           style={{
             flex: 1, background: 'none', border: 'none',
@@ -202,7 +204,7 @@ export default function InputArea({
             boxShadow: hasContent && !isStreaming ? '0 2px 8px var(--accent-glow)' : 'none',
             transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
-          aria-label="Enviar"
+          aria-label={isStreaming ? t('input.stop') : t('input.send')}
         >
           {isStreaming ? <Square size={16} /> : <Send size={16} />}
         </motion.button>

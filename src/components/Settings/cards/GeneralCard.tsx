@@ -98,7 +98,6 @@ export default function GeneralCard() {
               borderRadius: 999,
               padding: 3,
               gap: 2,
-              isolation: 'isolate',
             }}
           >
             {SUPPORTED_LANGUAGES.map((lang) => {
@@ -128,14 +127,13 @@ export default function GeneralCard() {
                     border: 'none',
                     cursor: 'pointer',
                     letterSpacing: 0.2,
-                    zIndex: 1,
-                    // color muda rapidamente pra acompanhar a slide da pílula
                     transition: 'color 0.22s ease',
                   }}
                 >
-                  {/* Pílula ativa compartilhada — desliza suave entre posições
-                      via layoutId do Framer Motion. Um único elemento no DOM
-                      que "viaja" da tab antiga pra nova. */}
+                  {/* Pílula compartilhada — renderizada primeiro (fica atrás
+                      do conteúdo por ordem de DOM). Sem z-index negativo,
+                      sem isolation — mantemos o stacking simples pra não
+                      interferir no layoutId. */}
                   {isActive && (
                     <motion.span
                       layoutId="lang-pill-bg"
@@ -147,7 +145,6 @@ export default function GeneralCard() {
                         background: 'var(--color-accent)',
                         boxShadow:
                           '0 2px 8px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.2)',
-                        zIndex: -1,
                       }}
                       transition={{
                         type: 'spring',
@@ -158,7 +155,11 @@ export default function GeneralCard() {
                     />
                   )}
                   <motion.span
-                    style={{ fontSize: 11, display: 'inline-flex' }}
+                    style={{
+                      position: 'relative',
+                      fontSize: 11,
+                      display: 'inline-flex',
+                    }}
                     animate={{
                       scale: isActive ? 1.12 : 1,
                       filter: isActive ? 'saturate(1.15)' : 'saturate(0.85)',
@@ -167,7 +168,7 @@ export default function GeneralCard() {
                   >
                     {info.flag}
                   </motion.span>
-                  {info.short}
+                  <span style={{ position: 'relative' }}>{info.short}</span>
                 </motion.button>
               );
             })}

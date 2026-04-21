@@ -9,7 +9,8 @@
     "subtitle": "¿En qué te ayudo?"
   },
   "input": {
-    "placeholder": "Pregunta lo que sea…",
+    "placeholder": "Mensaje…",
+    "ariaLabel": "Mensaje",
     "send": "Enviar",
     "stop": "Detener",
     "attach": "Adjuntar",
@@ -19,17 +20,42 @@
     "new": "Nueva conversación",
     "pin": "Anclar",
     "unpin": "Desanclar",
+    "pinned": "Conversación anclada",
+    "unpinned": "Conversación desanclada",
     "rename": "Renombrar",
     "delete": "Eliminar",
-    "clearHistory": "Limpiar historial"
+    "deleted": "Conversación eliminada",
+    "confirmDelete": "¿Seguro?",
+    "clearHistory": "Limpiar historial",
+    "start": "Empieza a conversar…",
+    "messagesCount": "{{count}} mensajes",
+    "options": "Opciones de la conversación"
   },
   "sidebar": {
-    "recent": "Recientes",
-    "pinned": "Anclados",
+    "pinned": "Ancladas",
     "newChat": "Nueva conversación",
-    "search": "Buscar conversaciones…",
-    "empty": "Todavía no hay conversaciones",
-    "emptyHint": "Empieza una nueva conversación arriba"
+    "openClipboard": "Portapapeles",
+    "hideSidebar": "Ocultar barra lateral",
+    "search": "Buscar…",
+    "searchAria": "Buscar conversaciones",
+    "clearSearch": "Limpiar búsqueda",
+    "noResults": "Sin resultados para \"{{query}}\"",
+    "noConversations": "Sin conversaciones",
+    "settings": "Ajustes",
+    "storageInfo": "Info de almacenamiento",
+    "storageConversations": "Conversaciones",
+    "storageMessages": "Mensajes",
+    "storageSize": "Almacenamiento",
+    "clearAll": "Eliminar todas las conversaciones",
+    "confirmClearAll": "¿Seguro? Pulsa de nuevo",
+    "clearedAll": "Todas las conversaciones eliminadas"
+  },
+  "dateGroups": {
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "thisWeek": "Esta semana",
+    "thisMonth": "Este mes",
+    "older": "Más antiguas"
   },
   "shortcuts": {
     "clipboard": "Portapapeles",
