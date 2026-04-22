@@ -8,7 +8,6 @@ import type { ChatAttachment } from '../../types';
 import { useDraftsStore } from '../../stores/draftsStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useCreditsStore } from '../../stores/creditsStore';
-import { useChatStore } from '../../stores/chatStore';
 import { formatDraftAge } from '../../utils/markdown';
 
 interface Props {
@@ -72,26 +71,6 @@ export default function InputArea({
     requestAnimationFrame(resizeTextarea);
   }, [conversationId, resizeTextarea]);
 
-  // Consume pendingInput from the empty-chat SuggestionGrid. When the user
-  // clicks a suggestion, the grid sets pendingInput → this effect picks it
-  // up, prefills the textarea, focuses it so the user can keep typing, and
-  // clears the pending value (one-shot).
-  const pendingInput = useChatStore((s) => s.pendingInput);
-  const setPendingInput = useChatStore((s) => s.setPendingInput);
-  useEffect(() => {
-    if (!pendingInput) return;
-    setText(pendingInput);
-    setPendingInput(null);
-    requestAnimationFrame(() => {
-      resizeTextarea();
-      const el = textareaRef.current;
-      if (el) {
-        el.focus();
-        // Place caret at end so continuing to type extends the template.
-        el.setSelectionRange(pendingInput.length, pendingInput.length);
-      }
-    });
-  }, [pendingInput, setPendingInput, resizeTextarea]);
 
   const handleSend = useCallback(() => {
     if (isStreaming) { onCancel(); return; }

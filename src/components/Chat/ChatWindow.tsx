@@ -160,7 +160,19 @@ export default function ChatWindow({ compact = false }: ChatWindowProps) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            // min-height:0 + overflow-y:auto lets the empty-state column
+            // scroll internally if Recents is long. Before this the whole
+            // column stretched past the viewport and the InputArea got
+            // pushed below the window (user reported with screenshot).
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflowY: 'auto',
+            }}
           >
             <EmptyState compact={compact} />
           </motion.div>

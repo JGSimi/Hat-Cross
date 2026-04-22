@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import HorseLogo from './HorseLogo';
-import SuggestionGrid from '../Chat/SuggestionGrid';
 import RecentConversations from '../Chat/RecentConversations';
 import { getGreeting } from '../../utils/markdown';
 import { usePlatform } from '../../hooks/usePlatform';
@@ -79,18 +78,15 @@ export default function EmptyState({ compact = false }: EmptyStateProps = {}) {
         {subtitle}
       </motion.p>
 
-      {/* Suggestion grid + shortcut badges are suppressed in compact mode
-          (popover). The popover is 380×480 — the grid overflows, clips
-          the cards, and crowds the disguise-then-reveal flow that's the
-          core reason the popover exists. Just mascot + greeting stays. */}
+      {/* Recents + shortcut badges only in full (main-window) mode. The
+          popover is 380×480 and stealth-focused — no room, no business.
+          Suggestion cards are gone per user feedback (too generic,
+          layout was overflowing the viewport and pushing the input
+          off-screen). */}
       {!compact && (
         <>
-          <div style={{ width: '100%', marginBottom: 16 }}>
-            <SuggestionGrid />
-          </div>
-
-          {/* Returning-user surface. Renders null when conversations=0 so
-              first-time users don't see an empty "Recentes" block. */}
+          {/* Returning-user surface. Renders null when conversations=0
+              so first-time users don't see an empty "Recentes" block. */}
           <div style={{ width: '100%', marginBottom: 20 }}>
             <RecentConversations />
           </div>
