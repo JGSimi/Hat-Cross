@@ -7,6 +7,7 @@ import ModeSelector from './ModeSelector';
 import type { ChatAttachment } from '../../types';
 import { useDraftsStore } from '../../stores/draftsStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useCreditsStore } from '../../stores/creditsStore';
 import { formatDraftAge } from '../../utils/markdown';
 
 interface Props {
@@ -30,6 +31,13 @@ export default function InputArea({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const shouldAnimatePlunger = useRef(false);
   const { t } = useTranslation('chat');
+  const selectedMode = useCreditsStore((s) => s.selectedMode);
+  // Varies the placeholder per mode so Hat (quick) and Hat Pro (deep
+  // analysis) communicate their shape at the point of entry. Falls back
+  // to the generic label if the key for a new mode is ever missing.
+  const placeholder = t(`input.placeholderByMode.${selectedMode}`, {
+    defaultValue: t('input.placeholder'),
+  });
   // Session-only tracker so the plunger animation fires at most once per conversation per session.
   const hydratedIds = useRef(new Set<string>());
   const hasContent = text.trim().length > 0 || attachments.length > 0;
@@ -178,7 +186,7 @@ export default function InputArea({
           onKeyDown={handleKeyDown}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholder={t('input.placeholder')}
+          placeholder={placeholder}
           aria-label={t('input.ariaLabel')}
           rows={1}
           style={{

@@ -10,6 +10,10 @@
   },
   "input": {
     "placeholder": "Mensagem…",
+    "placeholderByMode": {
+      "hat": "Pergunte algo rápido…",
+      "hat-pro": "Análise profunda, até 3k tokens…"
+    },
     "ariaLabel": "Mensagem",
     "send": "Enviar",
     "stop": "Parar",
