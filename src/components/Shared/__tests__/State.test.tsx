@@ -125,4 +125,28 @@ describe("State primitive (DS6)", () => {
     );
     expect(screen.getByTestId("custom-icon")).toBeInTheDocument();
   });
+
+  it("suppresses the icon entirely when icon={null}", () => {
+    // Sidebar empty state passes icon={null} so the HorseLogo doesn't
+    // duplicate the primary chat mascot — this guards that behaviour.
+    const { container } = render(
+      <State variant="empty" title="Sem conversas salvas" icon={null} />,
+    );
+    // No mascot SVG mask-image element should render.
+    expect(
+      container.querySelector('[style*="mask-image"]'),
+    ).toBeNull();
+    // Title still renders.
+    expect(screen.getByText("Sem conversas salvas")).toBeInTheDocument();
+  });
+
+  it("renders the default icon when icon prop is omitted", () => {
+    // Contract: undefined icon → variant default (NOT suppressed).
+    const { container } = render(<State variant="empty" title="x" />);
+    // Expect *some* element inside the wrapper (default HorseLogo
+    // mask-image div). We don't assert structure — just "something
+    // rendered where the icon goes".
+    const children = container.firstChild?.childNodes.length ?? 0;
+    expect(children).toBeGreaterThan(1); // icon wrapper + content wrapper
+  });
 });

@@ -276,6 +276,7 @@ export default function Sidebar({
           searchQuery ? (
             <State
               variant="empty"
+              icon={null}
               title={tEmpty('searchResultsEmpty.title', { query: searchQuery })}
               body={tEmpty('searchResultsEmpty.body')}
               action={{
@@ -286,6 +287,7 @@ export default function Sidebar({
           ) : (
             <State
               variant="empty"
+              icon={null}
               title={tEmpty('conversationListEmpty.title')}
               body={tEmpty('conversationListEmpty.body')}
             />
