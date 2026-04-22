@@ -8,6 +8,29 @@
   "empty": {
     "subtitle": "¿En qué te ayudo?"
   },
+  "suggestions": {
+    "label": "Atajos de inicio",
+    "summarize": {
+      "title": "Resumir texto",
+      "body": "Pega un fragmento, recibe 3 viñetas.",
+      "prompt": "Resume esto en hasta 3 viñetas directas:\n\n"
+    },
+    "explainCode": {
+      "title": "Explicar código",
+      "body": "Qué hace este fragmento, en 3 frases.",
+      "prompt": "Explica qué hace este código en 3 frases como máximo:\n\n"
+    },
+    "debugError": {
+      "title": "Depurar error",
+      "body": "Pega la traza, recibe el arreglo.",
+      "prompt": "Tengo este error. ¿Causa probable y cómo lo arreglo?\n\n"
+    },
+    "reviewWriting": {
+      "title": "Revisar texto",
+      "body": "Deja el párrafo más directo.",
+      "prompt": "Reescribe este párrafo para que sea más directo, sin perder el sentido:\n\n"
+    }
+  },
   "input": {
     "placeholder": "Mensaje…",
     "placeholderByMode": {

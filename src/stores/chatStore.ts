@@ -9,6 +9,10 @@ interface ChatState {
   streamingThinking: string;
   pendingAttachments: ChatAttachment[];
   error: string | null;
+  /** One-shot prefill for the input. Set by SuggestionGrid on the
+   * empty-chat home; InputArea consumes it (sets its local text +
+   * clears this field). */
+  pendingInput: string | null;
 
   // Actions
   addMessage: (message: Message) => void;
@@ -21,6 +25,7 @@ interface ChatState {
   removeAttachment: (id: string) => void;
   clearAttachments: () => void;
   setError: (error: string | null) => void;
+  setPendingInput: (input: string | null) => void;
   loadFromConversation: (conversationId: string) => void;
 }
 
@@ -31,6 +36,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   streamingThinking: '',
   pendingAttachments: [],
   error: null,
+  pendingInput: null,
 
   addMessage: (message) => {
     set((state) => ({
@@ -104,6 +110,10 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
   setError: (error) => {
     set({ error });
+  },
+
+  setPendingInput: (input) => {
+    set({ pendingInput: input });
   },
 
   loadFromConversation: (conversationId) => {
