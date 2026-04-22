@@ -59,7 +59,14 @@ pub fn show_window(app: &AppHandle, label: &str) {
                 .shadow(false)
                 .transparent(true)
                 .skip_taskbar(true)
-                .always_on_top(true),
+                .always_on_top(true)
+                // Defense-in-depth: blocks QuickTime classic, AirPlay, and
+                // Windows Graphics Capture. Stealth pillar targets *physical
+                // observers*, not screen recorders — macOS 15+ ScreenCaptureKit
+                // deliberately ignores this flag (tauri#14200), but we still
+                // want the free win on every other capture path.
+                // See docs/research/stealth-content-protection.md.
+                .content_protected(true),
             "main" => builder
                 .title("Hat")
                 .inner_size(820.0, 650.0)
@@ -80,7 +87,11 @@ pub fn show_window(app: &AppHandle, label: &str) {
                 // accept_first_mouse=true lets the user click the Save/Cancel
                 // buttons without the OS first routing the click to "activate
                 // the app" — prevents a no-op first click when adjusting.
-                .accept_first_mouse(true),
+                .accept_first_mouse(true)
+                // See popover branch: defense-in-depth content protection. Same
+                // macOS 15+ caveat applies; stealth pillar targets physical
+                // observers so this is a bonus, not a contract.
+                .content_protected(true),
             _ => builder
                 .title("Hat")
                 .inner_size(820.0, 650.0)
