@@ -166,7 +166,6 @@ export default function ClipboardToolbar({
             color: 'var(--text-primary)',
             background: 'transparent',
             border: 'none',
-            outline: 'none',
             fontFamily: 'inherit',
           }}
         />
