@@ -14,8 +14,11 @@ export interface StateProps {
   variant: StateVariant;
   title: string;
   body?: string;
-  /** Override the default icon for this variant. */
-  icon?: ReactNode;
+  /** Override the default icon for this variant. Pass `null` to
+   * suppress the icon entirely — useful in secondary regions
+   * (sidebar, drawer) where the HorseLogo would duplicate the
+   * primary brand moment. */
+  icon?: ReactNode | null;
   action?: StateAction;
   secondary?: StateAction;
   /** Compact row layout for inline use (sidebar, list headers). */
@@ -86,6 +89,11 @@ export default function State({
   const reduced = useReducedMotion() ?? false;
   const meta = VARIANT_META[variant];
   const iconSize = inline ? 28 : variant === "error" ? 40 : 56;
+  // `icon === undefined` → use the variant default.
+  // `icon === null`      → suppress icon entirely (no wrapper div).
+  // `icon` is a node     → render as given.
+  const resolvedIcon =
+    icon === undefined ? meta.defaultIcon(reduced, iconSize) : icon;
 
   const wrapperStyle: React.CSSProperties = inline
     ? {
@@ -157,9 +165,11 @@ export default function State({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div style={{ flexShrink: 0, display: "inline-flex" }}>
-        {icon ?? meta.defaultIcon(reduced, iconSize)}
-      </div>
+      {resolvedIcon !== null && (
+        <div style={{ flexShrink: 0, display: "inline-flex" }}>
+          {resolvedIcon}
+        </div>
+      )}
 
       <div style={contentStyle}>
         <h2 style={titleStyle}>{title}</h2>
