@@ -1,11 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, AlertTriangle, Plus } from 'lucide-react';
+import { AlertTriangle, Plus } from 'lucide-react';
 import MessageList from './MessageList';
 import InputArea from './InputArea';
 import { useChat } from '../../hooks/useChat';
 import { useChatStore } from '../../stores/chatStore';
 import { useConversationStore } from '../../stores/conversationStore';
 import EmptyState from '../Shared/EmptyState';
+import ErrorBanner from '../Shared/ErrorBanner';
+import { classifyError } from '../../lib/errors/classifyError';
 
 export default function ChatWindow() {
   const {
@@ -23,6 +25,20 @@ export default function ChatWindow() {
 
   const showEmpty = messages.length === 0 && !isStreaming;
   const contextPercent = Math.round(contextUsage * 100);
+
+  // Collapse raw error string into an ErrorKind so the banner renders mapped
+  // copy + the right action. Retry re-sends the last user turn; we only
+  // offer it when there is one AND the kind isn't already streaming-in-flight.
+  const errorKind = error ? classifyError(error) : null;
+  const lastUserMessage = [...messages].reverse().find((m) => m.isUser);
+  const handleRetry =
+    !isStreaming && lastUserMessage
+      ? () => {
+          useChatStore.getState().setError(null);
+          sendMessage(lastUserMessage.content);
+        }
+      : undefined;
+  const handleDismiss = () => useChatStore.getState().setError(null);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -160,36 +176,18 @@ export default function ChatWindow() {
         )}
       </AnimatePresence>
 
-      {error && (
+      {errorKind && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{
-            padding: '8px 12px',
-            margin: '0 12px 8px',
-            background: 'color-mix(in srgb, var(--error) 10%, transparent)',
-            border: '1px solid color-mix(in srgb, var(--error) 20%, transparent)',
-            borderLeft: '3px solid var(--error)',
-            borderRadius: '0 8px 8px 0',
-            fontSize: 12,
-            color: 'var(--error)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
+          style={{ margin: '0 12px 8px' }}
         >
-          <span>{error}</span>
-          <button
-            onClick={() => useChatStore.getState().setError(null)}
-            aria-label="Fechar erro"
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--error)', padding: 4, display: 'flex',
-              alignItems: 'center', flexShrink: 0, marginLeft: 8,
-            }}
-          >
-            <X size={14} />
-          </button>
+          <ErrorBanner
+            kind={errorKind}
+            onRetry={handleRetry}
+            onDismiss={handleDismiss}
+            inline
+          />
         </motion.div>
       )}
 
