@@ -20,7 +20,9 @@
     "nextMeta": "{{spent}} / {{target}} · {{remaining}} to go",
     "allUnlocked": "All themes unlocked · Living legend",
     "tierCount": "{{unlocked}}/{{total}}",
-    "hiddenTeaser": "+{{count}} waiting"
+    "hiddenTeaser": "+{{count}} waiting",
+    "stripLabel": "Progress to the next tier",
+    "stripRemaining": "{{remaining}} to {{tier}}"
   },
   "exclusive": {
     "title": "Exclusive · 1M credits",

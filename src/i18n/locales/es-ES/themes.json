@@ -20,7 +20,9 @@
     "nextMeta": "{{spent}} / {{target}} · faltan {{remaining}}",
     "allUnlocked": "Todos los temas desbloqueados · Leyenda viva",
     "tierCount": "{{unlocked}}/{{total}}",
-    "hiddenTeaser": "+{{count}} esperando"
+    "hiddenTeaser": "+{{count}} esperando",
+    "stripLabel": "Progreso al siguiente tier",
+    "stripRemaining": "{{remaining}} para {{tier}}"
   },
   "exclusive": {
     "title": "Exclusivo · 1M créditos",
