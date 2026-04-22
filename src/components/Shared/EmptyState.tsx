@@ -5,6 +5,7 @@ import SuggestionGrid from '../Chat/SuggestionGrid';
 import { getGreeting } from '../../utils/markdown';
 import { usePlatform } from '../../hooks/usePlatform';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useAuthStore } from '../../stores/authStore';
 import { formatShortcut } from '../../utils/formatShortcut';
 
 export default function EmptyState() {
@@ -15,6 +16,17 @@ export default function EmptyState() {
   const greeting = getGreeting();
   const platform = usePlatform();
   const shortcutSettings = useSettingsStore((s) => s.settings.shortcuts);
+  // First name from Firebase displayName personalises the subtitle when
+  // available ("Joao Simi" → "Joao"). Falls back to neutral copy when the
+  // user is signed out or displayName is missing.
+  const firstName = useAuthStore((s) => {
+    const name = s.user?.displayName?.trim();
+    if (!name) return null;
+    return name.split(/\s+/)[0];
+  });
+  const subtitle = firstName
+    ? t('empty.subtitleNamed', { name: firstName })
+    : t('empty.subtitle');
 
   const shortcuts = [
     { keys: formatShortcut(shortcutSettings.clipboard, platform), label: t('shortcuts.clipboard') },
@@ -56,7 +68,7 @@ export default function EmptyState() {
         transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.4 }}
         style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 24px 0' }}
       >
-        {t('empty.subtitle')}
+        {subtitle}
       </motion.p>
 
       {/* Suggestion grid — 4 starter shortcuts that pre-fill the input with
