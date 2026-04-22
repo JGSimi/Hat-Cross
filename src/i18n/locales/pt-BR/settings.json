@@ -3,6 +3,21 @@
     "title": "Configurações",
     "close": "Voltar"
   },
+  "sections": {
+    "nav": "Seções",
+    "appearance": {
+      "title": "Aparência & Temas",
+      "subtitle": "Cor, fonte e o catálogo de temas que você destrava."
+    },
+    "flow": {
+      "title": "Fluxo & Atalhos",
+      "subtitle": "Os três atalhos, notificações e como o Hat se comporta quando você não tá olhando."
+    },
+    "stealth": {
+      "title": "Stealth",
+      "subtitle": "Popover, Flash e Clipboard. Onde o Hat fica discreto."
+    }
+  },
   "general": {
     "title": "Geral",
     "preview": "Geral",

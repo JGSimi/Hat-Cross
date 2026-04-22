@@ -3,6 +3,21 @@
     "title": "Settings",
     "close": "Back"
   },
+  "sections": {
+    "nav": "Sections",
+    "appearance": {
+      "title": "Appearance & Themes",
+      "subtitle": "Color, font, and the theme catalog you unlock."
+    },
+    "flow": {
+      "title": "Flow & Shortcuts",
+      "subtitle": "The three shortcuts, notifications, and how Hat behaves when you're away."
+    },
+    "stealth": {
+      "title": "Stealth",
+      "subtitle": "Popover, Flash, and Clipboard. Where Hat stays low."
+    }
+  },
   "general": {
     "title": "General",
     "preview": "General",
