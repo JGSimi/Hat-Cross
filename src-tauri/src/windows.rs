@@ -1,5 +1,18 @@
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
+use crate::macos_overlay::{apply_fullscreen_overlay, OverlayLevel};
+
+/// Decide o nível de overlay por label. `popover` fica em Floating pra não
+/// agredir o Cmd+Tab; `flash` fica em Top porque existe só por 1-2s e
+/// precisa ser visto mesmo sobre um Keynote.
+fn overlay_level_for(label: &str) -> Option<OverlayLevel> {
+    match label {
+        "popover" => Some(OverlayLevel::Floating),
+        "flash" => Some(OverlayLevel::Top),
+        _ => None,
+    }
+}
+
 /// Ensures the flash webview exists and is ready to receive events, but
 /// never shows it or takes focus. Returns the handle for the caller to
 /// position + reveal manually.
@@ -14,6 +27,11 @@ pub fn ensure_flash(app: &AppHandle) -> Option<WebviewWindow> {
 
 pub fn show_window(app: &AppHandle, label: &str) {
     if let Some(window) = app.get_webview_window(label) {
+        // Reaplica overlay config toda vez — idempotente. Cobre o caso de
+        // o usuário ter ativado fullscreen depois da janela ter sido criada.
+        if let Some(level) = overlay_level_for(label) {
+            apply_fullscreen_overlay(&window, level);
+        }
         // Flash never steals focus — callers (flash_show, flash_enter_adjust_mode)
         // handle showing + positioning explicitly.
         if label != "flash" {
@@ -71,6 +89,12 @@ pub fn show_window(app: &AppHandle, label: &str) {
 
         match builder.build() {
             Ok(window) => {
+                // Aplica overlay config IMEDIATAMENTE após build, antes de
+                // qualquer show/focus. Isso garante que a janela já nasce
+                // com os flags de FullScreenAuxiliary corretos no macOS.
+                if let Some(level) = overlay_level_for(label) {
+                    apply_fullscreen_overlay(&window, level);
+                }
                 // Flash window is created hidden and should never steal focus —
                 // the flash command below shows it explicitly after positioning.
                 if label != "flash" {

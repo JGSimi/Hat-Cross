@@ -1,4 +1,5 @@
 mod commands;
+mod macos_overlay;
 mod oauth;
 mod streaming;
 mod tray;

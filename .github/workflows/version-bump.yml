@@ -75,6 +75,23 @@ jobs:
           git push origin main --tags
           echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
+      # Cria o GitHub Release ANTES da matrix de build. Sem isso, os 5 jobs
+      # de build-release chamam tauri-action em paralelo e todos tentam criar
+      # a mesma release simultaneamente — o primeiro vence, os outros falham
+      # com "tag_name already_exists" e marcam o run inteiro como failure
+      # (mesmo com os binários prontos). Criando aqui serialmente, cada job
+      # da matrix encontra release existente e só faz upload.
+      - name: Create GitHub release (single-threaded pre-matrix)
+        if: steps.bump.outputs.type != 'none'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            --repo "${{ github.repository }}" \
+            --title "Hat v${{ steps.version.outputs.version }}" \
+            --notes "Os downloads estão sendo preparados... A lista organizada será atualizada em breve." \
+            --target "${{ steps.commit.outputs.sha }}"
+
   # Build and release — runs after version bump
   build-release:
     needs: version-bump

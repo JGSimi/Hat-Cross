@@ -34,6 +34,15 @@ once_cell = "1"
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png"] }
 
+# macOS — overlay sobre apps em fullscreen exige NSWindowCollectionBehavior
+# ::FullScreenAuxiliary, que a API pública da Tauri não expõe. Acessamos via
+# objc2-app-kit direto no NSWindow. Versões pinadas nas mesmas que Tauri já
+# arrasta transitivamente, evitando binários duplicados no build.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSWindow", "NSResponder"] }
+objc2-foundation = "0.3"
+
 # Temporary patch: tao 0.34.8 panics in CursorIgnoreEvents when a window
 # is dispatched `set_ignore_cursor_events(true)` before its GdkWindow is
 # realized (transparent+hidden windows, see tauri-apps/tao#1178). The
