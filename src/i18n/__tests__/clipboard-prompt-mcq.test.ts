@@ -2,16 +2,23 @@ import { describe, it, expect } from 'vitest';
 import { CLIPBOARD_SYSTEM_PROMPTS } from '../defaults';
 
 /**
- * Regression contract — user reported 2026-04-22 that MCQ questions
- * processed via clipboard were coming back as
- *    "Opção A. O repositório remoto do Maven funciona como ..."
- * instead of just "A". Root cause: the prompt said literally
- * "APENAS com a letra correta seguida de justificativa curta" — a
- * self-contradiction that gave the model license to pad.
+ * Regression contract — covers TWO incidents:
  *
- * These assertions fail loudly if the contradiction is reintroduced
- * or the word "justificativa" / "justification" / "justificación"
- * reappears in the MCQ directive.
+ *   2026-04-22: MCQ questions came back padded ("Opção A. O
+ *   repositório…") because the prompt said "APENAS a letra seguida
+ *   de justificativa curta" — a self-contradiction.
+ *
+ *   2026-04-23: dissertative questions came back "strangely short and
+ *   incomplete" because the prompt capped ALL open-ended replies at
+ *   "3 short sentences max" — that served the flash-stealth use-case
+ *   but mutilated the primary use-case (student pasting a
+ *   dissertative prompt).
+ *
+ * Contract now:
+ *   - MCQ still letter-only (assertions 1–3)
+ *   - Open-ended has NO artificial sentence cap (assertion 4)
+ *   - Prompt actively bans ceremonial padding for open-ended
+ *     (assertion 5) so tokens are spent on the answer, not fluff
  */
 describe('CLIPBOARD_SYSTEM_PROMPTS — MCQ letter-only contract', () => {
   it.each(['pt-BR', 'en-US', 'es-ES'] as const)(
@@ -54,13 +61,31 @@ describe('CLIPBOARD_SYSTEM_PROMPTS — MCQ letter-only contract', () => {
   );
 
   it.each(['pt-BR', 'en-US', 'es-ES'] as const)(
-    '[%s] caps open-ended answers at 3 sentences',
+    '[%s] does NOT impose an artificial sentence cap on open-ended',
     (lang) => {
       const prompt = CLIPBOARD_SYSTEM_PROMPTS[lang];
-      // "3 frases" / "3 sentences" / "3 frases" (es) — allow an optional
-      // adjective (short / curtas / cortas) between the number and the
-      // unit so the wording can breathe.
-      expect(prompt).toMatch(/3\s+\w*\s*(frases|sentences)/);
+      // The 2026-04-23 incident was caused by literally capping all
+      // open-ended replies at "3 frases"/"3 sentences". Dissertative
+      // questions need full answers. Ban that exact phrasing for the
+      // open-ended directive — the prompt is free to mention numbers
+      // elsewhere (e.g. in the MCQ letter example "A, B, C, D, E…"),
+      // but it must not couple a small integer with "frases"/"sentences"/
+      // "frases" (es).
+      expect(prompt).not.toMatch(/[1-5]\s+\w*\s*(frases|sentences)/);
+    },
+  );
+
+  it.each(['pt-BR', 'en-US', 'es-ES'] as const)(
+    '[%s] bans ceremonial padding on open-ended answers',
+    (lang) => {
+      const prompt = CLIPBOARD_SYSTEM_PROMPTS[lang];
+      // Force the model to spend tokens on substance. At least one of
+      // the padding patterns must be actively forbidden.
+      const bansPadding =
+        /sem introdução/i.test(prompt) ||
+        /no ceremonial intro/i.test(prompt) ||
+        /sin introducción/i.test(prompt);
+      expect(bansPadding).toBe(true);
     },
   );
 });

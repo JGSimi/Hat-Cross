@@ -24,6 +24,10 @@ import { getIdToken } from './services/auth/firebase';
 import { startAutoUpdater } from './services/autoUpdater';
 import { AI_MODES } from './types/account';
 import { CLIPBOARD_SYSTEM_PROMPTS } from './i18n/defaults';
+import {
+  detectClipboardIntent,
+  maxTokensForIntent,
+} from './utils/detectClipboardIntent';
 
 /** Normalize legacy shortcut format (CmdOrCtrl → CommandOrControl) */
 function normalizeShortcut(s: string): string {
@@ -448,12 +452,19 @@ function App() {
         const provider = 'Hat';
         const model = AI_MODES.find((m) => m.id === hatMode)?.label ?? 'Hat';
 
-        // Clipboard blinda o system prompt: resposta curta é o contrato do fluxo.
+        // Clipboard blinda o system prompt: MCQ → letra só, dissertativa →
+        // resposta completa sem padding.
         const systemPrompt =
           CLIPBOARD_SYSTEM_PROMPTS[settings.language] ?? CLIPBOARD_SYSTEM_PROMPTS['pt-BR'];
 
         // If only image and no text, provide a default prompt
         const messageText = clipText || 'Descreva e analise esta imagem.';
+
+        // Budget dinâmico por tipo de pergunta. MCQ precisa de poucos
+        // tokens (64 é sobra); dissertativa precisa de 2048 pra responder
+        // completo. Antes era 400 pra tudo → dissertativa vinha truncada.
+        const clipboardIntent = detectClipboardIntent(clipText);
+        const clipboardMaxTokens = maxTokensForIntent(clipboardIntent);
 
         let response = '';
         let hasReceivedContent = false;
@@ -566,9 +577,10 @@ function App() {
           systemPrompt,
           mode: hatMode,
           temperature: settings.temperature,
-          // Cap fixo: resposta curta é o contrato do clipboard. `maxResponseLength`
-          // segue governando só o truncamento de caracteres pós-stream.
-          maxTokens: 400,
+          // Cap dinâmico por intent (ver detectClipboardIntent).
+          // `maxResponseLength` segue governando só o truncamento de
+          // caracteres pós-stream.
+          maxTokens: clipboardMaxTokens,
           images: clipImages,
           idToken: hatToken,
           idempotencyKey: crypto.randomUUID(),

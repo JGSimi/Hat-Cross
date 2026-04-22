@@ -20,21 +20,27 @@ export const DEFAULT_SYSTEM_PROMPTS: Record<AppLanguage, string> = {
   'es-ES': 'Eres un asistente de IA útil y conciso. Responde en español.',
 };
 
-// Prompt fixo do fluxo de clipboard. Não é editável pelo usuário — o contrato
-// do produto é responder curto pra caber no flash sem chamar atenção física.
-// A IA é forçada a ser breve via este prompt + `maxTokens: 400` no stream.
+// Prompt fixo do fluxo de clipboard. Duas regras, uma pra cada tipo de
+// pergunta que chega copiada.
 //
-// Regra DURA pra MCQ (A, B, C, D, E…): responder SÓ a letra, sem "Opção",
-// sem ponto, sem justificativa. A versão anterior dizia "APENAS com a letra
-// seguida de justificativa curta" — contradição explícita que deixava o
-// modelo livre pra padding tipo "Opção A. O repositório remoto do Maven
-// funciona como um servidor central…". Usuário em entrevista precisa ler
-// a resposta em <1s no canto da tela; qualquer texto extra quebra stealth
-// e atrasa leitura.
+// 1. MCQ (múltipla escolha — A/B/C/D/E…): resposta é SÓ a letra. Sem
+//    "Opção", sem ponto, sem justificativa. Usuário em entrevista precisa
+//    ler em <1s no canto da tela; qualquer texto extra quebra stealth.
+//
+// 2. Dissertativa: responde completo, no tamanho que a pergunta exige.
+//    Direto ao ponto — sem introdução cerimonial, sem reafirmar a
+//    pergunta, sem elogio ao usuário, sem "espero ter ajudado". Reportado
+//    2026-04-23 que dissertativas estavam voltando "estranhas e
+//    incompletas" porque o prompt antigo capeava TODA resposta aberta a
+//    "3 frases curtas" — o que servia pro flash stealth mas mutilava o
+//    caso de uso primário (aluno colando enunciado dissertativo).
+//
+// O `max_tokens` é decidido no frontend por `detectClipboardIntent`, não
+// aqui. Este prompt só define o FORMATO da resposta.
 export const CLIPBOARD_SYSTEM_PROMPTS: Record<AppLanguage, string> = {
-  'pt-BR': 'Você responde perguntas copiadas pelo usuário, em português. Se a pergunta é múltipla escolha (A, B, C, D, E…), sua resposta é SÓ a letra correta, nada mais. Sem "Opção", sem "Letra", sem ponto final, sem justificativa, sem repetir a alternativa. Exemplos de resposta válida: "A" — "C" — "E". Se a pergunta é aberta, responda direto em no máximo 3 frases curtas. Nunca alongue a resposta por educação.',
-  'en-US': 'You answer questions the user copies, in English. If the question is multiple-choice (A, B, C, D, E…), your reply is JUST the correct letter — nothing else. No "Option", no "Answer", no period, no justification, no repeating the choice text. Valid replies look like: "A" — "C" — "E". If the question is open-ended, be direct in 3 short sentences max. Never pad the answer to be polite.',
-  'es-ES': 'Respondes preguntas copiadas por el usuario, en español. Si la pregunta es de opción múltiple (A, B, C, D, E…), tu respuesta es SOLO la letra correcta, nada más. Sin "Opción", sin "Respuesta", sin punto, sin justificación, sin repetir la alternativa. Respuestas válidas: "A" — "C" — "E". Si la pregunta es abierta, sé directo en máximo 3 frases cortas. Nunca alargues la respuesta por cortesía.',
+  'pt-BR': 'Você responde perguntas copiadas pelo usuário, em português. Se a pergunta é múltipla escolha (A, B, C, D, E…), sua resposta é SÓ a letra correta, nada mais. Sem "Opção", sem "Letra", sem ponto final, sem justificativa, sem repetir a alternativa. Exemplos de resposta válida: "A" — "C" — "E". Se a pergunta é aberta ou dissertativa, responda completo, no tamanho que a pergunta exige — direto ao ponto, sem introdução cerimonial, sem reafirmar o enunciado, sem elogios, sem fechar com "espero ter ajudado". Nunca alongue por educação; nunca corte no meio por brevidade.',
+  'en-US': 'You answer questions the user copies, in English. If the question is multiple-choice (A, B, C, D, E…), your reply is JUST the correct letter — nothing else. No "Option", no "Answer", no period, no justification, no repeating the choice text. Valid replies look like: "A" — "C" — "E". If the question is open-ended or dissertative, answer completely — as long as the question demands — straight to the point, no ceremonial intro, no restating the prompt, no compliments, no "hope this helps" closer. Never pad to be polite; never cut short to be brief.',
+  'es-ES': 'Respondes preguntas copiadas por el usuario, en español. Si la pregunta es de opción múltiple (A, B, C, D, E…), tu respuesta es SOLO la letra correcta, nada más. Sin "Opción", sin "Respuesta", sin punto, sin justificación, sin repetir la alternativa. Respuestas válidas: "A" — "C" — "E". Si la pregunta es abierta o de desarrollo, responde completo — del tamaño que la pregunta pida — directo al punto, sin introducción ceremonial, sin reformular el enunciado, sin elogios, sin cerrar con "espero que ayude". Nunca alargues por cortesía; nunca cortes por brevedad.',
 };
 
 /** Retorna o idioma correspondente se o prompt for um default conhecido, senão null. */
