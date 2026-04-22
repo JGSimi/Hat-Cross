@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useSettingsStore } from '../stores/settingsStore';
 import DisguiseClock from '../components/Popover/DisguiseClock';
 import PopoverChat from '../components/Popover/PopoverChat';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 export default function PopoverPage() {
   const popoverSettings = useSettingsStore((s) => s.settings.popover);
@@ -12,6 +13,21 @@ export default function PopoverPage() {
   const toggleRevealed = useCallback(() => {
     setRevealed((r) => !r);
   }, []);
+
+  // Esc re-disguises when the popover is currently revealed. The shortcut is
+  // whitelisted inside inputs (`INPUT_WHITELIST` in useKeyboardShortcuts), so
+  // Rafa can hit Escape mid-typing if someone walks by — no need to blur the
+  // textarea first. Does nothing when disguiseMode is off or already disguised.
+  useKeyboardShortcuts(
+    {
+      escape: () => {
+        if (popoverSettings.disguiseMode && revealed) {
+          setRevealed(false);
+        }
+      },
+    },
+    popoverSettings.disguiseMode && revealed,
+  );
 
   // Ghost mode class
   const ghostClass = popoverSettings.stealthMode

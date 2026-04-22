@@ -1,37 +1,71 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
 import { motion } from 'framer-motion';
-
-const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-
-function formatDate(date: Date): string {
-  const weekday = WEEKDAYS[date.getDay()];
-  const day = date.getDate();
-  const month = MONTHS[date.getMonth()];
-  return `${weekday}, ${day} ${month}`;
-}
+import { usePlatform, type Platform } from '../../hooks/usePlatform';
 
 interface DisguiseClockProps {
+  /** Called when the user intentionally reveals the real window
+   * (double-click anywhere on the clock, or keyboard Enter / Space
+   * while the clock has focus). Single clicks are NO-OP by design —
+   * they guard against a passing observer brushing the trackpad
+   * (heuristic C2). */
   onReveal?: () => void;
 }
 
-export default function DisguiseClock({ onReveal }: DisguiseClockProps) {
-  const [now, setNow] = useState(() => new Date());
-  const [colonVisible, setColonVisible] = useState(true);
+interface ClockStyle {
+  font: string;
+  timeSize: number;
+  timeWeight: number;
+  timeLetterSpacing: number;
+  secondsSize: number;
+  dateSize: number;
+  dateTransform: 'none' | 'lowercase' | 'uppercase';
+}
 
+const PLATFORM_STYLE: Record<Platform, ClockStyle> = {
+  macos: {
+    font: "-apple-system, 'SF Pro Display', BlinkMacSystemFont, 'Helvetica Neue', sans-serif",
+    timeSize: 64,
+    timeWeight: 200,
+    timeLetterSpacing: -2,
+    secondsSize: 18,
+    dateSize: 13,
+    dateTransform: 'none',
+  },
+  windows: {
+    font: "'Segoe UI Variable Display', 'Segoe UI', Arial, sans-serif",
+    timeSize: 64,
+    timeWeight: 250,
+    timeLetterSpacing: -1.2,
+    secondsSize: 18,
+    dateSize: 13,
+    dateTransform: 'none',
+  },
+  linux: {
+    font: "'Inter', 'Cantarell', 'Noto Sans', system-ui, sans-serif",
+    timeSize: 64,
+    timeWeight: 300,
+    timeLetterSpacing: -1,
+    secondsSize: 18,
+    dateSize: 13,
+    dateTransform: 'none',
+  },
+};
+
+function useNow(): Date {
+  const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null;
+    let tick: ReturnType<typeof setInterval> | null = null;
     const start = () => {
-      if (interval) return;
-      interval = setInterval(() => {
-        setNow(new Date());
-        setColonVisible((v) => !v);
-      }, 1000);
+      if (tick) return;
+      tick = setInterval(() => setNow(new Date()), 1000);
     };
     const stop = () => {
-      if (interval) { clearInterval(interval); interval = null; }
+      if (tick) {
+        clearInterval(tick);
+        tick = null;
+      }
     };
-    const onVisibility = () => document.hidden ? stop() : start();
+    const onVisibility = () => (document.hidden ? stop() : start());
     start();
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
@@ -39,18 +73,67 @@ export default function DisguiseClock({ onReveal }: DisguiseClockProps) {
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
+  return now;
+}
 
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
+function formatTimeParts(date: Date): { hours: string; minutes: string; seconds: string; hour12: boolean } {
+  const resolved = new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions();
+  const hour12 = resolved.hour12 ?? false;
+  let h = date.getHours();
+  if (hour12) {
+    h = h % 12;
+    if (h === 0) h = 12;
+  }
+  return {
+    hours: String(h).padStart(2, '0'),
+    minutes: String(date.getMinutes()).padStart(2, '0'),
+    seconds: String(date.getSeconds()).padStart(2, '0'),
+    hour12,
+  };
+}
+
+function formatDate(date: Date): string {
+  // Locale-aware date — matches whatever the OS is set to, no pt-only strings
+  // leaking and giving the disguise away on a Windows EN install.
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).format(date);
+}
+
+export default function DisguiseClock({ onReveal }: DisguiseClockProps) {
+  const platform = usePlatform();
+  const style = useMemo(() => PLATFORM_STYLE[platform], [platform]);
+  const now = useNow();
+  const { hours, minutes, seconds } = formatTimeParts(now);
+  const date = useMemo(() => formatDate(now), [now]);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const handleDoubleClick = () => {
+    onReveal?.();
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onReveal?.();
+    }
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
+      ref={rootRef}
+      initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ type: 'spring', stiffness: 350, damping: 28 }}
       data-tauri-drag-region
-      onClick={onReveal}
+      onDoubleClick={handleDoubleClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="button"
+      aria-label="Relógio"
+      aria-keyshortcuts="Enter Space"
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -61,38 +144,35 @@ export default function DisguiseClock({ onReveal }: DisguiseClockProps) {
         background: 'var(--bg-primary)',
         borderRadius: 12,
         userSelect: 'none',
-        cursor: 'pointer',
+        // IMPORTANT: cursor stays default across the whole surface. Single
+        // clicks must be NO-OP so a passing observer bumping the trackpad
+        // never exposes the chat (heuristic C2). Reveal is gated behind
+        // double-click OR keyboard Enter/Space while focused.
+        cursor: 'default',
+        outline: 'none',
       }}
     >
-      {/* Time display */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          gap: 0,
-        }}
-      >
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>
         <span
           style={{
-            fontSize: 64,
-            fontWeight: 200,
-            letterSpacing: -2,
-            color: 'var(--color-accent)',
-            fontFamily: "'General Sans', -apple-system, sans-serif",
+            fontSize: style.timeSize,
+            fontWeight: style.timeWeight,
+            letterSpacing: style.timeLetterSpacing,
+            color: 'var(--text-primary)',
+            fontFamily: style.font,
             lineHeight: 1,
+            fontVariantNumeric: 'tabular-nums',
           }}
         >
           {hours}
         </span>
         <span
           style={{
-            fontSize: 64,
-            fontWeight: 200,
-            color: 'var(--color-accent)',
-            fontFamily: "'General Sans', -apple-system, sans-serif",
+            fontSize: style.timeSize,
+            fontWeight: style.timeWeight,
+            color: 'var(--text-primary)',
+            fontFamily: style.font,
             lineHeight: 1,
-            opacity: colonVisible ? 1 : 0.2,
-            transition: 'opacity 0.15s ease',
             margin: '0 2px',
           }}
         >
@@ -100,44 +180,46 @@ export default function DisguiseClock({ onReveal }: DisguiseClockProps) {
         </span>
         <span
           style={{
-            fontSize: 64,
-            fontWeight: 200,
-            letterSpacing: -2,
-            color: 'var(--color-accent)',
-            fontFamily: "'General Sans', -apple-system, sans-serif",
+            fontSize: style.timeSize,
+            fontWeight: style.timeWeight,
+            letterSpacing: style.timeLetterSpacing,
+            color: 'var(--text-primary)',
+            fontFamily: style.font,
             lineHeight: 1,
+            fontVariantNumeric: 'tabular-nums',
           }}
         >
           {minutes}
         </span>
         <span
           style={{
-            fontSize: 20,
+            fontSize: style.secondsSize,
             fontWeight: 300,
             color: 'var(--text-muted)',
-            fontFamily: "'General Sans', -apple-system, sans-serif",
+            fontFamily: style.font,
             lineHeight: 1,
             marginLeft: 6,
             alignSelf: 'flex-end',
             marginBottom: 6,
+            fontVariantNumeric: 'tabular-nums',
           }}
         >
           {seconds}
         </span>
       </div>
 
-      {/* Date display */}
       <div
         style={{
           marginTop: 8,
-          fontSize: 13,
+          fontSize: style.dateSize,
           fontWeight: 400,
           color: 'var(--text-muted)',
-          letterSpacing: 1,
-          textTransform: 'lowercase',
+          letterSpacing: 0.2,
+          fontFamily: style.font,
+          textTransform: style.dateTransform,
         }}
       >
-        {formatDate(now)}
+        {date}
       </div>
     </motion.div>
   );
