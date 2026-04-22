@@ -28,6 +28,7 @@ import {
   detectClipboardIntent,
   maxTokensForIntent,
 } from './utils/detectClipboardIntent';
+import { sanitizeBackendError } from './services/ai';
 
 /** Normalize legacy shortcut format (CmdOrCtrl → CommandOrControl) */
 function normalizeShortcut(s: string): string {
@@ -553,11 +554,14 @@ function App() {
                   } catch {}
                 }
               } else {
-                // Error: isFinished without prior content — backend sent error text
+                // Error: isFinished without prior content — backend sent error text.
+                // NEVER show the raw `error:<code>:...` wire string: it reveals
+                // upstream model names ("Gemini 503") and HTTP details. Run it
+                // through the same sanitizer the chat flow uses.
                 const errorNotif = useSettingsStore.getState().settings.notifications;
                 if (errorNotif.enabled && errorNotif.showErrorNotification) {
-                  const errorMsg = event.payload.text || 'Erro desconhecido';
-                  invoke('send_notification', { title: 'Hat — Erro', body: errorMsg })
+                  const safeBody = sanitizeBackendError(event.payload.text || '');
+                  invoke('send_notification', { title: 'Hat — Erro', body: safeBody })
                     .catch((e) => console.error('[notification] stream-error failed:', e));
                 }
               }

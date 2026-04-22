@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { classifyError } from "../classifyError";
+import { classifyError, classifyBackendWireError } from "../classifyError";
 
 const originalOnLine = Object.getOwnPropertyDescriptor(
   window.navigator,
@@ -162,5 +162,58 @@ describe("classifyError (EE1)", () => {
   it("returns unknown for non-error primitives", () => {
     expect(classifyError(42)).toBe("unknown");
     expect(classifyError(true)).toBe("unknown");
+  });
+
+  // Guards the 2026-04-23 leak: raw `error:<code>` wire strings must
+  // classify before the offline probe fires, and the Hat backend's
+  // codes must each map to a known kind — never "unknown" for the
+  // codes we explicitly mint on the Rust side.
+  describe("backend wire protocol (error:<code>:...)", () => {
+    it("classifies serverError as provider-5xx (2026-04-23 incident)", () => {
+      const raw =
+        'error:serverError:500:Gemini 503: { "error": { "code": 503, "message": "high demand" }}';
+      expect(classifyError(raw)).toBe("provider-5xx");
+    });
+
+    it("classifies rateLimited as provider-429", () => {
+      expect(classifyError("error:rateLimited")).toBe("provider-429");
+    });
+
+    it("classifies sessionExpired as firebase-auth-invalid-credential", () => {
+      expect(classifyError("error:sessionExpired")).toBe(
+        "firebase-auth-invalid-credential",
+      );
+    });
+
+    it("classifies insufficientCredits", () => {
+      expect(classifyError("error:insufficientCredits")).toBe(
+        "credits-insufficient",
+      );
+    });
+
+    it("classifies unknownError", () => {
+      expect(classifyError("error:unknownError:418:teapot")).toBe("unknown");
+    });
+
+    it("treats unrecognized codes as unknown (not a crash)", () => {
+      expect(classifyError("error:somethingBrandNew:200")).toBe("unknown");
+    });
+
+    it("runs even when navigator.onLine is false — upstream beats offline probe", () => {
+      setOnline(false);
+      expect(classifyError("error:serverError:500:detail")).toBe(
+        "provider-5xx",
+      );
+    });
+
+    it("classifies an Error whose message IS the wire string", () => {
+      expect(classifyError(new Error("error:rateLimited"))).toBe(
+        "provider-429",
+      );
+    });
+
+    it("returns null from classifyBackendWireError for non-wire strings", () => {
+      expect(classifyBackendWireError("plain error message")).toBeNull();
+    });
   });
 });

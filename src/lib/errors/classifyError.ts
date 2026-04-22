@@ -9,6 +9,33 @@ const FIREBASE_CODE_MAP: Record<string, ErrorKind> = {
   "auth/too-many-requests": "firebase-auth-too-many-requests",
 };
 
+/**
+ * Hat proxy Worker → Rust → frontend wire protocol: errors arrive as
+ * strings of the form `error:<code>[:status][:detail]`. The frontend
+ * MUST map these to `ErrorKind` before showing anything to the user —
+ * leaking the raw wire string reveals the upstream model name
+ * (e.g. "Gemini 503") and internal HTTP details, which is both a
+ * branding leak and a bad UX. Reported 2026-04-23 with a screenshot
+ * showing a raw `error:serverError:500:Gemini 503: { ... }` in a
+ * chat bubble.
+ */
+const BACKEND_CODE_MAP: Record<string, ErrorKind> = {
+  sessionExpired: "firebase-auth-invalid-credential",
+  insufficientCredits: "credits-insufficient",
+  rateLimited: "provider-429",
+  serverError: "provider-5xx",
+  unknownError: "unknown",
+};
+
+/** Parses `error:<code>:...` into an {@link ErrorKind}, or null when not a backend wire string. */
+export function classifyBackendWireError(raw: string): ErrorKind | null {
+  if (!raw.startsWith("error:")) return null;
+  const parts = raw.split(":");
+  const code = parts[1];
+  if (!code) return "unknown";
+  return BACKEND_CODE_MAP[code] ?? "unknown";
+}
+
 function hasProp<K extends string>(
   value: unknown,
   key: K,
@@ -31,6 +58,17 @@ function hasProp<K extends string>(
  */
 export function classifyError(err: unknown): ErrorKind {
   if (err == null) return "unknown";
+
+  // Backend wire protocol — classify BEFORE the offline probe because
+  // a `serverError` is "upstream is sick", not "user is offline".
+  if (typeof err === "string") {
+    const wire = classifyBackendWireError(err);
+    if (wire) return wire;
+  }
+  if (err instanceof Error) {
+    const wire = classifyBackendWireError(err.message);
+    if (wire) return wire;
+  }
 
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     return "network-offline";

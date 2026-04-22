@@ -3,15 +3,28 @@ import { listen } from '@tauri-apps/api/event';
 import type { ConversationTurn, StreamChunk } from '../../types';
 import type { AIMode } from '../../types/account';
 import i18n from '../../i18n';
+import { classifyError } from '../../lib/errors/classifyError';
 
-// Resolve erros que vêm do Rust no formato `error:<code>[:extra]` para
-// strings no idioma atual. Se a string não começar com `error:` (ex: um
-// throw inesperado), retorna ela como está.
-function localizeStreamError(raw: string): string {
-  if (!raw.startsWith('error:')) return raw;
-  const [, code] = raw.split(':');
-  if (!code) return i18n.t('errors:unknownError');
-  return i18n.t(`errors:${code}`, { defaultValue: raw });
+/**
+ * Resolve raw backend error strings (wire protocol: `error:<code>:<...>`)
+ * or any thrown value into a user-safe title + body pair.
+ *
+ * Safety contract: **NEVER** returns the raw wire string. Reported
+ * 2026-04-23 that a failure was leaking
+ *   `error:serverError:500:Gemini 503: { ... }`
+ * into a chat bubble — that reveals the upstream model name, HTTP
+ * status, and JSON shape, all of which are branding + UX leaks. The
+ * fix maps every possible input to an `ErrorKind` and pulls copy from
+ * the `errors.json` namespace, with a typed fallback to `unknown`.
+ */
+export function sanitizeBackendError(raw: unknown): string {
+  const kind = classifyError(raw);
+  const title = i18n.t(`errors:${kind}.title`, {
+    defaultValue: i18n.t('errors:unknown.title', {
+      defaultValue: 'Erro inesperado',
+    }),
+  });
+  return title;
 }
 
 // Monotonic counter for stream IDs. The backend uses this to route cancel
@@ -74,6 +87,17 @@ export async function startHatStream(options: HatStreamOptions): Promise<() => v
   const unlisten = await listen<StreamChunk>('chat-stream', (event) => {
     const chunk = event.payload;
     if (chunk.streamId !== streamId) return;
+
+    // Rust side emits transport/HTTP errors on the same channel as
+    // chunks, with `text: "error:<code>:..."` and `isFinished: true`.
+    // Route those to onError so they never land as assistant content —
+    // that was the 2026-04-23 bubble-leak bug.
+    if (chunk.text && chunk.text.startsWith('error:')) {
+      onError(sanitizeBackendError(chunk.text));
+      cleanup();
+      return;
+    }
+
     onChunk(chunk);
     if (chunk.isFinished) {
       onDone();
@@ -82,7 +106,7 @@ export async function startHatStream(options: HatStreamOptions): Promise<() => v
   });
 
   unlistenError = await listen<string>('chat-stream-error', (event) => {
-    onError(localizeStreamError(event.payload));
+    onError(sanitizeBackendError(event.payload));
     cleanup();
   });
 
@@ -98,7 +122,7 @@ export async function startHatStream(options: HatStreamOptions): Promise<() => v
     idempotencyKey: crypto.randomUUID(),
   }).catch((e) => {
     if (done) return;
-    onError(localizeStreamError(String(e)));
+    onError(sanitizeBackendError(e));
     cleanup();
   });
 
