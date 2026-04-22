@@ -9,7 +9,14 @@ import EmptyState from '../Shared/EmptyState';
 import ErrorBanner from '../Shared/ErrorBanner';
 import { classifyError } from '../../lib/errors/classifyError';
 
-export default function ChatWindow() {
+interface ChatWindowProps {
+  /** When true, the empty state strips its suggestion grid + shortcut
+   * badges and renders a much smaller greeting. Used by the 380×480
+   * popover where the full home layout overflowed and looked broken. */
+  compact?: boolean;
+}
+
+export default function ChatWindow({ compact = false }: ChatWindowProps) {
   const {
     messages, isStreaming, streamingContent, streamingThinking, sendMessage, cancel,
     isNearContextLimit, isAtContextLimit, contextUsage, maxContextMessages,
@@ -155,7 +162,7 @@ export default function ChatWindow() {
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <EmptyState />
+            <EmptyState compact={compact} />
           </motion.div>
         ) : (
           <motion.div
