@@ -11,8 +11,8 @@
   "input": {
     "placeholder": "Mensaje…",
     "placeholderByMode": {
-      "hat": "Pregunta algo rápido…",
-      "hat-pro": "Análisis profundo, hasta 3k tokens…"
+      "hat": "Pregunta rápida…",
+      "hat-pro": "Lo más pesado…"
     },
     "ariaLabel": "Mensaje",
     "send": "Enviar",
