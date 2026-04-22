@@ -28,6 +28,7 @@ const COOLDOWN_MS = 1200;
 const TEASER_LOCKED_COUNT = 3;
 
 export default function ThemePicker({ current, onChange }: Props) {
+  const { t } = useTranslation('themes');
   const [locked, setLocked] = useState(false);
   const timerRef = useRef<number | null>(null);
   const creditsSpent = useCreditsStore((s) => s.creditsSpent);
@@ -76,7 +77,11 @@ export default function ThemePicker({ current, onChange }: Props) {
     <div className="theme-picker-v2">
       <ProgressBar creditsSpent={creditsSpent} progress={progress} />
 
-      <div className={`theme-picker ${locked ? 'is-locked' : ''}`}>
+      <div
+        className={`theme-picker ${locked ? 'is-locked' : ''}`}
+        role="radiogroup"
+        aria-label={t('pickerAriaLabel', { defaultValue: 'Tema visual' })}
+      >
         {groups.map(({ tier, themes }) => {
           // Tier exclusive é renderizado separado (destacado) no fim.
           if (tier.tier === 'exclusive') return null;
@@ -270,7 +275,8 @@ function ThemeSwatch({
         ['--swatch-muted' as string]: theme.textMuted,
       }}
       title={theme.label}
-      aria-pressed={active}
+      role="radio"
+      aria-checked={active}
       aria-label={theme.label}
     >
       <span className="theme-swatch__window" aria-hidden>
@@ -422,7 +428,8 @@ function ExclusiveCard({
               ['--swatch-text' as string]: theme.textPrimary,
               ['--swatch-muted' as string]: theme.textMuted,
             }}
-            aria-pressed={active}
+            role="radio"
+            aria-checked={active}
             aria-label={`Tema exclusivo ${theme.label}`}
           >
             <span className="theme-swatch__window theme-swatch__window--prisma" aria-hidden>
