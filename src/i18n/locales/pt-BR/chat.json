@@ -8,6 +8,29 @@
   "empty": {
     "subtitle": "Como posso ajudar?"
   },
+  "suggestions": {
+    "label": "Atalhos de partida",
+    "summarize": {
+      "title": "Resumir texto",
+      "body": "Cola um trecho, recebe 3 bullets.",
+      "prompt": "Resuma isto em até 3 bullets objetivos:\n\n"
+    },
+    "explainCode": {
+      "title": "Explicar código",
+      "body": "O que esse snippet faz, em 3 frases.",
+      "prompt": "Explica o que esse código faz em no máximo 3 frases:\n\n"
+    },
+    "debugError": {
+      "title": "Debugar erro",
+      "body": "Cola a stack trace, recebe o conserto.",
+      "prompt": "Tenho esse erro. Qual a causa mais provável e como conserto?\n\n"
+    },
+    "reviewWriting": {
+      "title": "Revisar escrita",
+      "body": "Deixa o parágrafo mais direto.",
+      "prompt": "Revisa esse parágrafo pra ficar mais direto, sem perder o sentido:\n\n"
+    }
+  },
   "input": {
     "placeholder": "Mensagem…",
     "placeholderByMode": {

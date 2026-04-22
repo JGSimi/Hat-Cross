@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import HorseLogo from './HorseLogo';
+import SuggestionGrid from '../Chat/SuggestionGrid';
 import { getGreeting } from '../../utils/markdown';
 import { usePlatform } from '../../hooks/usePlatform';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -57,6 +58,14 @@ export default function EmptyState() {
       >
         {t('empty.subtitle')}
       </motion.p>
+
+      {/* Suggestion grid — 4 starter shortcuts that pre-fill the input with
+          a prompt template, so a cold empty chat has real first steps
+          instead of staring back at the user. Clicks flow through
+          chatStore.pendingInput → InputArea useEffect. */}
+      <div style={{ width: '100%', marginBottom: 20 }}>
+        <SuggestionGrid />
+      </div>
 
       {/* Shortcut badges */}
       <div style={{ display: 'flex', gap: 8 }}>

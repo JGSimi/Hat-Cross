@@ -8,6 +8,29 @@
   "empty": {
     "subtitle": "How can I help?"
   },
+  "suggestions": {
+    "label": "Starter shortcuts",
+    "summarize": {
+      "title": "Summarize text",
+      "body": "Paste a snippet, get 3 bullets.",
+      "prompt": "Summarize this in up to 3 tight bullets:\n\n"
+    },
+    "explainCode": {
+      "title": "Explain code",
+      "body": "What this snippet does, in 3 sentences.",
+      "prompt": "Explain what this code does in 3 sentences max:\n\n"
+    },
+    "debugError": {
+      "title": "Debug error",
+      "body": "Paste the stack trace, get the fix.",
+      "prompt": "I'm seeing this error. Most likely cause and how do I fix it?\n\n"
+    },
+    "reviewWriting": {
+      "title": "Rewrite paragraph",
+      "body": "Make it tighter without losing meaning.",
+      "prompt": "Rewrite this paragraph to be tighter, no loss of meaning:\n\n"
+    }
+  },
   "input": {
     "placeholder": "Message…",
     "placeholderByMode": {
