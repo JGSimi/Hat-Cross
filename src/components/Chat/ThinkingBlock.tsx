@@ -10,7 +10,15 @@ interface Props {
 }
 
 function ThinkingBlock({ thinking, isStreaming = false }: Props) {
-  const [expanded, setExpanded] = useState(isStreaming);
+  // Default expanded=true always. The previous `useState(isStreaming)` looked
+  // right but produced a silent UX bug (critique I6 / heuristic M13): when the
+  // streaming bubble is swapped for the finalized message, ThinkingBlock
+  // unmounts and remounts with isStreaming=false, collapsing the thinking the
+  // user was actively reading. Defaulting to open always preserves the stream
+  // reading context; the chain is a premium signal (transparency for Rafa,
+  // delight for Luiza) worth showing by default — users can collapse noisy
+  // ones manually.
+  const [expanded, setExpanded] = useState(true);
   const tokenEstimate = Math.round(thinking.length / 4);
 
   return (
@@ -22,7 +30,10 @@ function ThinkingBlock({ thinking, isStreaming = false }: Props) {
       overflow: 'hidden',
     }}>
       <button
+        type="button"
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        aria-controls="thinking-body"
         style={{
           display: 'flex', alignItems: 'center', gap: 6,
           width: '100%', padding: '8px 10px',
@@ -49,12 +60,17 @@ function ThinkingBlock({ thinking, isStreaming = false }: Props) {
             transition={{ type: 'spring', stiffness: 300, damping: 28 }}
             style={{ overflow: 'hidden' }}
           >
-            <div style={{
-              maxHeight: 300, overflowY: 'auto',
-              padding: '0 10px 10px',
-              fontSize: 12, lineHeight: 1.6,
-              color: 'var(--text-muted)',
-            }}>
+            <div
+              id="thinking-body"
+              role="region"
+              aria-label="Cadeia de pensamento"
+              style={{
+                maxHeight: 300, overflowY: 'auto',
+                padding: '0 10px 10px',
+                fontSize: 12, lineHeight: 1.6,
+                color: 'var(--text-muted)',
+              }}
+            >
               {thinking.length > 50000 ? (
                 <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
                   {thinking}
