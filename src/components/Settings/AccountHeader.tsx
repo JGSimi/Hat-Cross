@@ -393,7 +393,7 @@ export default function AccountHeader() {
                     color: active ? 'var(--text-bright)' : 'var(--text-secondary)',
                   }}
                 >
-                  {m.label.replace('Hat ', '').replace('Hat', 'Std')}
+                  {m.id === 'hat-pro' ? 'Pro' : 'Hat'}
                 </span>
               </motion.button>
             );
