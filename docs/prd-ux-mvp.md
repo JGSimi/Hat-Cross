@@ -1,6 +1,8 @@
 # PRD — Hat-Cross UX MVP (4 semanas)
 
-**Status:** Frozen v1.0 · **Owner:** João Simi · **Window:** D0 → D+28 · **Updated:** 2026-04-22
+**Status:** Frozen v1.1 · **Owner:** João Simi · **Window:** D0 → D+28 · **Updated:** 2026-04-22
+
+> **Amendment v1.1 (2026-04-22) — Stealth scope reframing.** Stealth = invisibilidade a **olhos físicos** (colega passando, entrevistador olhando de lado, coffee shop). **Não** ambiciona anti-screen-recording / anti-OBS / anti-ScreenCaptureKit. Research FP1 confirmou que Apple quebrou `setContentProtected` em macOS 15+ (Sequoia/Tahoe) — e isso é aceitável porque nunca foi o foco real. Ver `.claude/projects/.../memory/project_hat_cross_stealth_framing.md`. G1 e G10 renumerados; US-01 reescrita; R2 atualizado.
 
 ---
 
@@ -10,7 +12,7 @@ Este MVP **não relança o Hat-Cross**: pega o produto Tauri v2 + React + Rust j
 
 ## 2. Problem
 
-Hat-Cross tem **arquitetura sólida, contrato UX instável**. Auditoria do repo: `≤5 aria-*` em `src/`, **zero testes** (sem `vitest.config.ts`, sem `*.test.tsx`), **estados ad-hoc** (cada página inventa spinner/empty/error), e os 70 temas livres ficam enterrados atrás de 2 cliques. Para **Rafa** (stealth/entrevistas) isso é risco: sem medir p95 do flash, ninguém garante que a overlay sai invisível em OBS — o diferencial é **não verificado**. Para **Kat** (dev Windows PL), paridade é promessa sem contrato: `tauri.conf.json` e `capabilities/` divergem sem checklist nem screenshot-diff. Para **Luiza** (design engineer), mascote ausente em momentos-chave e vocabulário implícito de paywall matam o apelo "post orgânico".
+Hat-Cross tem **arquitetura sólida, contrato UX instável**. Auditoria do repo: `≤5 aria-*` em `src/`, **zero testes** (sem `vitest.config.ts`, sem `*.test.tsx`), **estados ad-hoc** (cada página inventa spinner/empty/error), e os 70 temas livres ficam enterrados atrás de 2 cliques. Para **Rafa** (stealth/entrevistas) isso é risco: sem medir p95 do flash nem validar que DisguiseClock passa por relógio nativo a 1.5 m de distância, o diferencial é **não verificado**. Para **Kat** (dev Windows PL), paridade é promessa sem contrato: `tauri.conf.json` e `capabilities/` divergem sem checklist nem screenshot-diff. Para **Luiza** (design engineer), mascote ausente em momentos-chave e vocabulário implícito de paywall matam o apelo "post orgânico".
 
 O gap é **qualidade contratual**, não feature set. Se não fecha em 4 semanas, Raycast Windows ou ChatGPT Desktop ocupam o espaço "cross-platform com personalidade" antes do Hat-Cross se firmar, e a hipótese morre sem ser testada.
 
@@ -18,7 +20,7 @@ O gap é **qualidade contratual**, não feature set. Se não fecha em 4 semanas,
 
 | # | Métrica | Target | Método | Owner | Kill |
 |---|---|---|---|---|---|
-| G1 | Stealth aprovação OBS/Zoom/Meet | ≥80% (≥8/10 Rafas) | 10 gravações dual-OS, review cego 3 Rafas | Rafa+QA | <50% → pivot |
+| G1 | Stealth físico aprovado | ≥80% (≥8/10 Rafas) | Teste "colega a 1.5 m olha tela 3 s" em sessão moderada; Rafa autoavalia se seria notado | Rafa+QA | <50% → pivot |
 | G2 | p95 flash | <800 ms | `performance.mark` n=100 dual-OS | Rafa | >1200 ms |
 | G3 | Paridade 3 janelas | 100% checklist | Screenshot diff <2% + checklist 42 itens | Kat | regressão bloqueante |
 | G4 | SUS | ≥72 | 15 users (5/persona) beta S4 | Luiza | <60 |
@@ -33,14 +35,14 @@ O gap é **qualidade contratual**, não feature set. Se não fecha em 4 semanas,
 
 ## 4. Users
 
-- **Rafa (28, dev BR) — primário.** JTBD: *"Quando travo numa entrevista com screen share, quero consultar IA sem nenhum pixel denunciar."* Usa `⌘⇧F`/`Ctrl+Shift+F` em Zoom/Meet. Se overlay aparece em UMA gravação, abandona.
+- **Rafa (28, dev BR) — primário.** JTBD: *"Quando travo numa entrevista técnica ao vivo, quero consultar IA sem que quem me observa perceba."* Usa `⌘⇧F`/`Ctrl+Shift+F` durante live coding. Cenário-âncora: entrevistador olhando de soslaio, colega passando atrás em coffee shop. **NÃO** é anti-gravação: screen recording ignora stealth em macOS 15+ (limitação conhecida de `setContentProtected` vs ScreenCaptureKit, aceitável porque entrevistador raro revisa gravação posteriormente com olho clínico).
 - **Kat (34, .NET Windows, PL) — secundária crítica.** JTBD: *"No laptop Windows do trabalho, quero a mesma ferramenta que uso no Mac em casa, sem imposto cognitivo."* Se atalho/layout divergir >2%, posicionamento underdog quebra.
 - **Luiza (26, design engineer BR) — secundária estratégica.** JTBD: *"No setup que montei com carinho, quero ferramentas com personalidade visual, sem parecer preset."* Posta screenshot se mascote tiver charme, 70 temas forem livres e nenhum CTA de paywall aparecer.
 - **Anti-persona — Diego (mainstream menubar user).** Quer launcher genérico Raycast/Spotlight. Hat-Cross **não é para ele**: sem search global, sem extensões, sem workflows no MVP.
 
 ## 5. User stories
 
-1. **US-01 (Rafa · Flash).** Como Rafa, em entrevista no Meet com screen share ativo, quero acionar flash via `⌘⇧F`/`Ctrl+Shift+F` para ler resposta em <800 ms sem overlay capturado, validado por 10 gravações OBS dual-OS sem detecção.
+1. **US-01 (Rafa · Flash).** Como Rafa, durante entrevista ao vivo, quero acionar flash via `⌘⇧F`/`Ctrl+Shift+F` para ler resposta discreta em <800 ms em canto fora do eixo central de atenção, validado por teste "observador casual a 1.5 m olha tela 3 s, depois descreve o que viu" com 10 participantes (≤20% mencionam o overlay). `setContentProtected(true)` aplicado como defense-in-depth (bloqueia QuickTime clássico + AirPlay + captura Windows), mas **não** é gate de release em macOS 15+.
 2. **US-02 (Rafa · DisguiseClock).** Como Rafa, quando entrevistador olha meu popover, quero um relógio convincente no lugar do chat, validado por 5/5 em blind test 10 s.
 3. **US-03 (Kat · Install Windows).** Como Kat, ao `winget install hat-cross`, quero 1º prompt em <90 s, validado por cronômetro n=10 no Win11.
 4. **US-04 (Kat · Paridade atalho).** Como Kat, ao apertar `Ctrl+Shift+F` no Win, quero comportamento idêntico ao `⌘⇧F` macOS, validado por screenshot diff <2%.
@@ -129,7 +131,7 @@ O gap é **qualidade contratual**, não feature set. Se não fecha em 4 semanas,
 ## 8. Timeline & milestones
 
 - **S1 (D1–D7) — Setup.** Owner Kat+Luiza. `vitest.config.ts` + CI gate; tokens `@theme` Tailwind v4; `EmptyState`/`LoadingState`/`ToastContainer` primitives; `HorseLogo.tsx` pronto. **D7:** `npm test` passa, 0 spinners ad-hoc, axe-core rodando.
-- **S2 (D8–D14) — Stealth & paridade.** Owner Rafa+Kat. DisguiseClock production + blind test 5/5; FlashPage p95 <800 ms n=100 dual-OS; 10 gravações OBS/Zoom/Meet sem detecção; checklist 42 itens verde; winget+dmg <90 s. **D14:** G1/G2/G3/G10/G11 com evidência.
+- **S2 (D8–D14) — Stealth & paridade.** Owner Rafa+Kat. DisguiseClock production + blind test 5/5; FlashPage p95 <800 ms n=100 dual-OS; **teste peripheral-vision** com 10 observadores casuais (≤20% notam flash); `setContentProtected` aplicado como defense-in-depth; checklist 42 itens verde; winget+dmg <90 s. **D14:** G1/G2/G3/G10/G11 com evidência.
 - **S3 (D15–D21) — Settings & identidade.** Owner Luiza. SettingsPanel 3 tabs; ThemePicker sem paywall; mascote nos 4 pontos (F11); theme switch <100 ms. **D21:** grep paywall=0, Nielsen ≥8/10, SUS piloto n=3 ≥70.
 - **S4 (D22–D28) — A11y & verificação.** Owner Luiza+Rafa+Kat. WCAG AA nos 10 core; axe-core 0 sérias; Vitest ≥60%; beta 15 users (5/persona), SUS ≥72, retention D7 Rafas ≥60%, ≥3 posts Luizas agendados. **RC em D+28.**
 
@@ -138,7 +140,7 @@ O gap é **qualidade contratual**, não feature set. Se não fecha em 4 semanas,
 | # | Risco | Prob/Impacto | Mitigação |
 |---|---|---|---|
 | R1 | Raycast Win ship paridade antes de D+28 | M/Alto | Acelerar S2; landing "stealth-first" que Raycast não cobre. |
-| R2 | OBS update detecta/captura overlay | B-M/Crítico | Testar em OBS N-2/N-1/N; abstração em `macos_overlay.rs`/`windows.rs` para trocar estratégia (content protection, HWND exclusion). |
+| R2 | Observador físico nota o flash por má posição/tamanho/cor | M/Crítico | DisguiseClock OS-native (SF Pro/Segoe UI Variable) + FlashPositionCanvas com preview multi-monitor + peripheral-vision test 10 observadores. Screen-recording NÃO está no escopo — já documentado como limitação em macOS 15+ (ver `docs/research/stealth-content-protection.md`). |
 | R3 | Mascote consome CPU/GPU no flash e mata p95 | M/Alto | F12 proíbe não-transform; benchmark S2; se flash+mascote >800 ms, congelar mascote no flash via `prefers-reduced-motion` forçado. |
 | R4 | 70 temas quebram com tokens `@theme` novos | A/Médio | Smoke test CI render por tema + screenshot diff 10% amostra; 2 dias de budget S3 pra regression. |
 | R5 | Kat acha regressão crítica em capability Tauri | M/Crítico | Checklist revisado D10/D17/D24; pareamento Kat+João; `fs:allow-*` audit antes de cada RC. |
