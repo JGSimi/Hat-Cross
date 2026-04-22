@@ -70,11 +70,8 @@ export default function AccountHeader() {
   if (!user) {
     return (
       <div
-        className="account-header"
+        className="account-header settings-card"
         style={{
-          background: 'var(--surface-primary)',
-          border: '0.5px solid var(--border-subtle)',
-          borderRadius: 12,
           padding: '12px 14px',
           display: 'flex',
           alignItems: 'center',
@@ -183,13 +180,8 @@ export default function AccountHeader() {
   return (
     <>
       <div
-        className="account-header"
-        style={{
-          background: 'var(--surface-primary)',
-          border: '0.5px solid var(--border-subtle)',
-          borderRadius: 12,
-          padding: '12px 14px',
-        }}
+        className="account-header settings-card"
+        style={{ padding: '12px 14px' }}
       >
         <div className="account-header__inner">
         {/* LEFT COLUMN: identity (top) + model picker (bottom) */}
