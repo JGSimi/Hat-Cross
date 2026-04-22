@@ -3,6 +3,21 @@
     "title": "Ajustes",
     "close": "Atrás"
   },
+  "sections": {
+    "nav": "Secciones",
+    "appearance": {
+      "title": "Apariencia & Temas",
+      "subtitle": "Color, fuente y el catálogo de temas que desbloqueas."
+    },
+    "flow": {
+      "title": "Flujo & Atajos",
+      "subtitle": "Los tres atajos, notificaciones y cómo se comporta Hat cuando no miras."
+    },
+    "stealth": {
+      "title": "Stealth",
+      "subtitle": "Popover, Flash y Portapapeles. Donde Hat se mantiene discreto."
+    }
+  },
   "general": {
     "title": "General",
     "preview": "General",
