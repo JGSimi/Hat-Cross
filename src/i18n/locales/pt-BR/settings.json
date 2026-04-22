@@ -66,12 +66,7 @@
     "copyToClipboard": "Copiar resposta para o clipboard",
     "appendMode": "Modo anexar (original + resposta)",
     "appendModeHint": "O texto original é mantido, com a resposta adicionada abaixo, separada por \"---\".",
-    "maxResponseLength": "Tamanho máximo da resposta",
-    "customPrompt": "Prompt customizado",
-    "useCustomPrompt": "Usar prompt customizado",
-    "useCustomPromptHintOn": "Este prompt será usado ao invés do prompt do sistema ao processar o clipboard.",
-    "useCustomPromptHintOff": "Quando desativado, usa o prompt do sistema (card \"IA\").",
-    "customPromptPlaceholder": "Ex: Traduza para inglês. Responda apenas com a tradução, sem explicações."
+    "maxResponseLength": "Tamanho máximo da resposta"
   },
   "flash": {
     "title": "Flash Mode",

@@ -23,6 +23,7 @@ import { nextStreamId } from './services/ai';
 import { getIdToken } from './services/auth/firebase';
 import { startAutoUpdater } from './services/autoUpdater';
 import { AI_MODES } from './types/account';
+import { CLIPBOARD_SYSTEM_PROMPTS } from './i18n/defaults';
 
 /** Normalize legacy shortcut format (CmdOrCtrl → CommandOrControl) */
 function normalizeShortcut(s: string): string {
@@ -447,9 +448,9 @@ function App() {
         const provider = 'Hat';
         const model = AI_MODES.find((m) => m.id === hatMode)?.label ?? 'Hat';
 
-        const systemPrompt = clip.useCustomPrompt && clip.customPrompt
-          ? clip.customPrompt
-          : settings.systemPrompt;
+        // Clipboard blinda o system prompt: resposta curta é o contrato do fluxo.
+        const systemPrompt =
+          CLIPBOARD_SYSTEM_PROMPTS[settings.language] ?? CLIPBOARD_SYSTEM_PROMPTS['pt-BR'];
 
         // If only image and no text, provide a default prompt
         const messageText = clipText || 'Descreva e analise esta imagem.';
@@ -565,7 +566,9 @@ function App() {
           systemPrompt,
           mode: hatMode,
           temperature: settings.temperature,
-          maxTokens: clip.maxResponseLength || settings.maxTokens,
+          // Cap fixo: resposta curta é o contrato do clipboard. `maxResponseLength`
+          // segue governando só o truncamento de caracteres pós-stream.
+          maxTokens: 400,
           images: clipImages,
           idToken: hatToken,
           idempotencyKey: crypto.randomUUID(),

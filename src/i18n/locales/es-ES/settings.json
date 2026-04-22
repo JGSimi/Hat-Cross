@@ -66,12 +66,7 @@
     "copyToClipboard": "Copiar respuesta al portapapeles",
     "appendMode": "Modo anexar (original + respuesta)",
     "appendModeHint": "El texto original se conserva, con la respuesta añadida debajo, separada por \"---\".",
-    "maxResponseLength": "Longitud máxima de la respuesta",
-    "customPrompt": "Prompt personalizado",
-    "useCustomPrompt": "Usar prompt personalizado",
-    "useCustomPromptHintOn": "Este prompt se usará en lugar del prompt del sistema al procesar el portapapeles.",
-    "useCustomPromptHintOff": "Si está desactivado, usa el prompt del sistema (tarjeta \"IA\").",
-    "customPromptPlaceholder": "Ej: Traduce al inglés. Responde solo con la traducción, sin explicaciones."
+    "maxResponseLength": "Longitud máxima de la respuesta"
   },
   "flash": {
     "title": "Flash Mode",

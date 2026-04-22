@@ -164,6 +164,11 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         if ('screenCapture' in merged.shortcuts) {
           delete (merged.shortcuts as Record<string, unknown>).screenCapture;
         }
+        // Drop legacy clipboard custom-prompt fields (removed when the clipboard
+        // flow switched to a hardcoded system prompt).
+        const clipLegacy = merged.clipboard as unknown as Record<string, unknown>;
+        if ('customPrompt' in clipLegacy) delete clipLegacy.customPrompt;
+        if ('useCustomPrompt' in clipLegacy) delete clipLegacy.useCustomPrompt;
         set({ settings: merged, _hydrated: true });
         // Sync i18n + tray com o idioma carregado.
         i18n.changeLanguage(merged.language).catch(() => {});
