@@ -43,6 +43,19 @@ export default function MessageList({ messages, streamingContent, streamingThink
   return (
     <div
       ref={containerRef}
+      // role=log + aria-live=polite lets screen readers announce each new
+      // message chunk as it arrives during streaming. aria-relevant="additions"
+      // ensures only new nodes are spoken, not re-announcements of already-
+      // read messages. aria-atomic=false so partial streamed tokens don't
+      // trigger a full re-read. aria-busy mirrors isStreaming so SRs know
+      // more is coming (Rafa using VoiceOver in an interview should hear
+      // what the model is saying without having to Tab into the chat).
+      role="log"
+      aria-live="polite"
+      aria-relevant="additions"
+      aria-atomic="false"
+      aria-busy={isStreaming}
+      aria-label="Conversa com o Hat"
       style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}
     >
       {/* System notices (auto-new-chat messages) */}
