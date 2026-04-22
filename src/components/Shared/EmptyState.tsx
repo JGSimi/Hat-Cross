@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import HorseLogo from './HorseLogo';
 import SuggestionGrid from '../Chat/SuggestionGrid';
+import RecentConversations from '../Chat/RecentConversations';
 import { getGreeting } from '../../utils/markdown';
 import { usePlatform } from '../../hooks/usePlatform';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -84,8 +85,14 @@ export default function EmptyState({ compact = false }: EmptyStateProps = {}) {
           core reason the popover exists. Just mascot + greeting stays. */}
       {!compact && (
         <>
-          <div style={{ width: '100%', marginBottom: 20 }}>
+          <div style={{ width: '100%', marginBottom: 16 }}>
             <SuggestionGrid />
+          </div>
+
+          {/* Returning-user surface. Renders null when conversations=0 so
+              first-time users don't see an empty "Recentes" block. */}
+          <div style={{ width: '100%', marginBottom: 20 }}>
+            <RecentConversations />
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>

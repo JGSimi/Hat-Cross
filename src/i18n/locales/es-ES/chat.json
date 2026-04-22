@@ -5,6 +5,11 @@
     "evening": "Buenas noches",
     "default": "Hola"
   },
+  "recents": {
+    "label": "Conversaciones recientes",
+    "heading": "Recientes",
+    "empty": "Sin mensajes"
+  },
   "empty": {
     "subtitle": "¿Qué resolvemos hoy?",
     "subtitleNamed": "¿Qué resolvemos hoy, {{name}}?"

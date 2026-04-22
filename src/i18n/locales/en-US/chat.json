@@ -5,8 +5,14 @@
     "evening": "Good evening",
     "default": "Hello"
   },
+  "recents": {
+    "label": "Recent chats",
+    "heading": "Recent",
+    "empty": "No messages"
+  },
   "empty": {
-    "subtitle": "How can I help?"
+    "subtitle": "What are we tackling today?",
+    "subtitleNamed": "What are we tackling today, {{name}}?"
   },
   "suggestions": {
     "label": "Starter shortcuts",
