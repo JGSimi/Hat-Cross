@@ -481,9 +481,19 @@ function App() {
             }
             if (event.payload.isFinished) {
               if (hasReceivedContent && response) {
-                // Truncate if configured
+                // Char truncation applies to MCQ only. Dissertative answers
+                // need to land complete in clipboard/history — reported
+                // 2026-04-23 that the default 4096-char cap was clipping
+                // long answers with "..." mid-paragraph even after the
+                // token budget was raised. Flash still uses its own
+                // `previewLength` for the on-screen preview, so stealth
+                // isn't affected.
                 const maxLen = clip.maxResponseLength || 4096;
-                const finalResponse = response.length > maxLen ? response.slice(0, maxLen) + '...' : response;
+                const shouldCharTruncate =
+                  clipboardIntent === 'mcq' && response.length > maxLen;
+                const finalResponse = shouldCharTruncate
+                  ? response.slice(0, maxLen) + '...'
+                  : response;
 
                 // Copy to clipboard (text response only)
                 if (clip.copyResponseToClipboard) {

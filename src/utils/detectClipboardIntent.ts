@@ -27,10 +27,16 @@ export function detectClipboardIntent(text: string): ClipboardIntent {
 }
 
 /**
- * Token budget per intent. MCQ gets a tight cap because any extra output
- * violates the "letter only" contract. Open-ended gets a generous budget
- * so dissertative answers aren't truncated.
+ * Token budget per intent.
+ *
+ * - MCQ gets a tight cap (64) because any extra output violates the
+ *   "letter only" contract.
+ * - Open-ended gets the real ceiling of the upstream model (32768 —
+ *   matches the top of the user-visible slider in AICard). Reported
+ *   2026-04-23 that 2048 still truncated dissertatives; the user
+ *   explicitly asked for no artificial cap. Upstream backend is free
+ *   to clamp lower if the selected model can't serve this much.
  */
 export function maxTokensForIntent(intent: ClipboardIntent): number {
-  return intent === 'mcq' ? 64 : 2048;
+  return intent === 'mcq' ? 64 : 32768;
 }
