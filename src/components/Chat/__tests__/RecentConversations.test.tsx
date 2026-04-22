@@ -48,17 +48,19 @@ function makeConv(
         content: 'Pergunta inicial',
         isUser: true,
         timestamp: updatedAt - 1000,
+        source: 'chat',
       },
       {
         id: `${id}-m2`,
         content: lastContent,
         isUser: false,
         timestamp: updatedAt,
+        source: 'chat',
       },
     ],
     createdAt: updatedAt - 10_000,
     updatedAt,
-    pinned: false,
+    isPinned: false,
   };
 }
 
@@ -132,6 +134,7 @@ describe('RecentConversations — empty-home returning user surface', () => {
               content: 'Pergunta real',
               isUser: true,
               timestamp: 100,
+              source: 'chat',
             },
             {
               id: 'm2',
@@ -139,11 +142,12 @@ describe('RecentConversations — empty-home returning user surface', () => {
                 '**Nova conversa criada automaticamente** — blah blah',
               isUser: false,
               timestamp: 200,
+              source: 'chat',
             },
           ],
           createdAt: 0,
           updatedAt: 200,
-          pinned: false,
+          isPinned: false,
         },
       ],
     });
