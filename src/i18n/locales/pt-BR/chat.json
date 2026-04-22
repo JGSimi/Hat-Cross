@@ -6,7 +6,8 @@
     "default": "Olá"
   },
   "empty": {
-    "subtitle": "Como posso ajudar?"
+    "subtitle": "O que a gente resolve hoje?",
+    "subtitleNamed": "O que a gente resolve hoje, {{name}}?"
   },
   "suggestions": {
     "label": "Atalhos de partida",

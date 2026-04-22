@@ -6,7 +6,8 @@
     "default": "Hola"
   },
   "empty": {
-    "subtitle": "¿En qué te ayudo?"
+    "subtitle": "¿Qué resolvemos hoy?",
+    "subtitleNamed": "¿Qué resolvemos hoy, {{name}}?"
   },
   "suggestions": {
     "label": "Atajos de inicio",
