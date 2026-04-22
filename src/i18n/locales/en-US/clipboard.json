@@ -30,5 +30,16 @@
   "sort": {
     "newest": "Newest",
     "oldest": "Oldest"
+  },
+  "toasts": {
+    "responseCopied": "Response copied",
+    "nothingToCopy": "Nothing to copy",
+    "originalCopied": "Original text copied",
+    "originalAndResponseCopied": "Original + response copied",
+    "newConversation": "New chat created",
+    "pinned": "Item pinned",
+    "unpinned": "Item unpinned",
+    "removed": "Item removed",
+    "historyCleared": "History cleared"
   }
 }

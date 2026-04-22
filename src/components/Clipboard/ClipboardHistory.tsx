@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useClipboardStore } from '../../stores/clipboardStore';
@@ -29,6 +30,7 @@ const PINNED_GROUP_KEY = 'Fixados';
 const FLAT_GROUP_KEY = 'Todos';
 
 export default function ClipboardHistory({ onBack }: Props) {
+  const { t } = useTranslation('clipboard');
   const entries = useClipboardStore((s) => s.entries);
   const isProcessing = useClipboardStore((s) => s.isProcessing);
   const deleteEntry = useClipboardStore((s) => s.deleteEntry);
@@ -136,7 +138,7 @@ export default function ClipboardHistory({ onBack }: Props) {
   const handleCopyResponse = useCallback(
     (entry: ClipboardEntry) => {
       navigator.clipboard.writeText(entry.response).catch(() => {});
-      showToast('Resposta copiada', 'success');
+      showToast(t('toasts.responseCopied'), 'success');
     },
     [showToast],
   );
@@ -145,11 +147,11 @@ export default function ClipboardHistory({ onBack }: Props) {
     (entry: ClipboardEntry) => {
       const text = entry.originalText && entry.originalText !== '(imagem)' ? entry.originalText : '';
       if (!text) {
-        showToast('Nada para copiar', 'info');
+        showToast(t('toasts.nothingToCopy'), 'info');
         return;
       }
       navigator.clipboard.writeText(text).catch(() => {});
-      showToast('Texto original copiado', 'success');
+      showToast(t('toasts.originalCopied'), 'success');
     },
     [showToast],
   );
@@ -159,7 +161,7 @@ export default function ClipboardHistory({ onBack }: Props) {
       const orig = entry.originalText && entry.originalText !== '(imagem)' ? entry.originalText : '';
       const combined = orig ? `${orig}\n\n---\n\n${entry.response}` : entry.response;
       navigator.clipboard.writeText(combined).catch(() => {});
-      showToast('Original + resposta copiados', 'success');
+      showToast(t('toasts.originalAndResponseCopied'), 'success');
     },
     [showToast],
   );
@@ -183,7 +185,7 @@ export default function ClipboardHistory({ onBack }: Props) {
       const conv = createConversation(userMsg);
       addMessageToConversation(conv.id, aiMsg);
       useChatStore.getState().loadFromConversation(conv.id);
-      showToast('Nova conversa criada', 'info');
+      showToast(t('toasts.newConversation'), 'info');
     },
     [createConversation, addMessageToConversation, showToast],
   );
@@ -191,7 +193,7 @@ export default function ClipboardHistory({ onBack }: Props) {
   const handleTogglePin = useCallback(
     (entry: ClipboardEntry) => {
       togglePin(entry.id);
-      showToast(entry.isPinned ? 'Item desafixado' : 'Item fixado', 'info');
+      showToast(entry.isPinned ? t('toasts.unpinned') : t('toasts.pinned'), 'info');
     },
     [togglePin, showToast],
   );
@@ -201,7 +203,7 @@ export default function ClipboardHistory({ onBack }: Props) {
       if (confirmDeleteId === entry.id) {
         deleteEntry(entry.id);
         setConfirmDeleteId(null);
-        showToast('Item removido', 'success');
+        showToast(t('toasts.removed'), 'success');
         setExpandedIds((prev) => {
           const next = new Set(prev);
           next.delete(entry.id);
@@ -220,7 +222,7 @@ export default function ClipboardHistory({ onBack }: Props) {
       setConfirmClear(false);
       setExpandedIds(new Set());
       setConfirmDeleteId(null);
-      showToast('Histórico limpo', 'success');
+      showToast(t('toasts.historyCleared'), 'success');
     } else {
       setConfirmClear(true);
     }
@@ -547,7 +549,7 @@ export default function ClipboardHistory({ onBack }: Props) {
             onDelete={() => {
               // Skip confirm for context-menu delete to feel snappy
               deleteEntry(contextMenuEntry.id);
-              showToast('Item removido', 'success');
+              showToast(t('toasts.removed'), 'success');
             }}
           />
         )}

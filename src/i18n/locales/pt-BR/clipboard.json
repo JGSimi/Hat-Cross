@@ -30,5 +30,16 @@
   "sort": {
     "newest": "Mais recentes",
     "oldest": "Mais antigos"
+  },
+  "toasts": {
+    "responseCopied": "Resposta copiada",
+    "nothingToCopy": "Nada para copiar",
+    "originalCopied": "Texto original copiado",
+    "originalAndResponseCopied": "Original + resposta copiados",
+    "newConversation": "Nova conversa criada",
+    "pinned": "Item fixado",
+    "unpinned": "Item desafixado",
+    "removed": "Item removido",
+    "historyCleared": "Histórico limpo"
   }
 }
