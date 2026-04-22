@@ -66,12 +66,7 @@
     "copyToClipboard": "Copy response to clipboard",
     "appendMode": "Append mode (original + response)",
     "appendModeHint": "The original text is kept, with the response added below, separated by \"---\".",
-    "maxResponseLength": "Max response length",
-    "customPrompt": "Custom prompt",
-    "useCustomPrompt": "Use custom prompt",
-    "useCustomPromptHintOn": "This prompt will be used instead of the system prompt when processing clipboard.",
-    "useCustomPromptHintOff": "When disabled, uses the system prompt (\"AI\" card).",
-    "customPromptPlaceholder": "E.g. Translate to English. Reply with the translation only, no explanations."
+    "maxResponseLength": "Max response length"
   },
   "flash": {
     "title": "Flash Mode",

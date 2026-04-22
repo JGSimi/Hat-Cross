@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { doc, getFirestore, onSnapshot } from 'firebase/firestore';
 import { firebaseApp } from '../services/auth/firebase';
 import { useAuthStore } from './authStore';
-import type { AIMode } from '../types/account';
+import { VALID_MODES, type AIMode } from '../types/account';
 import type { AppTheme } from '../types';
 import { resolveUnlockedSet } from '../utils/themeUnlocks';
 
@@ -40,12 +40,15 @@ export const useCreditsStore = create<CreditsState>((set, get) => ({
   unlockedThemes: resolveUnlockedSet(0, undefined),
   isLoading: true,
   lastConsumed: null,
-  selectedMode: 'standard',
+  selectedMode: 'hat',
   pricing: {
     brlToCredits: DEFAULT_BRL_TO_CREDITS,
     tierBrls: DEFAULT_TIER_BRLS,
   },
-  setSelectedMode: (selectedMode) => set({ selectedMode }),
+  // Guard: modos legados ou valores corrompidos (ex: snapshot antigo no Firestore)
+  // caem silenciosamente no default `hat` em vez de causar 400 no Worker.
+  setSelectedMode: (selectedMode) =>
+    set({ selectedMode: VALID_MODES.has(selectedMode) ? selectedMode : 'hat' }),
   markConsumed: (amount) => set({ lastConsumed: amount }),
   isThemeUnlocked: (theme) => get().unlockedThemes.has(theme),
 }));

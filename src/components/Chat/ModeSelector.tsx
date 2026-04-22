@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { Zap, Sparkles, Brain } from 'lucide-react';
+import { Zap, Sparkles } from 'lucide-react';
 import { useCreditsStore } from '../../stores/creditsStore';
 import { AI_MODES, type AIMode } from '../../types/account';
 
@@ -7,9 +7,8 @@ import { AI_MODES, type AIMode } from '../../types/account';
 // the picker a visual identity without shouting. Active tile layers a pill
 // that morphs across tiles via layoutId so the transition feels physical.
 const MODE_TINT: Record<AIMode, { icon: typeof Zap; hue: string; glow: string }> = {
-  mini:     { icon: Zap,      hue: '#FBBF24', glow: 'rgba(251, 191, 36, 0.35)' },
-  standard: { icon: Sparkles, hue: '#818CF8', glow: 'rgba(129, 140, 248, 0.35)' },
-  plus:     { icon: Brain,    hue: '#C084FC', glow: 'rgba(192, 132, 252, 0.35)' },
+  hat:       { icon: Zap,      hue: '#FBBF24', glow: 'rgba(251, 191, 36, 0.35)' },
+  'hat-pro': { icon: Sparkles, hue: '#818CF8', glow: 'rgba(129, 140, 248, 0.35)' },
 };
 
 export default function ModeSelector() {
@@ -24,7 +23,7 @@ export default function ModeSelector() {
       style={{
         position: 'relative',
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
+        gridTemplateColumns: 'repeat(2, 1fr)',
         gap: 2,
         padding: 3,
         borderRadius: 10,

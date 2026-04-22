@@ -20,6 +20,15 @@ export const DEFAULT_SYSTEM_PROMPTS: Record<AppLanguage, string> = {
   'es-ES': 'Eres un asistente de IA útil y conciso. Responde en español.',
 };
 
+// Prompt fixo do fluxo de clipboard. Não é editável pelo usuário — o contrato
+// do produto é responder curto (múltipla escolha ou dissertativa de ≤3 frases).
+// A IA é forçada a ser breve via este prompt + `maxTokens: 400` no stream.
+export const CLIPBOARD_SYSTEM_PROMPTS: Record<AppLanguage, string> = {
+  'pt-BR': 'Você responde perguntas copiadas pelo usuário. Se for múltipla escolha (A, B, C, D…), responda APENAS com a letra correta seguida de justificativa curta (1–2 frases). Se for aberta, seja direto e conciso (máximo 3 frases). Nunca alongue a resposta.',
+  'en-US': 'You answer questions the user copies. If multiple-choice (A, B, C, D…), reply ONLY with the correct letter followed by a brief justification (1–2 sentences). If open-ended, be direct and concise (max 3 sentences). Never pad the answer.',
+  'es-ES': 'Respondes preguntas copiadas por el usuario. Si es opción múltiple (A, B, C, D…), responde SOLO con la letra correcta seguida de una justificación breve (1–2 frases). Si es abierta, sé directo y conciso (máximo 3 frases). Nunca alargues la respuesta.',
+};
+
 /** Retorna o idioma correspondente se o prompt for um default conhecido, senão null. */
 export function matchesDefaultPrompt(prompt: string): AppLanguage | null {
   for (const [lang, p] of Object.entries(DEFAULT_SYSTEM_PROMPTS)) {

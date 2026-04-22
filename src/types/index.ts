@@ -644,8 +644,6 @@ export interface ShortcutSettings {
 export interface ClipboardSettings {
   enabled: boolean;
   copyResponseToClipboard: boolean;
-  customPrompt: string;
-  useCustomPrompt: boolean;
   maxResponseLength: number;
   appendMode: boolean; // append response below original text
   soundOnComplete: boolean;
@@ -751,8 +749,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   clipboard: {
     enabled: true,
     copyResponseToClipboard: true,
-    customPrompt: '',
-    useCustomPrompt: false,
     maxResponseLength: 4096,
     appendMode: false,
     soundOnComplete: true,

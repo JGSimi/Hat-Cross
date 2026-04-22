@@ -6,7 +6,7 @@ import {
   useSpring,
   useTransform,
 } from 'framer-motion';
-import { LogOut, Loader2, CreditCard, Zap, Sparkles, Brain } from 'lucide-react';
+import { LogOut, Loader2, CreditCard, Zap, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../stores/authStore';
 import { useCreditsStore } from '../../stores/creditsStore';
@@ -16,9 +16,8 @@ import RechargeModal from '../Account/RechargeModal';
 // Signature color per mode — mirrors ModeSelector so the header and the chat
 // picker share a consistent visual language.
 const MODE_TINT: Record<AIMode, { icon: typeof Zap; hue: string; soft: string }> = {
-  mini:     { icon: Zap,      hue: '#FBBF24', soft: 'rgba(251, 191, 36, 0.14)' },
-  standard: { icon: Sparkles, hue: '#818CF8', soft: 'rgba(129, 140, 248, 0.14)' },
-  plus:     { icon: Brain,    hue: '#C084FC', soft: 'rgba(192, 132, 252, 0.14)' },
+  hat:       { icon: Zap,      hue: '#FBBF24', soft: 'rgba(251, 191, 36, 0.14)' },
+  'hat-pro': { icon: Sparkles, hue: '#818CF8', soft: 'rgba(129, 140, 248, 0.14)' },
 };
 
 // Animated integer counter — springs from previous value to current so the

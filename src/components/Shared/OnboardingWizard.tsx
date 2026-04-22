@@ -4,7 +4,6 @@ import { Trans, useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   ArrowRight,
-  Brain,
   Check,
   Clipboard as ClipboardIcon,
   Coins,
@@ -33,9 +32,8 @@ const slideVariants = {
 // Color per mode mirrors AccountTab's MODE_TINT so the tour teaches the same
 // visual language users will meet inside the app.
 const MODE_TINT: Record<string, { icon: typeof Zap; hue: string; soft: string }> = {
-  mini: { icon: Zap, hue: '#FBBF24', soft: 'rgba(251, 191, 36, 0.14)' },
-  standard: { icon: Sparkles, hue: '#818CF8', soft: 'rgba(129, 140, 248, 0.14)' },
-  plus: { icon: Brain, hue: '#C084FC', soft: 'rgba(192, 132, 252, 0.14)' },
+  hat: { icon: Zap, hue: '#FBBF24', soft: 'rgba(251, 191, 36, 0.14)' },
+  'hat-pro': { icon: Sparkles, hue: '#818CF8', soft: 'rgba(129, 140, 248, 0.14)' },
 };
 
 export default function OnboardingWizard({ onComplete }: { onComplete: () => void }) {

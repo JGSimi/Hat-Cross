@@ -1,7 +1,9 @@
-// Account / credits domain types. The three AI modes mirror exactly what the
+// Account / credits domain types. The two AI modes mirror exactly what the
 // Worker expects in POST /v1/chat — keep these strings in sync with hat-proxy.
 
-export type AIMode = 'mini' | 'standard' | 'plus';
+export type AIMode = 'hat' | 'hat-pro';
+
+export const VALID_MODES: ReadonlySet<AIMode> = new Set(['hat', 'hat-pro']);
 
 export interface AIModeDefinition {
   id: AIMode;
@@ -10,9 +12,8 @@ export interface AIModeDefinition {
 }
 
 export const AI_MODES: readonly AIModeDefinition[] = [
-  { id: 'mini',     label: 'Hat Mini', description: 'Rápido e barato' },
-  { id: 'standard', label: 'Hat',      description: 'Equilibrado' },
-  { id: 'plus',     label: 'Hat Plus', description: 'Mais capaz, mais caro' },
+  { id: 'hat',     label: 'Hat',     description: 'Rápido e econômico' },
+  { id: 'hat-pro', label: 'Hat Pro', description: 'Mais capaz, ainda rápido' },
 ] as const;
 
 export interface HatUser {

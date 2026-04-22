@@ -17,8 +17,7 @@ export default function ClipboardCard() {
     Number(clip.captureImages) +
     Number(clip.copyResponseToClipboard) +
     Number(clip.appendMode) +
-    Number(clip.soundOnComplete) +
-    Number(clip.useCustomPrompt);
+    Number(clip.soundOnComplete);
   const preview = t('clipboard.previewActive', { n: togglesActive });
 
   return (
@@ -89,42 +88,6 @@ export default function ClipboardCard() {
         </StackRow>
       </Section>
 
-      <Section title={t('clipboard.customPrompt')}>
-        <Row
-          label={t('clipboard.useCustomPrompt')}
-          hint={
-            clip.useCustomPrompt
-              ? t('clipboard.useCustomPromptHintOn')
-              : t('clipboard.useCustomPromptHintOff')
-          }
-        >
-          <Toggle
-            checked={clip.useCustomPrompt}
-            onChange={(v) => update({ useCustomPrompt: v })}
-          />
-        </Row>
-        {clip.useCustomPrompt && (
-          <textarea
-            value={clip.customPrompt}
-            onChange={(e) => update({ customPrompt: e.target.value })}
-            placeholder={t('clipboard.customPromptPlaceholder')}
-            rows={3}
-            style={{
-              width: '100%',
-              background: 'var(--input-bg)',
-              color: 'var(--text-primary)',
-              borderRadius: 8,
-              padding: '8px 12px',
-              fontSize: 11,
-              border: '0.5px solid var(--border-subtle)',
-              resize: 'vertical',
-              fontFamily: 'inherit',
-              lineHeight: 1.5,
-              marginTop: 8,
-            }}
-          />
-        )}
-      </Section>
     </SettingsCard>
   );
 }
