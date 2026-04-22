@@ -1,4 +1,6 @@
 {
+  "region": "Notificações",
+  "dismiss": "Fechar notificação",
   "info": {
     "lightModeOn": "Modo leve ativado",
     "themeDraftSaved": "Tema salvo em rascunho",
