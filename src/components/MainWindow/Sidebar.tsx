@@ -134,6 +134,7 @@ export default function Sidebar({
             whileTap={{ scale: 0.95 }}
             onClick={() => onViewChange('clipboard')}
             title={t('sidebar.openClipboard')}
+            aria-label={t('sidebar.openClipboard')}
             style={{
               padding: 5, borderRadius: 6,
               background: clipboardCount > 0 ? 'color-mix(in srgb, var(--color-accent) 8%, transparent)' : 'transparent',
@@ -159,6 +160,7 @@ export default function Sidebar({
             whileTap={{ scale: 0.95 }}
             onClick={() => createConversation()}
             title={t('sidebar.newChat')}
+            aria-label={t('sidebar.newChat')}
             style={{
               padding: 5, borderRadius: 6,
               background: 'var(--glass-secondary)',
@@ -175,6 +177,7 @@ export default function Sidebar({
             whileTap={{ scale: 0.95 }}
             onClick={onToggleCollapse}
             title={t('sidebar.hideSidebar')}
+            aria-label={t('sidebar.hideSidebar')}
             style={{
               padding: 5, borderRadius: 6,
               background: 'transparent',
@@ -339,6 +342,8 @@ export default function Sidebar({
           <button
             onClick={() => setShowStorageInfo(!showStorageInfo)}
             title={t('sidebar.storageInfo')}
+            aria-label={t('sidebar.storageInfo')}
+            aria-expanded={showStorageInfo}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: showStorageInfo ? 'var(--color-accent)' : 'var(--text-muted)',

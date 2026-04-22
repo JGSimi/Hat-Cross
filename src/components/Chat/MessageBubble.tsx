@@ -84,7 +84,10 @@ function MessageBubble({ message, isGrouped }: Props) {
           }}
         >
           <button
+            type="button"
             onClick={handleCopy}
+            aria-label={copied ? 'Copiado' : 'Copiar mensagem'}
+            aria-live="polite"
             style={{
               background: 'color-mix(in srgb, var(--bg-secondary) 90%, transparent)',
               backdropFilter: 'blur(8px)',

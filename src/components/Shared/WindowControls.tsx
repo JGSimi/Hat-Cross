@@ -67,6 +67,7 @@ function MacControls({ appWindow, platform }: { appWindow: ReturnType<typeof get
           fontWeight: 700,
         }}
         title="Fechar"
+        aria-label="Fechar janela"
       >
         ✕
       </button>
@@ -89,6 +90,7 @@ function MacControls({ appWindow, platform }: { appWindow: ReturnType<typeof get
           fontWeight: 700,
         }}
         title="Minimizar"
+        aria-label="Minimizar janela"
       >
         −
       </button>
@@ -111,6 +113,7 @@ function MacControls({ appWindow, platform }: { appWindow: ReturnType<typeof get
           fontWeight: 700,
         }}
         title="Maximizar"
+        aria-label="Maximizar janela"
       >
         ⤢
       </button>
@@ -157,6 +160,7 @@ function MinimalControls({ appWindow, platform }: { appWindow: ReturnType<typeof
           opacity: hoveredBtn === 'min' ? 1 : btnBase.opacity,
         }}
         title="Minimizar"
+        aria-label="Minimizar janela"
       >
         <svg width="8" height="1" viewBox="0 0 8 1" fill="currentColor">
           <rect width="8" height="1" />
@@ -172,6 +176,7 @@ function MinimalControls({ appWindow, platform }: { appWindow: ReturnType<typeof
           opacity: hoveredBtn === 'max' ? 1 : btnBase.opacity,
         }}
         title="Maximizar"
+        aria-label="Maximizar janela"
       >
         <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1">
           <rect x="0.5" y="0.5" width="7" height="7" rx="1" />
@@ -188,6 +193,7 @@ function MinimalControls({ appWindow, platform }: { appWindow: ReturnType<typeof
           opacity: hoveredBtn === 'close' ? 1 : btnBase.opacity,
         }}
         title="Fechar"
+        aria-label="Fechar janela"
       >
         <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.2">
           <line x1="1" y1="1" x2="7" y2="7" />
