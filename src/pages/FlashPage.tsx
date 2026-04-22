@@ -217,8 +217,20 @@ export default function FlashPage() {
 
   const textOpacity = appearance ? appearance.opacity / 100 : 0.35;
 
+  // Multi-direction dark stroke + soft halo emulates text-stroke without
+  // relying on -webkit-text-stroke (which doesn't render on all Tauri
+  // WebViews). Keeps lilás/accent text legible on white IDE backgrounds
+  // AND dark menubar backgrounds at the default 35% opacity — fixes the
+  // "invisible flash on light screens" half of critique I12. The toggle
+  // stays, so users who want a pure pixel-accent flash can still opt out.
   const shadow = appearance?.textShadow
-    ? '0 1px 2px rgba(0,0,0,0.55), 0 0 1px rgba(255,255,255,0.25)'
+    ? [
+        '-1px 0 0 rgba(0,0,0,0.7)',
+        '1px 0 0 rgba(0,0,0,0.7)',
+        '0 -1px 0 rgba(0,0,0,0.7)',
+        '0 1px 0 rgba(0,0,0,0.7)',
+        '0 0 4px rgba(0,0,0,0.45)',
+      ].join(', ')
     : 'none';
 
   const transitionMs =
