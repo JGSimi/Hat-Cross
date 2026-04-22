@@ -13,6 +13,7 @@ import { usePlatform } from '../../hooks/usePlatform';
 import { groupByDate, dateGroupLabel } from '../../utils/dateGroups';
 import WindowControls from '../Shared/WindowControls';
 import State from '../Shared/State';
+import Skeleton from '../Shared/Skeleton';
 import type { Conversation } from '../../types';
 
 export type SidebarView = 'chats' | 'clipboard';
@@ -40,6 +41,7 @@ export default function Sidebar({
   } = useConversations();
   const clearAllConversations = useConversationStore((s) => s.clearAllConversations);
   const getStorageStats = useConversationStore((s) => s.getStorageStats);
+  const hydrated = useConversationStore((s) => s.loaded);
   const [searchQuery, setSearchQuery] = useState('');
   const [appVersion, setAppVersion] = useState('');
   const [confirmClearAll, setConfirmClearAll] = useState(false);
@@ -232,7 +234,28 @@ export default function Sidebar({
       </div>
 
       {/* Conversations list */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div
+        style={{ flex: 1, overflowY: 'auto' }}
+        aria-busy={!hydrated}
+      >
+        {!hydrated ? (
+          // Skeleton rows during store hydration. Without this, users coming
+          // back to the app see "Sem conversas salvas" for 200-400ms before
+          // their real history fades in — false negative flagged as I4 in
+          // the design critique.
+          <div role="status" aria-label={t('sidebar.loadingConversations', { defaultValue: 'Carregando conversas...' })}>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 14px' }}
+              >
+                <Skeleton height={12} width="70%" />
+                <Skeleton height={9} width="45%" radius={4} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
         {pinned.length > 0 && (
           <>
             <SectionHeader label={t('sidebar.pinned')} count={pinned.length} />
@@ -267,6 +290,8 @@ export default function Sidebar({
               body={tEmpty('conversationListEmpty.body')}
             />
           )
+        )}
+          </>
         )}
       </div>
 
