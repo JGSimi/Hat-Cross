@@ -13,6 +13,7 @@ import { useCreditsStore } from '../../stores/creditsStore';
 import { AI_MODES, type AIMode } from '../../types/account';
 import RechargeModal from '../Account/RechargeModal';
 import Skeleton from '../Shared/Skeleton';
+import TierProgressionStrip from './TierProgressionStrip';
 
 // Signature color per mode — mirrors ModeSelector so the header and the chat
 // picker share a consistent visual language.
@@ -461,6 +462,11 @@ export default function AccountHeader() {
           >
             <CreditCard size={13} /> {t('recharge')}
           </motion.button>
+          {/* Tier progression — surfaces the gamification arc on every
+              Settings open instead of hiding it behind a scroll into the
+              full ThemePicker ProgressBar. Returns null when all themes
+              are unlocked. */}
+          <TierProgressionStrip />
         </div>
         </div>
       </div>

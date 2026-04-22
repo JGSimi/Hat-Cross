@@ -19,6 +19,8 @@
     "nextLabel": "Próximo: <strong>{{name}}</strong>",
     "nextMeta": "{{spent}} / {{target}} · faltam {{remaining}}",
     "allUnlocked": "Todos os temas desbloqueados · Lenda viva",
+    "stripLabel": "Progresso para o próximo tier",
+    "stripRemaining": "Faltam {{remaining}} pra {{tier}}",
     "tierCount": "{{unlocked}}/{{total}}",
     "hiddenTeaser": "+{{count}} aguardam"
   },
