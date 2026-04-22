@@ -12,6 +12,7 @@ import { useToastStore } from '../../stores/toastStore';
 import { usePlatform } from '../../hooks/usePlatform';
 import { groupByDate, dateGroupLabel } from '../../utils/dateGroups';
 import WindowControls from '../Shared/WindowControls';
+import State from '../Shared/State';
 import type { Conversation } from '../../types';
 
 export type SidebarView = 'chats' | 'clipboard';
@@ -46,6 +47,7 @@ export default function Sidebar({
   const platform = usePlatform();
   const clipboardCount = useClipboardStore((s) => s.entries.length);
   const { t, i18n } = useTranslation('chat');
+  const { t: tEmpty } = useTranslation('empty');
 
   useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
 
@@ -248,14 +250,23 @@ export default function Sidebar({
         )}
 
         {filtered.length === 0 && (
-          <p style={{
-            padding: '32px 14px', fontSize: 11,
-            color: 'var(--text-muted)', textAlign: 'center',
-          }}>
-            {searchQuery
-              ? t('sidebar.noResults', { query: searchQuery })
-              : t('sidebar.noConversations')}
-          </p>
+          searchQuery ? (
+            <State
+              variant="empty"
+              title={tEmpty('searchResultsEmpty.title', { query: searchQuery })}
+              body={tEmpty('searchResultsEmpty.body')}
+              action={{
+                label: tEmpty('searchResultsEmpty.cta'),
+                onClick: () => setSearchQuery(''),
+              }}
+            />
+          ) : (
+            <State
+              variant="empty"
+              title={tEmpty('conversationListEmpty.title')}
+              body={tEmpty('conversationListEmpty.body')}
+            />
+          )
         )}
       </div>
 
