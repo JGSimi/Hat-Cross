@@ -1,4 +1,5 @@
 {
+  "pickerAriaLabel": "Visual theme",
   "tiers": {
     "free":      { "label": "Free",       "tagline": "Starter themes to kick off" },
     "spark":     { "label": "Spark",      "tagline": "First glimmers" },
