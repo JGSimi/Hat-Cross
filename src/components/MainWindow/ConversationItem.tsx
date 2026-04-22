@@ -164,7 +164,6 @@ function ConversationItemInner({
                 color: 'var(--text-primary)',
                 borderRadius: 4,
                 padding: '2px 6px',
-                outline: 'none',
                 border: '0.5px solid var(--border-focused)',
               }}
             />

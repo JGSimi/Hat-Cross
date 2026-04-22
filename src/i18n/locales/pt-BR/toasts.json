@@ -1,0 +1,29 @@
+{
+  "info": {
+    "lightModeOn": "Modo leve ativado",
+    "themeDraftSaved": "Tema salvo em rascunho",
+    "clearUndoAvailable": "Limpou. {{s}}s pra desfazer.",
+    "offlineQueued": "Sem rede. Mensagem na fila."
+  },
+  "success": {
+    "copied": "Mensagem copiada",
+    "apiKeySaved": "Chave salva — provedor pronto",
+    "themeApplied": "Tema aplicado",
+    "signedIn": "Conectado"
+  },
+  "warn": {
+    "contextNearLimit": "Contexto perto do limite",
+    "themeCooldown": "Cooldown de tema em {{s}}s",
+    "creditsLow": "Créditos acabando"
+  },
+  "error": {
+    "copyFailed": "Não rolou copiar — permissão negada",
+    "providerDown": "Provedor caiu, reenviando sozinho",
+    "clipboardFailed": "Clipboard bloqueado pelo sistema"
+  },
+  "credit": {
+    "tierUnlocked": "{{tier}} destravada",
+    "creditsAdded": "+{{amount}} créditos",
+    "tierApproaching": "Faltam {{n}} pra {{tier}}"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "chatFirstRun": {
+    "title": "Nada por aqui ainda",
+    "body": "Manda a primeira mensagem. O Hat lembra de tudo depois.",
+    "cta": "Começar a conversar"
+  },
+  "conversationListEmpty": {
+    "title": "Sem conversas salvas",
+    "body": "Quando você conversar, as threads aparecem aqui por data.",
+    "cta": "Abrir chat"
+  },
+  "clipboardFirstRun": {
+    "title": "Copia algo pra começar",
+    "body": "O Hat escuta o clipboard e guarda os últimos 50 itens. Privado, local.",
+    "cta": "Ativar escuta"
+  },
+  "clipboardPostClear": {
+    "title": "Limpou tudo",
+    "body": "Próxima cópia reabre o histórico. Sem stress.",
+    "cta": "Fechar"
+  },
+  "themePickerCooldown": {
+    "title": "Tema em resfriamento",
+    "body": "Troca de tema tem cooldown de {{s}}s. É isso, sem drama.",
+    "cta": "Esperar"
+  },
+  "attachmentPreviewEmpty": {
+    "title": "Arraste ou cola aqui",
+    "body": "Imagens, PDFs, código. O Hat decide o melhor parser.",
+    "cta": "Escolher arquivo"
+  },
+  "searchResultsEmpty": {
+    "title": "Nada bate com \"{{query}}\"",
+    "body": "Tenta outra palavra, ou limpa a busca pra ver tudo.",
+    "cta": "Limpar busca"
+  }
+}

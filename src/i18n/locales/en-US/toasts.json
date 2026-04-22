@@ -1,0 +1,29 @@
+{
+  "info": {
+    "lightModeOn": "Light mode on",
+    "themeDraftSaved": "Theme saved as draft",
+    "clearUndoAvailable": "Cleared. {{s}}s to undo.",
+    "offlineQueued": "No network. Message queued."
+  },
+  "success": {
+    "copied": "Message copied",
+    "apiKeySaved": "Key saved — provider ready",
+    "themeApplied": "Theme applied",
+    "signedIn": "Signed in"
+  },
+  "warn": {
+    "contextNearLimit": "Context near the limit",
+    "themeCooldown": "Theme cooldown: {{s}}s",
+    "creditsLow": "Credits running low"
+  },
+  "error": {
+    "copyFailed": "Couldn't copy — permission denied",
+    "providerDown": "Provider is down, auto-retrying",
+    "clipboardFailed": "Clipboard blocked by the OS"
+  },
+  "credit": {
+    "tierUnlocked": "{{tier}} unlocked",
+    "creditsAdded": "+{{amount}} credits",
+    "tierApproaching": "{{n}} credits to {{tier}}"
+  }
+}

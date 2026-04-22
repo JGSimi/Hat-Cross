@@ -1,9 +1,110 @@
 {
-  "sessionExpired": "Sessão expirada. Entre novamente.",
-  "insufficientCredits": "Créditos insuficientes. Recarregue pra continuar.",
-  "rateLimited": "Muitas requisições. Tente em alguns segundos.",
-  "serverError": "Erro no servidor. Tente de novo em instantes.",
-  "networkError": "Sem conexão com o Hat.",
-  "unknownError": "Algo deu errado. Tente novamente.",
-  "generic": "Erro"
+  "unknown": {
+    "title": "Erro inesperado",
+    "body": "Reinicia o Hat. Se voltar, abre logs e manda pra gente.",
+    "primary": "Reiniciar Hat",
+    "secondary": "Ver logs"
+  },
+  "network-offline": {
+    "title": "Sem conexão com o Hat",
+    "body": "Você tá offline. A fila segura as mensagens até voltar.",
+    "primary": "Verificar rede",
+    "secondary": "Cancelar fila"
+  },
+  "firebase-auth-popup-blocked": {
+    "title": "Popup bloqueado pelo navegador",
+    "body": "O login do Google abriu e foi fechado rápido demais. Libera popups pro Hat e tenta de novo.",
+    "primary": "Tentar de novo",
+    "secondary": "Abrir ajuda"
+  },
+  "firebase-auth-network-request-failed": {
+    "title": "Sem internet pra autenticar",
+    "body": "O Google não respondeu. Checa a conexão e volta aqui.",
+    "primary": "Tentar de novo",
+    "secondary": "Entrar offline"
+  },
+  "firebase-auth-account-exists-with-different-credential": {
+    "title": "Essa conta já entrou de outro jeito",
+    "body": "O email existe com outro provedor. Usa o método original pra não duplicar.",
+    "primary": "Ver métodos",
+    "secondary": "Usar outro email"
+  },
+  "firebase-auth-invalid-credential": {
+    "title": "Credencial inválida",
+    "body": "O Google recusou o token. Acontece quando a sessão expira no meio do login.",
+    "primary": "Entrar de novo",
+    "secondary": "Cancelar"
+  },
+  "firebase-auth-too-many-requests": {
+    "title": "Muitas tentativas de login",
+    "body": "O Google travou por minutos. Respira, volta daqui a pouco.",
+    "primary": "Entendi",
+    "secondary": "Ver status"
+  },
+  "provider-401": {
+    "title": "Chave da API inválida",
+    "body": "O provedor não reconhece essa key. Confere se copiou inteira, sem espaços.",
+    "primary": "Editar chave",
+    "secondary": "Remover provedor"
+  },
+  "provider-429": {
+    "title": "Limite do provedor estourou",
+    "body": "Você mandou rápido demais. Espera o cooldown ou troca de modo.",
+    "primary": "Mudar modo",
+    "secondary": "Tentar em 30s"
+  },
+  "provider-5xx": {
+    "title": "Provedor fora do ar",
+    "body": "Não é você. O modelo tá instável. A fila interna reenvia sozinha.",
+    "primary": "Reenviar agora",
+    "secondary": "Trocar modelo"
+  },
+  "provider-timeout": {
+    "title": "Resposta demorou demais",
+    "body": "Passou de 30s sem resposta. Geralmente é contexto longo — corta ou tenta de novo.",
+    "primary": "Cortar contexto",
+    "secondary": "Tentar de novo"
+  },
+  "provider-context-exceeded": {
+    "title": "Conversa ficou grande demais",
+    "body": "O modelo não cabe mais nessa thread. Começa uma nova pra continuar o raciocínio.",
+    "primary": "Nova conversa",
+    "secondary": "Resumir thread"
+  },
+  "provider-content-filter": {
+    "title": "Bloqueado pelo filtro do provedor",
+    "body": "O provedor recusou o conteúdo. Reescreve o prompt ou troca de modelo.",
+    "primary": "Editar prompt",
+    "secondary": "Trocar modelo"
+  },
+  "tauri-command-failed": {
+    "title": "Comando do sistema falhou",
+    "body": "O Hat mandou algo pro sistema que não voltou. Reinicia o app — geralmente resolve.",
+    "primary": "Reiniciar Hat",
+    "secondary": "Ver logs"
+  },
+  "tauri-capability-denied": {
+    "title": "Permissão negada pela capability",
+    "body": "Essa ação não tá liberada no capabilities.json. Sem isso, o sistema bloqueia.",
+    "primary": "Ver detalhes",
+    "secondary": "Reportar bug"
+  },
+  "tauri-fs-error": {
+    "title": "Sistema de arquivos bloqueou",
+    "body": "O Hat tentou ler ou gravar e levou não. Pode ser permissão ou disco cheio.",
+    "primary": "Abrir pasta",
+    "secondary": "Tentar de novo"
+  },
+  "clipboard-read-failed": {
+    "title": "Não consegui ler o clipboard",
+    "body": "O sistema não liberou o conteúdo dessa vez. Copia de novo e reaperta o atalho.",
+    "primary": "Reabrir clipboard",
+    "secondary": "Desativar recurso"
+  },
+  "credits-insufficient": {
+    "title": "Créditos no zero",
+    "body": "Recarrega via PIX em segundos — volta pro fluxo sem sair do Hat.",
+    "primary": "Recarregar",
+    "secondary": "Mudar pra modo leve"
+  }
 }

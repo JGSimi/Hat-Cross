@@ -55,6 +55,7 @@
     "core:window:allow-set-size",
     "core:window:allow-set-ignore-cursor-events",
     "core:window:allow-show",
-    "core:window:allow-hide"
+    "core:window:allow-hide",
+    "core:window:allow-set-content-protected"
   ]
 }

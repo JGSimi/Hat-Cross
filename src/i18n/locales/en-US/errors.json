@@ -1,9 +1,110 @@
 {
-  "sessionExpired": "Session expired. Please sign in again.",
-  "insufficientCredits": "Not enough credits. Top up to continue.",
-  "rateLimited": "Too many requests. Try again in a few seconds.",
-  "serverError": "Server error. Try again shortly.",
-  "networkError": "Can't reach Hat.",
-  "unknownError": "Something went wrong. Try again.",
-  "generic": "Error"
+  "unknown": {
+    "title": "Unexpected error",
+    "body": "Restart Hat. If it comes back, open the logs and send them our way.",
+    "primary": "Restart Hat",
+    "secondary": "View logs"
+  },
+  "network-offline": {
+    "title": "You're offline",
+    "body": "No network. The queue holds messages until you're back.",
+    "primary": "Check network",
+    "secondary": "Cancel queue"
+  },
+  "firebase-auth-popup-blocked": {
+    "title": "Popup blocked",
+    "body": "Google sign-in opened and closed too fast. Allow popups for Hat and retry.",
+    "primary": "Try again",
+    "secondary": "Get help"
+  },
+  "firebase-auth-network-request-failed": {
+    "title": "No network for sign-in",
+    "body": "Google didn't respond. Check your connection and come back.",
+    "primary": "Try again",
+    "secondary": "Continue offline"
+  },
+  "firebase-auth-account-exists-with-different-credential": {
+    "title": "Account already exists",
+    "body": "This email signed in with another provider. Use that one to avoid duplicates.",
+    "primary": "See methods",
+    "secondary": "Use another email"
+  },
+  "firebase-auth-invalid-credential": {
+    "title": "Invalid credential",
+    "body": "Google rejected the token. Usually means the session expired mid-flow.",
+    "primary": "Sign in again",
+    "secondary": "Cancel"
+  },
+  "firebase-auth-too-many-requests": {
+    "title": "Too many sign-in attempts",
+    "body": "Google locked it for a few minutes. Breathe, come back later.",
+    "primary": "Got it",
+    "secondary": "Check status"
+  },
+  "provider-401": {
+    "title": "Invalid API key",
+    "body": "The provider doesn't recognize this key. Paste it whole, no spaces.",
+    "primary": "Edit key",
+    "secondary": "Remove provider"
+  },
+  "provider-429": {
+    "title": "Provider rate limit hit",
+    "body": "You sent too fast. Wait the cooldown or switch modes.",
+    "primary": "Switch mode",
+    "secondary": "Retry in 30s"
+  },
+  "provider-5xx": {
+    "title": "Provider is down",
+    "body": "Not you. The model is flaky. The queue will retry on its own.",
+    "primary": "Retry now",
+    "secondary": "Switch model"
+  },
+  "provider-timeout": {
+    "title": "Response timed out",
+    "body": "Over 30s with no reply. Usually a long context — trim or retry.",
+    "primary": "Trim context",
+    "secondary": "Try again"
+  },
+  "provider-context-exceeded": {
+    "title": "Conversation is too long",
+    "body": "The model can't fit this thread anymore. Start a new one to keep going.",
+    "primary": "New chat",
+    "secondary": "Summarize thread"
+  },
+  "provider-content-filter": {
+    "title": "Blocked by content filter",
+    "body": "The provider refused the content. Rewrite or switch model.",
+    "primary": "Edit prompt",
+    "secondary": "Switch model"
+  },
+  "tauri-command-failed": {
+    "title": "System command failed",
+    "body": "Hat sent something to the OS that didn't come back. Restart usually fixes.",
+    "primary": "Restart Hat",
+    "secondary": "View logs"
+  },
+  "tauri-capability-denied": {
+    "title": "Capability denied",
+    "body": "This action isn't in capabilities.json. The OS blocks it without that.",
+    "primary": "See details",
+    "secondary": "Report bug"
+  },
+  "tauri-fs-error": {
+    "title": "Filesystem error",
+    "body": "Hat tried to read or write and got denied. Permission or disk full.",
+    "primary": "Open folder",
+    "secondary": "Try again"
+  },
+  "clipboard-read-failed": {
+    "title": "Can't read clipboard",
+    "body": "The OS didn't release it this time. Copy again and hit the shortcut.",
+    "primary": "Reopen clipboard",
+    "secondary": "Disable feature"
+  },
+  "credits-insufficient": {
+    "title": "You're out of credits",
+    "body": "Top up via PIX in seconds — stay in flow without leaving Hat.",
+    "primary": "Top up",
+    "secondary": "Switch to light mode"
+  }
 }

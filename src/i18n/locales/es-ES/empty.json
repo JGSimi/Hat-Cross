@@ -1,0 +1,37 @@
+{
+  "chatFirstRun": {
+    "title": "Nothing here yet",
+    "body": "Send your first message. Hat remembers from here.",
+    "cta": "Start chatting"
+  },
+  "conversationListEmpty": {
+    "title": "No chats saved",
+    "body": "Once you talk, threads show up here by date.",
+    "cta": "Open chat"
+  },
+  "clipboardFirstRun": {
+    "title": "Copy something to start",
+    "body": "Hat watches the clipboard and keeps the last 50. Private, local.",
+    "cta": "Turn on listener"
+  },
+  "clipboardPostClear": {
+    "title": "All clear",
+    "body": "Your next copy rebuilds the list. No stress.",
+    "cta": "Close"
+  },
+  "themePickerCooldown": {
+    "title": "Theme is cooling down",
+    "body": "Theme switches cool down for {{s}}s. That's it.",
+    "cta": "Wait"
+  },
+  "attachmentPreviewEmpty": {
+    "title": "Drop or paste here",
+    "body": "Images, PDFs, code. Hat picks the parser.",
+    "cta": "Pick file"
+  },
+  "searchResultsEmpty": {
+    "title": "Nothing matches \"{{query}}\"",
+    "body": "Try another word, or clear the search to see everything.",
+    "cta": "Clear search"
+  }
+}

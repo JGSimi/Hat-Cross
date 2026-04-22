@@ -1,0 +1,13 @@
+{
+  "flashAdjustTitle": "Ajustar posição",
+  "flashAdjustHint": "Arrasta. Solta quando bater.",
+  "flashAdjustConfirm": "Fixar aqui",
+  "flashAdjustCancel": "Cancelar",
+  "flashAdjustReset": "Redefinir",
+  "flashEmptyClipboard": "Copie algo primeiro (Cmd+C)",
+  "disguiseClockIdleLabel": "Relógio",
+  "disguiseClockHoverHint": "Solta pra voltar",
+  "popoverBackToClock": "Virar relógio",
+  "popoverStealthEnter": "Modo discreto",
+  "popoverStealthExit": "De volta"
+}
