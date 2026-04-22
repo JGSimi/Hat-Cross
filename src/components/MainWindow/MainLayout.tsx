@@ -6,8 +6,10 @@ import ChatWindow from '../Chat/ChatWindow';
 import ClipboardHistory from '../Clipboard/ClipboardHistory';
 import SettingsPanel from '../Settings/SettingsPanel';
 import OnboardingWizard from '../Shared/OnboardingWizard';
+import ShortcutsOverlay from '../Shared/ShortcutsOverlay';
 import WindowControls from '../Shared/WindowControls';
 import { usePlatform } from '../../hooks/usePlatform';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useChatStore } from '../../stores/chatStore';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -50,6 +52,14 @@ export default function MainLayout() {
 
   const [activeView, setActiveView] = useState<SidebarView>('chats');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  // `?` (shift + /) opens the shortcut reference overlay. The hook already
+  // ignores keystrokes inside inputs/textareas unless whitelisted, so typing
+  // literal `?` into chat or settings never triggers this.
+  useKeyboardShortcuts({
+    'shift+?': () => setShortcutsOpen(true),
+  });
 
   useEffect(() => {
     if (activeConversationId) {
@@ -210,6 +220,11 @@ export default function MainLayout() {
           )}
         </AnimatePresence>
       </motion.div>
+
+      <ShortcutsOverlay
+        open={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
     </motion.div>
   );
 }

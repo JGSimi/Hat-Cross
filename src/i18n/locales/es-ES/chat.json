@@ -10,6 +10,37 @@
     "heading": "Recientes",
     "empty": "Sin mensajes"
   },
+  "shortcutsOverlay": {
+    "title": "Atajos",
+    "subtitle": "Atajos activos en Hat. Esc cierra este panel.",
+    "close": "Cerrar",
+    "footer": "Pulsa ? en cualquier momento para reabrirlo.",
+    "sections": {
+      "global": "Global",
+      "chat": "Chat",
+      "clipboardView": "Portapapeles",
+      "popover": "Popover"
+    },
+    "labels": {
+      "floatingChat": "Abrir chat flotante",
+      "clipboard": "Procesar portapapeles",
+      "adjustFlash": "Ajustar posición del Flash",
+      "emergencyQuit": "Cerrar de emergencia",
+      "send": "Enviar mensaje",
+      "newline": "Nueva línea en el input",
+      "searchInChat": "Buscar en la conversación",
+      "navigateDown": "Siguiente",
+      "navigateUp": "Anterior",
+      "openEntry": "Abrir",
+      "previewEntry": "Vista rápida",
+      "copyResponse": "Copiar respuesta",
+      "copyOriginal": "Copiar original",
+      "togglePin": "Fijar o desfijar",
+      "searchClipboard": "Buscar en portapapeles",
+      "popoverReveal": "Revelar chat del popover",
+      "popoverDisguise": "Volver al reloj"
+    }
+  },
   "empty": {
     "subtitle": "¿Qué resolvemos hoy?",
     "subtitleNamed": "¿Qué resolvemos hoy, {{name}}?"

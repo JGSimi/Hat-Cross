@@ -10,6 +10,37 @@
     "heading": "Recentes",
     "empty": "Sem mensagens"
   },
+  "shortcutsOverlay": {
+    "title": "Atalhos",
+    "subtitle": "Atalhos ativos no Hat. Esc fecha esse painel.",
+    "close": "Fechar",
+    "footer": "Aperta ? a qualquer momento pra reabrir.",
+    "sections": {
+      "global": "Global",
+      "chat": "Chat",
+      "clipboardView": "Clipboard",
+      "popover": "Popover"
+    },
+    "labels": {
+      "floatingChat": "Abrir chat flutuante",
+      "clipboard": "Processar clipboard",
+      "adjustFlash": "Ajustar posição do Flash",
+      "emergencyQuit": "Fechar em emergência",
+      "send": "Enviar mensagem",
+      "newline": "Nova linha no input",
+      "searchInChat": "Buscar na conversa",
+      "navigateDown": "Próximo item",
+      "navigateUp": "Item anterior",
+      "openEntry": "Abrir item",
+      "previewEntry": "Prévia rápida",
+      "copyResponse": "Copiar resposta",
+      "copyOriginal": "Copiar texto original",
+      "togglePin": "Fixar ou desafixar",
+      "searchClipboard": "Buscar no clipboard",
+      "popoverReveal": "Revelar chat do popover",
+      "popoverDisguise": "Voltar ao relógio"
+    }
+  },
   "empty": {
     "subtitle": "O que a gente resolve hoje?",
     "subtitleNamed": "O que a gente resolve hoje, {{name}}?"
