@@ -1,4 +1,6 @@
 {
+  "region": "Notifications",
+  "dismiss": "Dismiss notification",
   "info": {
     "lightModeOn": "Light mode on",
     "themeDraftSaved": "Theme saved as draft",
