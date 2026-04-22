@@ -1433,6 +1433,15 @@ code {
   100% { background-position: 200% 0; }
 }
 
+/* Accessibility — reduced-motion fallback for loading skeletons.
+   Uses opacity pulse instead of horizontal shimmer to avoid
+   vestibular-motion triggers. Consumed by <Skeleton /> in
+   src/components/Shared/Skeleton.tsx. */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
 /* ==========================================================================
    Atmospheric Background
    ========================================================================== */

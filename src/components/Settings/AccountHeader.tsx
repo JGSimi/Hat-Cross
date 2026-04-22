@@ -12,6 +12,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useCreditsStore } from '../../stores/creditsStore';
 import { AI_MODES, type AIMode } from '../../types/account';
 import RechargeModal from '../Account/RechargeModal';
+import Skeleton from '../Shared/Skeleton';
 
 // Signature color per mode — mirrors ModeSelector so the header and the chat
 // picker share a consistent visual language.
@@ -424,7 +425,12 @@ export default function AccountHeader() {
             }}
           >
             {creditsLoading ? (
-              <span style={{ opacity: 0.35 }}>—</span>
+              <Skeleton
+                width={120}
+                height={34}
+                radius={8}
+                ariaLabel={t('balanceLoading', { defaultValue: 'Carregando saldo...' })}
+              />
             ) : (
               <CountUp value={credits} reducedMotion={reducedMotion} />
             )}
