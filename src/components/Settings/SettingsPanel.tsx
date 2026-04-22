@@ -102,7 +102,13 @@ export default function SettingsPanel({ onClose }: Props) {
             paddingLeft: 16,
             paddingRight: 16,
             paddingBottom: 12,
-            background: 'var(--bg-primary)',
+            // Frosted: deixa o gradient atmosférico do bg vazar através do
+            // sticky em vez de um bloco sólido que parece preto em todos os
+            // temas escuros. Combina tinta do tema via surface-primary.
+            background:
+              'color-mix(in srgb, var(--surface-primary) 72%, transparent)',
+            backdropFilter: 'blur(14px) saturate(1.3)',
+            WebkitBackdropFilter: 'blur(14px) saturate(1.3)',
             borderBottom: '0.5px solid var(--border-subtle)',
           }}
         >
