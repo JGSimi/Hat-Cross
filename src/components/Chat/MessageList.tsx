@@ -165,37 +165,59 @@ export default function MessageList({ messages, streamingContent, streamingThink
           </motion.div>
         )}
 
-        {/* Typing indicator */}
+        {/* Typing indicator — claims the assistant-bubble space (same 2px
+            accent left-border as the real reply) so the layout doesn't shift
+            when the first token lands. Dots bounce vertically in a wavy
+            cascade, not a flat scale pulse — more alive, less Messenger-
+            stamp. Has role="status" + aria-label so VoiceOver announces
+            "Hat está pensando..." without pinging every re-render. */}
         {isStreaming && !streamingContent && !streamingThinking && (
           <motion.div
             key="typing-indicator"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             style={{
+              marginTop: 12,
               display: 'flex',
               justifyContent: 'flex-start',
-              marginTop: 8,
-              paddingLeft: 16,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 0' }}>
+            <div
+              role="status"
+              aria-label="Hat está pensando..."
+              style={{
+                borderLeft:
+                  '2px solid color-mix(in srgb, var(--color-accent) 20%, transparent)',
+                paddingLeft: 14,
+                paddingTop: 4,
+                paddingBottom: 4,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+              }}
+            >
               {[0, 1, 2].map((dotIndex) => (
-                <motion.div
+                <motion.span
                   key={dotIndex}
-                  animate={{ scale: [1, 1.2, 1] }}
+                  aria-hidden
+                  animate={{
+                    y: [0, -4, 0],
+                    opacity: [0.45, 1, 0.45],
+                  }}
                   transition={{
-                    duration: 0.6,
+                    duration: 0.9,
                     repeat: Infinity,
-                    delay: dotIndex * 0.12,
+                    delay: dotIndex * 0.15,
                     ease: 'easeInOut',
                   }}
                   style={{
-                    width: 6,
-                    height: 6,
+                    display: 'inline-block',
+                    width: 5,
+                    height: 5,
                     borderRadius: '50%',
-                    backgroundColor: 'var(--color-accent)',
-                    opacity: 0.85,
+                    background: 'var(--color-accent)',
                   }}
                 />
               ))}
