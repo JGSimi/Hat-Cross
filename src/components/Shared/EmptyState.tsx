@@ -8,7 +8,14 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
 import { formatShortcut } from '../../utils/formatShortcut';
 
-export default function EmptyState() {
+interface EmptyStateProps {
+  /** When true (popover / any narrow embedding), renders only the
+   * mascot + greeting. Suggestion grid + shortcut badges are dropped
+   * because they overflow the 380×480 popover and look broken. */
+  compact?: boolean;
+}
+
+export default function EmptyState({ compact = false }: EmptyStateProps = {}) {
   // `i18n.language` acesso só pra re-renderizar quando o idioma mudar
   // (getGreeting é função pura que lê i18n.t, mas React não sabe disso).
   const { t, i18n } = useTranslation('chat');
@@ -71,39 +78,42 @@ export default function EmptyState() {
         {subtitle}
       </motion.p>
 
-      {/* Suggestion grid — 4 starter shortcuts that pre-fill the input with
-          a prompt template, so a cold empty chat has real first steps
-          instead of staring back at the user. Clicks flow through
-          chatStore.pendingInput → InputArea useEffect. */}
-      <div style={{ width: '100%', marginBottom: 20 }}>
-        <SuggestionGrid />
-      </div>
+      {/* Suggestion grid + shortcut badges are suppressed in compact mode
+          (popover). The popover is 380×480 — the grid overflows, clips
+          the cards, and crowds the disguise-then-reveal flow that's the
+          core reason the popover exists. Just mascot + greeting stays. */}
+      {!compact && (
+        <>
+          <div style={{ width: '100%', marginBottom: 20 }}>
+            <SuggestionGrid />
+          </div>
 
-      {/* Shortcut badges */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        {shortcuts.map((sc, i) => (
-          <motion.div
-            key={sc.keys}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 + i * 0.12, type: 'spring', stiffness: 400, damping: 25 }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: 'var(--surface-tertiary)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 8, padding: '5px 10px',
-            }}
-          >
-            <kbd style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 10, color: 'var(--text-muted)', fontWeight: 500,
-            }}>
-              {sc.keys}
-            </kbd>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{sc.label}</span>
-          </motion.div>
-        ))}
-      </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {shortcuts.map((sc, i) => (
+              <motion.div
+                key={sc.keys}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + i * 0.12, type: 'spring', stiffness: 400, damping: 25 }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  background: 'var(--surface-tertiary)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 8, padding: '5px 10px',
+                }}
+              >
+                <kbd style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 10, color: 'var(--text-muted)', fontWeight: 500,
+                }}>
+                  {sc.keys}
+                </kbd>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{sc.label}</span>
+              </motion.div>
+            ))}
+          </div>
+        </>
+      )}
 
     </div>
   );
