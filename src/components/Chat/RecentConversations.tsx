@@ -9,10 +9,10 @@ const MAX = 3;
 
 /**
  * Returning-user greeting: shows the 3 most recently updated conversations
- * below the SuggestionGrid on the empty-chat home. Only renders when there
- * is at least one conversation. Hidden in popover (via EmptyState's
- * `compact` prop, same gate as SuggestionGrid) because the popover is
- * stealth-focused and chat history has no business there.
+ * on the empty-chat home. Only renders when there is at least one
+ * conversation. Hidden in popover (via EmptyState's `compact` prop)
+ * because the popover is stealth-focused and chat history has no
+ * business there.
  *
  * Click picks the conversation (setActiveConversation) — MainLayout's
  * existing useEffect picks the change up and calls loadFromConversation.
