@@ -1,0 +1,17 @@
+{
+  "accountBalance": "Loading balance...",
+  "flashPending": "Composing reply...",
+  "clipboardProcessing": "Reading clipboard...",
+  "chatThinking": "Thinking...",
+  "chatStreaming": "Writing...",
+  "signIn": "Opening Google...",
+  "apiKeyValidation": "Validating key...",
+  "themeSwitching": "Applying theme...",
+  "themeCooldown": "Wait {{s}}s...",
+  "attachmentUpload": "Uploading file...",
+  "searchIndexing": "Scanning history...",
+  "onboardingFinalizing": "Getting set...",
+  "syncAccount": "Syncing account...",
+  "pixGenerating": "Generating PIX...",
+  "conversationExport": "Packing up..."
+}

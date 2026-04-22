@@ -1,0 +1,17 @@
+{
+  "accountBalance": "Carregando saldo...",
+  "flashPending": "Preparando resposta...",
+  "clipboardProcessing": "Lendo clipboard...",
+  "chatThinking": "Pensando...",
+  "chatStreaming": "Escrevendo...",
+  "signIn": "Abrindo Google...",
+  "apiKeyValidation": "Validando chave...",
+  "themeSwitching": "Aplicando tema...",
+  "themeCooldown": "Aguarda {{s}}s...",
+  "attachmentUpload": "Subindo arquivo...",
+  "searchIndexing": "Varrendo histórico...",
+  "onboardingFinalizing": "Deixando tudo pronto...",
+  "syncAccount": "Sincronizando conta...",
+  "pixGenerating": "Gerando PIX...",
+  "conversationExport": "Empacotando..."
+}
