@@ -6,7 +6,7 @@ import { I18nextProvider, initReactI18next } from 'react-i18next';
 import ptThemes from '../../../i18n/locales/pt-BR/themes.json';
 import TierProgressionStrip from '../TierProgressionStrip';
 import { useCreditsStore } from '../../../stores/creditsStore';
-import { THEME_PRESETS } from '../../../types';
+import { THEME_PRESETS, type AppTheme } from '../../../types';
 
 vi.mock('framer-motion', async () => {
   const actual = await vi.importActual<typeof import('framer-motion')>(
@@ -31,16 +31,10 @@ function Wrapper({ children }: { children: React.ReactNode }) {
   return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>;
 }
 
-function setCreditsStore(creditsSpent: number, unlockedNames: string[] = []) {
+function setCreditsStore(creditsSpent: number, unlockedNames: AppTheme[] = []) {
   useCreditsStore.setState({
     creditsSpent,
-    unlockedThemes: new Set(unlockedNames as ReadonlyArray<
-      Parameters<typeof useCreditsStore.setState>[0] extends {
-        unlockedThemes: Set<infer T>;
-      }
-        ? T
-        : never
-    >),
+    unlockedThemes: new Set<AppTheme>(unlockedNames),
   });
 }
 
