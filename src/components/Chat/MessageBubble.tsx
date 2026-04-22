@@ -79,7 +79,11 @@ function MessageBubble({ message, isGrouped }: Props) {
             display: 'flex', alignItems: 'center', gap: 6,
             marginTop: 4,
             justifyContent: message.isUser ? 'flex-end' : 'flex-start',
-            opacity: hovered ? 1 : 0.35,
+            // 0.7 idle is low-emphasis but still legible in light themes —
+            // 0.35 (the previous value) dropped below AA contrast on
+            // noir / ice / lavender, making the Copy button effectively
+            // invisible until hover (design-critique I3).
+            opacity: hovered ? 1 : 0.7,
             transition: 'opacity var(--transition-normal)',
           }}
         >
