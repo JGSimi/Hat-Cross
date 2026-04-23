@@ -106,5 +106,6 @@
     "body": "Top up via PIX in seconds — stay in flow without leaving Hat.",
     "primary": "Top up",
     "secondary": "Switch to light mode"
-  }
+  },
+  "retrying": "Reintentando… ({{attempt}}/{{max}})"
 }
