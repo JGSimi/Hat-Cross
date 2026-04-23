@@ -2,7 +2,9 @@ import { startHatStream } from '.';
 import type { ConversationTurn, StreamChunk } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
 import { useCreditsStore } from '../../stores/creditsStore';
+import { useToastStore } from '../../stores/toastStore';
 import { getIdToken } from '../auth/firebase';
+import i18n from '../../i18n';
 
 export interface DispatchOptions {
   messages: ConversationTurn[];
@@ -14,6 +16,8 @@ export interface DispatchOptions {
   onError: (error: string) => void;
   onDone: () => void;
 }
+
+const RETRY_MAX_ATTEMPTS = 3;
 
 // Central entry point for every chat request. Since the BYOK path is gone,
 // dispatchStream just gates on "is the user signed in?": if yes, call the
@@ -49,5 +53,20 @@ export async function dispatchStream(
     onChunk: options.onChunk,
     onError: options.onError,
     onDone: options.onDone,
+    onRetry: (_kind, attempt) => {
+      // Surface the retry so the user knows Hat isn't frozen — just
+      // waiting out a transient upstream hiccup. Toast is intentionally
+      // light (info, 2.5s) because successful retries should feel
+      // invisible in the happy path.
+      useToastStore.getState().showToast(
+        i18n.t('errors:retrying', {
+          attempt,
+          max: RETRY_MAX_ATTEMPTS,
+          defaultValue: 'Tentando de novo…',
+        }),
+        'info',
+        { duration: 2500 },
+      );
+    },
   });
 }

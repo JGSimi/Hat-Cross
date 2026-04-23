@@ -4,6 +4,8 @@ import type { ConversationTurn, StreamChunk } from '../../types';
 import type { AIMode } from '../../types/account';
 import i18n from '../../i18n';
 import { classifyError } from '../../lib/errors/classifyError';
+import { NON_RETRYABLE, type ErrorKind } from '../../lib/errors/ErrorKind';
+import { withRetry } from '../../lib/errors/withRetry';
 
 /**
  * Resolve raw backend error strings (wire protocol: `error:<code>:<...>`)
@@ -56,6 +58,20 @@ export interface HatStreamOptions {
   onChunk: (chunk: StreamChunk) => void;
   onError: (error: string) => void;
   onDone: () => void;
+  /**
+   * Fires between attempts when the stream is being auto-retried.
+   * `attempt` is the NEXT attempt about to run (2, 3, …). Use it to
+   * surface "Tentando de novo ({attempt}/3)…" in the chat UI so the
+   * user knows Hat isn't frozen, just negotiating with a flaky upstream.
+   */
+  onRetry?: (kind: ErrorKind, attempt: number) => void;
+}
+
+function isAborted(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    (err.name === 'AbortError' || err.message === 'aborted')
+  );
 }
 
 export async function startHatStream(options: HatStreamOptions): Promise<() => void> {
@@ -70,64 +86,127 @@ export async function startHatStream(options: HatStreamOptions): Promise<() => v
     onChunk,
     onError,
     onDone,
+    onRetry,
   } = options;
 
-  const streamId = nextStreamId();
+  // One controller per startHatStream call — aborts the current
+  // attempt's Tauri invoke AND any ongoing backoff sleep inside
+  // `withRetry`. That keeps the user's "stop" button responsive
+  // even while we're waiting to retry a transient 5xx.
+  const controller = new AbortController();
 
-  let unlistenError: (() => void) | null = null;
-  let done = false;
+  // If ANY attempt streamed real content to the UI, we must not retry
+  // — a second attempt would duplicate the assistant message. Confined
+  // to genuine `text` chunks (not the synthetic `error:*` strings).
+  let anyAttemptReceivedContent = false;
+  let currentCancelAttempt: (() => void) | null = null;
 
-  const cleanup = () => {
-    if (done) return;
-    done = true;
-    unlisten();
-    unlistenError?.();
-  };
+  const runOnce = () =>
+    new Promise<void>((resolve, reject) => {
+      const streamId = nextStreamId();
+      let finished = false;
+      let unlisten: () => void = () => {};
+      let unlistenError: () => void = () => {};
 
-  const unlisten = await listen<StreamChunk>('chat-stream', (event) => {
-    const chunk = event.payload;
-    if (chunk.streamId !== streamId) return;
+      const localCleanup = () => {
+        if (finished) return;
+        finished = true;
+        unlisten();
+        unlistenError();
+      };
 
-    // Rust side emits transport/HTTP errors on the same channel as
-    // chunks, with `text: "error:<code>:..."` and `isFinished: true`.
-    // Route those to onError so they never land as assistant content —
-    // that was the 2026-04-23 bubble-leak bug.
-    if (chunk.text && chunk.text.startsWith('error:')) {
-      onError(sanitizeBackendError(chunk.text));
-      cleanup();
-      return;
-    }
+      currentCancelAttempt = () => {
+        invoke('cancel_stream', { streamId }).catch(() => {});
+        localCleanup();
+        reject(new Error('aborted'));
+      };
 
-    onChunk(chunk);
-    if (chunk.isFinished) {
+      (async () => {
+        try {
+          unlisten = await listen<StreamChunk>('chat-stream', (event) => {
+            const chunk = event.payload;
+            if (chunk.streamId !== streamId) return;
+
+            // Rust emits transport errors on the same channel —
+            // route before anything else so they never become content.
+            if (chunk.text && chunk.text.startsWith('error:')) {
+              localCleanup();
+              reject(new Error(chunk.text));
+              return;
+            }
+
+            if (chunk.text) anyAttemptReceivedContent = true;
+            onChunk(chunk);
+            if (chunk.isFinished) {
+              localCleanup();
+              resolve();
+            }
+          });
+
+          unlistenError = await listen<string>('chat-stream-error', (event) => {
+            localCleanup();
+            reject(new Error(event.payload));
+          });
+
+          if (controller.signal.aborted) {
+            localCleanup();
+            reject(new Error('aborted'));
+            return;
+          }
+
+          invoke('stream_chat_hat', {
+            streamId,
+            messages,
+            systemPrompt,
+            mode,
+            temperature,
+            maxTokens,
+            images,
+            idToken,
+            idempotencyKey: crypto.randomUUID(),
+          }).catch((e) => {
+            localCleanup();
+            reject(e);
+          });
+        } catch (listenerErr) {
+          localCleanup();
+          reject(listenerErr);
+        }
+      })();
+    });
+
+  // Fire and forget — the caller already has the cancel fn back.
+  (async () => {
+    try {
+      await withRetry(runOnce, {
+        maxAttempts: 3,
+        baseDelayMs: 800,
+        maxDelayMs: 4000,
+        signal: controller.signal,
+        shouldRetry: (err) => {
+          if (isAborted(err)) return false;
+          // Once content has been streamed, retrying would duplicate
+          // the assistant output — hard-stop.
+          if (anyAttemptReceivedContent) return false;
+          const kind = classifyError(err);
+          return !NON_RETRYABLE.has(kind);
+        },
+        onRetry: (err, attempt) => {
+          // `attempt` is the attempt that just failed; tell the caller
+          // about the NEXT one (2, 3, …) so the UI copy lines up with
+          // what the user will see.
+          onRetry?.(classifyError(err), attempt + 1);
+        },
+      });
       onDone();
-      cleanup();
+    } catch (err) {
+      if (isAborted(err)) return;
+      onError(sanitizeBackendError(err));
     }
-  });
-
-  unlistenError = await listen<string>('chat-stream-error', (event) => {
-    onError(sanitizeBackendError(event.payload));
-    cleanup();
-  });
-
-  invoke('stream_chat_hat', {
-    streamId,
-    messages,
-    systemPrompt,
-    mode,
-    temperature,
-    maxTokens,
-    images,
-    idToken,
-    idempotencyKey: crypto.randomUUID(),
-  }).catch((e) => {
-    if (done) return;
-    onError(sanitizeBackendError(e));
-    cleanup();
-  });
+  })();
 
   return () => {
-    invoke('cancel_stream', { streamId }).catch(() => {});
-    cleanup();
+    controller.abort();
+    currentCancelAttempt?.();
   };
 }

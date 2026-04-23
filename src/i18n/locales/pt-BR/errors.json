@@ -106,5 +106,6 @@
     "body": "Recarrega via PIX em segundos — volta pro fluxo sem sair do Hat.",
     "primary": "Recarregar",
     "secondary": "Mudar pra modo leve"
-  }
+  },
+  "retrying": "Tentando de novo… ({{attempt}}/{{max}})"
 }
