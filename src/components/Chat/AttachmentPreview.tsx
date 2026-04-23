@@ -63,7 +63,9 @@ export default function AttachmentPreview({ attachments, onRemove }: Props) {
               </div>
             )}
             <button
+              type="button"
               onClick={() => onRemove(att.id)}
+              aria-label={`Remover anexo ${att.name}`}
               className="group-hover:opacity-100"
               style={{
                 position: 'absolute',
@@ -82,7 +84,7 @@ export default function AttachmentPreview({ attachments, onRemove }: Props) {
                 transition: 'opacity 0.15s ease',
               }}
             >
-              <X size={10} color="white" />
+              <X size={10} color="white" aria-hidden="true" />
             </button>
           </motion.div>
         ))}

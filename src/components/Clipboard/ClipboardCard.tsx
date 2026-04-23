@@ -109,13 +109,26 @@ function ClipboardCardInner({
           : { type: 'spring', stiffness: 300, damping: 25, delay: staggerDelay }
       }
       onClick={onToggleExpand}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onToggleExpand();
+        }
+      }}
       onFocus={onFocus}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onContextMenu={handleContextMenu}
-      role="button"
-      aria-expanded={isExpanded}
-      aria-label={`Clipboard de ${formatTime(entry.timestamp)}${isPinned ? ', fixado' : ''}`}
+      // `<article>` keeps the semantic "independent piece of content" role
+      // (each clipboard entry is self-contained). We deliberately don't
+      // promote it to role="button" because the expanded footer hosts real
+      // buttons (pin, copy, original, chat, delete) and axe correctly flags
+      // nested-interactive + aria-allowed-role when a button wraps buttons.
+      // tabIndex + keydown give keyboard users the Enter/Space toggle, and
+      // the nav-level shortcuts (j/k/Enter) in ClipboardHistory still work.
+      aria-label={`Clipboard de ${formatTime(entry.timestamp)}${isPinned ? ', fixado' : ''}${
+        isExpanded ? ', expandido' : ', recolhido'
+      }`}
       tabIndex={0}
       style={{
         position: 'relative',
