@@ -16,6 +16,7 @@ import {
   matchesDefaultPrompt,
   SUPPORTED_LANGUAGES,
 } from '../i18n/defaults';
+import { isTauriRuntime } from '../utils/tauriRuntime';
 
 // --- Tauri persistent store ---
 
@@ -112,7 +113,9 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     i18n.changeLanguage(lang).catch(() => {});
     // Rust side: tenta regenerar o tray na nova língua. Silencia erro se
     // o comando ainda não foi registrado (build antigo durante transição).
-    invoke('set_tray_language', { lang }).catch(() => {});
+    if (isTauriRuntime()) {
+      invoke('set_tray_language', { lang }).catch(() => {});
+    }
     return isKnownDefault;
   },
 
@@ -146,6 +149,11 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
 
   loadSettings: async () => {
+    if (!isTauriRuntime()) {
+      set({ _hydrated: true });
+      i18n.changeLanguage(DEFAULT_SETTINGS.language).catch(() => {});
+      return;
+    }
     try {
       const stored = await tauriStore.get<{ settings: AppSettings }>('hat-settings');
       if (stored) {
@@ -185,6 +193,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
   saveSettings: async () => {
     if (!get()._hydrated) return; // Don't overwrite persisted data before hydration
+    if (!isTauriRuntime()) return;
     try {
       const { settings } = get();
       await tauriStore.set('hat-settings', { settings });
@@ -200,6 +209,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 // Cross-window settings sync: reload when another window saves (debounced)
 let _syncListenerSetup = false;
 export function setupSettingsSync() {
+  if (!isTauriRuntime()) return;
   if (_syncListenerSetup) return;
   _syncListenerSetup = true;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;

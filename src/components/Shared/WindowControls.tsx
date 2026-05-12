@@ -21,7 +21,12 @@ function closeOrQuit(appWindow: ReturnType<typeof getCurrentWindow>, platform: P
 
 export default function WindowControls({ variant = 'sidebar' }: Props) {
   const platform = usePlatform();
-  const appWindow = getCurrentWindow();
+  let appWindow: ReturnType<typeof getCurrentWindow>;
+  try {
+    appWindow = getCurrentWindow();
+  } catch {
+    return null;
+  }
 
   if (platform === 'macos' && variant === 'sidebar') {
     return <MacControls appWindow={appWindow} platform={platform} />;

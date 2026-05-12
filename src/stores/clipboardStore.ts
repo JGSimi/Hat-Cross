@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { LazyStore } from '@tauri-apps/plugin-store';
 import type { ClipboardEntry } from '../types';
+import { isTauriRuntime } from '../utils/tauriRuntime';
 
 const MAX_ENTRIES = 100;
 const clipboardDataStore = new LazyStore('clipboard-data.json');
@@ -72,6 +73,10 @@ export const useClipboardStore = create<ClipboardState>()((set, get) => ({
   setProcessing: (v) => set({ isProcessing: v }),
 
   loadEntries: async () => {
+    if (!isTauriRuntime()) {
+      set({ loaded: true });
+      return;
+    }
     try {
       const data = (await clipboardDataStore.get<ClipboardEntry[]>('entries')) ?? [];
       set({ entries: data.slice(0, MAX_ENTRIES), loaded: true });
@@ -82,6 +87,7 @@ export const useClipboardStore = create<ClipboardState>()((set, get) => ({
   },
 
   saveEntries: async () => {
+    if (!isTauriRuntime()) return;
     try {
       const { entries } = get();
       await clipboardDataStore.set('entries', entries);

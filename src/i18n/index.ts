@@ -14,6 +14,7 @@ import ptEmpty       from './locales/pt-BR/empty.json';
 import ptToasts      from './locales/pt-BR/toasts.json';
 import ptStealth     from './locales/pt-BR/stealth.json';
 import ptCtas        from './locales/pt-BR/ctas.json';
+import ptRooms       from './locales/pt-BR/rooms.json';
 
 import enCommon      from './locales/en-US/common.json';
 import enSettings    from './locales/en-US/settings.json';
@@ -28,6 +29,7 @@ import enEmpty       from './locales/en-US/empty.json';
 import enToasts      from './locales/en-US/toasts.json';
 import enStealth     from './locales/en-US/stealth.json';
 import enCtas        from './locales/en-US/ctas.json';
+import enRooms       from './locales/en-US/rooms.json';
 
 import esCommon      from './locales/es-ES/common.json';
 import esSettings    from './locales/es-ES/settings.json';
@@ -43,6 +45,7 @@ import esEmpty       from './locales/es-ES/empty.json';
 import esToasts      from './locales/es-ES/toasts.json';
 import esStealth     from './locales/es-ES/stealth.json';
 import esCtas        from './locales/es-ES/ctas.json';
+import esRooms       from './locales/es-ES/rooms.json';
 
 import { detectInitialLanguage } from './defaults';
 
@@ -67,6 +70,7 @@ i18n
         toasts: ptToasts,
         stealth: ptStealth,
         ctas: ptCtas,
+        rooms: ptRooms,
       },
       'en-US': {
         common: enCommon,
@@ -82,6 +86,7 @@ i18n
         toasts: enToasts,
         stealth: enStealth,
         ctas: enCtas,
+        rooms: enRooms,
       },
       'es-ES': {
         common: esCommon,
@@ -97,12 +102,13 @@ i18n
         toasts: esToasts,
         stealth: esStealth,
         ctas: esCtas,
+        rooms: esRooms,
       },
     },
     lng: detectInitialLanguage(),
     fallbackLng: 'en-US',
     defaultNS: 'common',
-    ns: ['common', 'settings', 'onboarding', 'chat', 'clipboard', 'account', 'themes', 'errors', 'loading', 'empty', 'toasts', 'stealth', 'ctas'],
+    ns: ['common', 'settings', 'onboarding', 'chat', 'clipboard', 'account', 'themes', 'errors', 'loading', 'empty', 'toasts', 'stealth', 'ctas', 'rooms'],
     interpolation: { escapeValue: false },  // React já escapa
     returnNull: false,
     react: { useSuspense: false },

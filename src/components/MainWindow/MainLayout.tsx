@@ -4,6 +4,7 @@ import { PanelLeftOpen } from 'lucide-react';
 import Sidebar, { type SidebarView } from './Sidebar';
 import ChatWindow from '../Chat/ChatWindow';
 import ClipboardHistory from '../Clipboard/ClipboardHistory';
+import RoomsPage from '../../pages/RoomsPage';
 import SettingsPanel from '../Settings/SettingsPanel';
 import OnboardingWizard from '../Shared/OnboardingWizard';
 import ShortcutsOverlay from '../Shared/ShortcutsOverlay';
@@ -205,6 +206,17 @@ export default function MainLayout() {
               style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}
             >
               <ClipboardHistory onBack={handleBackFromClipboard} />
+            </motion.div>
+          ) : activeView === 'rooms' ? (
+            <motion.div
+              key="rooms"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}
+            >
+              <RoomsPage />
             </motion.div>
           ) : (
             <motion.div

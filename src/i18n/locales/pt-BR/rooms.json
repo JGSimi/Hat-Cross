@@ -1,0 +1,67 @@
+{
+  "title": "Salas",
+  "subtitle": "Questionario em grupo com consenso da IA.",
+  "common": {
+    "close": "Fechar"
+  },
+  "signedOut": {
+    "title": "Entre para usar salas",
+    "body": "Salas usam creditos e precisam da sua conta Hat."
+  },
+  "emptyActive": {
+    "title": "Nenhuma sala aberta",
+    "body": "Crie ou entre em uma sala para compartilhar perguntas e comparar respostas."
+  },
+  "list": {
+    "openJoin": "Criar ou entrar",
+    "emptyTitle": "Sem salas abertas",
+    "emptyBody": "Crie a primeira sala do questionario.",
+    "members": "membros"
+  },
+  "join": {
+    "title": "Entrar em sala",
+    "cost": "Custa {{count}} creditos por usuario.",
+    "balance": "Seu saldo",
+    "notEnough": "Saldo menor que 800 creditos.",
+    "createLabel": "Nova sala",
+    "createPlaceholder": "Ex: Questionario de biologia",
+    "create": "Criar sala",
+    "codeLabel": "Codigo da sala",
+    "codePlaceholder": "room_...",
+    "enter": "Entrar"
+  },
+  "header": {
+    "members": "membros",
+    "copyId": "Copiar codigo da sala",
+    "copied": "Codigo da sala copiado"
+  },
+  "notifications": {
+    "title": "Alertas",
+    "default": "Sua resposta divergiu do consenso da sala."
+  },
+  "chat": {
+    "disclaimer": "Pergunta e resposta final entram na sala. Anexos e pensamento nao entram na V1."
+  },
+  "consensus": {
+    "title": "Consenso",
+    "emptyTitle": "Ainda sem comparacao",
+    "emptyBody": "Envie perguntas semelhantes para a sala montar consenso.",
+    "answer": "Resposta",
+    "pending": "pendente",
+    "entries": "respostas",
+    "divergent": "{{count}} resposta(s) divergente(s)"
+  },
+  "toast": {
+    "created": "Sala criada. 800 creditos debitados.",
+    "joinedCharged": "Entrou na sala. 800 creditos debitados.",
+    "joinedAgain": "Voce ja estava nessa sala.",
+    "errors": {
+      "auth": "Sessao expirada. Entre de novo para usar salas.",
+      "insufficient": "Creditos insuficientes para entrar na sala.",
+      "membership": "Entre na sala antes de compartilhar respostas.",
+      "notFound": "Sala nao encontrada.",
+      "invalidRoom": "Codigo de sala invalido.",
+      "generic": "Falha ao falar com salas."
+    }
+  }
+}

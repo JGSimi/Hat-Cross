@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { LazyStore } from '@tauri-apps/plugin-store';
 import type { DraftEntry } from '../types';
+import { isTauriRuntime } from '../utils/tauriRuntime';
 
 const SAVE_DEBOUNCE_MS = 500;
 const draftsStore = new LazyStore('drafts-data.json');
@@ -37,6 +38,10 @@ export const useDraftsStore = create<DraftsState>()((set, get) => ({
   loaded: false,
 
   loadDrafts: async () => {
+    if (!isTauriRuntime()) {
+      set({ loaded: true });
+      return;
+    }
     try {
       const drafts = (await draftsStore.get<Record<string, DraftEntry>>('drafts')) ?? {};
 
@@ -67,6 +72,7 @@ export const useDraftsStore = create<DraftsState>()((set, get) => ({
   },
 
   saveDrafts: async () => {
+    if (!isTauriRuntime()) return;
     try {
       const { drafts } = get();
       await draftsStore.set('drafts', drafts);

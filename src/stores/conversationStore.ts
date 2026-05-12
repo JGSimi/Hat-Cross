@@ -3,6 +3,7 @@ import { LazyStore } from '@tauri-apps/plugin-store';
 import type { Conversation, Message } from '../types';
 import { useSettingsStore } from './settingsStore';
 import { useDraftsStore } from './draftsStore';
+import { isTauriRuntime } from '../utils/tauriRuntime';
 
 const SAVE_DEBOUNCE_MS = 500;
 
@@ -12,6 +13,7 @@ const conversationStore = new LazyStore('conversations-data.json');
 const activeIdStore = new LazyStore('conversation-state.json');
 
 function persistActiveId(id: string | null): void {
+  if (!isTauriRuntime()) return;
   activeIdStore
     .set('activeId', id)
     .then(() => activeIdStore.save())
@@ -250,6 +252,10 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
   },
 
   loadConversations: async () => {
+    if (!isTauriRuntime()) {
+      set({ loaded: true });
+      return;
+    }
     try {
       const data = (await conversationStore.get<Conversation[]>('conversations')) ?? [];
 
@@ -286,6 +292,7 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
   },
 
   saveConversations: async () => {
+    if (!isTauriRuntime()) return;
     try {
       const { conversations } = get();
       await conversationStore.set('conversations', conversations);

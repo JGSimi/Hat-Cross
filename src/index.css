@@ -2980,3 +2980,70 @@ html.theme-transitioning *::after {
   .account-header__balance { flex: 1 1 auto; }
 }
 
+/* Rooms */
+.rooms-page {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rooms-list-pane {
+  min-height: 0;
+  overflow: hidden;
+  padding: 18px 16px;
+  border-right: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-secondary) 60%, transparent);
+}
+
+.rooms-main-pane {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.rooms-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(270px, 340px);
+  min-height: 0;
+  flex: 1;
+}
+
+.rooms-chat-panel,
+.rooms-consensus-panel {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rooms-consensus-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  border-left: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-secondary) 46%, transparent);
+}
+
+@media (max-width: 760px) {
+  .rooms-page {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .rooms-list-pane {
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+    max-height: 230px;
+  }
+  .rooms-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(360px, 1fr) auto;
+  }
+  .rooms-consensus-panel {
+    border-left: none;
+    border-top: 1px solid var(--border-subtle);
+    max-height: 320px;
+    overflow-y: auto;
+  }
+}

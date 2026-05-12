@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Settings, Trash2, HardDrive, Clipboard, PanelLeftClose } from 'lucide-react';
+import { Plus, Search, Settings, Trash2, HardDrive, Clipboard, PanelLeftClose, DoorOpen } from 'lucide-react';
 import { getVersion } from '@tauri-apps/api/app';
 import { useTranslation } from 'react-i18next';
 import ConversationItem from './ConversationItem';
@@ -16,7 +16,7 @@ import State from '../Shared/State';
 import Skeleton from '../Shared/Skeleton';
 import type { Conversation } from '../../types';
 
-export type SidebarView = 'chats' | 'clipboard';
+export type SidebarView = 'chats' | 'clipboard' | 'rooms';
 
 interface Props {
   onOpenSettings: () => void;
@@ -157,6 +157,22 @@ export default function Sidebar({
                 border: '1.5px solid var(--bg-secondary)',
               }} />
             )}
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onViewChange('rooms')}
+            title={t('sidebar.openRooms')}
+            aria-label={t('sidebar.openRooms')}
+            style={{
+              padding: 5, borderRadius: 6,
+              background: activeView === 'rooms' ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' : 'transparent',
+              border: 'none',
+              color: activeView === 'rooms' ? 'var(--color-accent)' : 'var(--text-muted)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <DoorOpen size={13} />
           </motion.button>
           {/* New conversation */}
           <motion.button

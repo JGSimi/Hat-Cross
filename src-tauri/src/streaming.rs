@@ -69,6 +69,9 @@ pub async fn stream_chat_hat(
     temperature: f64,
     max_tokens: u32,
     images: Vec<String>,
+    room_id: Option<String>,
+    room_share: bool,
+    source_message_id: Option<String>,
     id_token: String,
     idempotency_key: String,
 ) -> Result<(), String> {
@@ -84,6 +87,9 @@ pub async fn stream_chat_hat(
         temperature,
         max_tokens,
         &images,
+        room_id.as_deref(),
+        room_share,
+        source_message_id.as_deref(),
         &id_token,
         &idempotency_key,
     )
@@ -123,6 +129,9 @@ async fn stream_chat_hat_impl(
     temperature: f64,
     max_tokens: u32,
     images: &[String],
+    room_id: Option<&str>,
+    room_share: bool,
+    source_message_id: Option<&str>,
     id_token: &str,
     idempotency_key: &str,
 ) -> Result<(), String> {
@@ -171,13 +180,22 @@ async fn stream_chat_hat_impl(
         }
     }
 
-    let body = serde_json::json!({
+    let mut body = serde_json::json!({
         "mode": mode,
         "messages": api_messages,
         "systemPrompt": system_prompt,
         "temperature": temperature,
         "maxTokens": max_tokens,
     });
+    if room_share {
+        body["roomShare"] = serde_json::json!(true);
+    }
+    if let Some(room_id) = room_id {
+        body["roomId"] = serde_json::json!(room_id);
+    }
+    if let Some(source_message_id) = source_message_id {
+        body["sourceMessageId"] = serde_json::json!(source_message_id);
+    }
 
     let client = reqwest::Client::new();
     let mut headers = HeaderMap::new();

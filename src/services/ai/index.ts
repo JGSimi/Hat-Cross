@@ -54,6 +54,9 @@ export interface HatStreamOptions {
   temperature: number;
   maxTokens: number;
   images?: string[];
+  roomId?: string;
+  roomShare?: boolean;
+  sourceMessageId?: string;
   idToken: string;
   onChunk: (chunk: StreamChunk) => void;
   onError: (error: string) => void;
@@ -82,6 +85,9 @@ export async function startHatStream(options: HatStreamOptions): Promise<() => v
     temperature,
     maxTokens,
     images = [],
+    roomId,
+    roomShare = false,
+    sourceMessageId,
     idToken,
     onChunk,
     onError,
@@ -162,6 +168,9 @@ export async function startHatStream(options: HatStreamOptions): Promise<() => v
             temperature,
             maxTokens,
             images,
+            roomId: roomId ?? null,
+            roomShare,
+            sourceMessageId: sourceMessageId ?? null,
             idToken,
             idempotencyKey: crypto.randomUUID(),
           }).catch((e) => {

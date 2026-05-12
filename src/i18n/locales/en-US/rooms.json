@@ -1,0 +1,67 @@
+{
+  "title": "Rooms",
+  "subtitle": "Group questionnaire with AI consensus.",
+  "common": {
+    "close": "Close"
+  },
+  "signedOut": {
+    "title": "Sign in to use rooms",
+    "body": "Rooms use credits and need your Hat account."
+  },
+  "emptyActive": {
+    "title": "No room open",
+    "body": "Create or join a room to share questions and compare answers."
+  },
+  "list": {
+    "openJoin": "Create or join",
+    "emptyTitle": "No open rooms",
+    "emptyBody": "Create the first questionnaire room.",
+    "members": "members"
+  },
+  "join": {
+    "title": "Join room",
+    "cost": "Costs {{count}} credits per user.",
+    "balance": "Your balance",
+    "notEnough": "Balance below 800 credits.",
+    "createLabel": "New room",
+    "createPlaceholder": "Ex: Biology questionnaire",
+    "create": "Create room",
+    "codeLabel": "Room code",
+    "codePlaceholder": "room_...",
+    "enter": "Enter"
+  },
+  "header": {
+    "members": "members",
+    "copyId": "Copy room code",
+    "copied": "Room code copied"
+  },
+  "notifications": {
+    "title": "Alerts",
+    "default": "Your answer diverged from the room consensus."
+  },
+  "chat": {
+    "disclaimer": "The final question and answer enter the room. Attachments and thinking are not shared in V1."
+  },
+  "consensus": {
+    "title": "Consensus",
+    "emptyTitle": "No comparison yet",
+    "emptyBody": "Send similar questions so the room can build consensus.",
+    "answer": "Answer",
+    "pending": "pending",
+    "entries": "answers",
+    "divergent": "{{count}} divergent answer(s)"
+  },
+  "toast": {
+    "created": "Room created. 800 credits charged.",
+    "joinedCharged": "Joined room. 800 credits charged.",
+    "joinedAgain": "You were already in this room.",
+    "errors": {
+      "auth": "Session expired. Sign in again to use rooms.",
+      "insufficient": "Not enough credits to enter the room.",
+      "membership": "Join the room before sharing answers.",
+      "notFound": "Room not found.",
+      "invalidRoom": "Invalid room code.",
+      "generic": "Could not reach rooms."
+    }
+  }
+}

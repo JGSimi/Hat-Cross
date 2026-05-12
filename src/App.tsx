@@ -29,6 +29,7 @@ import {
   maxTokensForIntent,
 } from './utils/detectClipboardIntent';
 import { sanitizeBackendError } from './services/ai';
+import { isTauriRuntime } from './utils/tauriRuntime';
 
 /** Normalize legacy shortcut format (CmdOrCtrl → CommandOrControl) */
 function normalizeShortcut(s: string): string {
@@ -63,6 +64,7 @@ async function readClipboardTextWithRetry(attempts = 3, delayMs = 60): Promise<s
 function App() {
   const location = useLocation();
   const isMainWindow = location.pathname === '/main' || location.pathname === '/';
+  const isTauri = isTauriRuntime();
   const [showSplash, setShowSplash] = useState(isMainWindow);
 
   // Auto-dismiss splash after 2s (then 1s fade-out via AnimatePresence)
@@ -77,6 +79,11 @@ function App() {
   const loadSettings = useSettingsStore((s) => s.loadSettings);
 
   useEffect(() => {
+    if (!isTauri) {
+      useSettingsStore.setState({ _hydrated: true });
+      useConversationStore.setState({ loaded: true });
+      return;
+    }
     (async () => {
       await loadSettings();
       await Promise.all([
@@ -107,7 +114,7 @@ function App() {
     return () => {
       unlistenClose?.();
     };
-  }, [loadSettings]);
+  }, [isTauri, loadSettings]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -119,7 +126,7 @@ function App() {
   // call clobbers the first handler) and spawns duplicate listeners on macOS.
   const registeredShortcuts = useRef<{ clipboard: string; floatingChat: string; adjustFlashPosition: string; emergencyQuit: string }>({ clipboard: '', floatingChat: '', adjustFlashPosition: '', emergencyQuit: '' });
   useEffect(() => {
-    if (!isMainWindow) return;
+    if (!isMainWindow || !isTauri) return;
     const prev = registeredShortcuts.current;
 
     async function registerShortcuts() {
@@ -223,13 +230,13 @@ function App() {
       if (prev.adjustFlashPosition) { unregister(prev.adjustFlashPosition).catch(() => {}); prev.adjustFlashPosition = ''; }
       if (prev.emergencyQuit) { unregister(prev.emergencyQuit).catch(() => {}); prev.emergencyQuit = ''; }
     };
-  }, [shortcuts.clipboard, shortcuts.floatingChat, shortcuts.adjustFlashPosition, shortcuts.emergencyQuit, isMainWindow]);
+  }, [shortcuts.clipboard, shortcuts.floatingChat, shortcuts.adjustFlashPosition, shortcuts.emergencyQuit, isMainWindow, isTauri]);
 
   // Flash position persistence — listens for the save event emitted by the
   // /flash route in adjust mode. Global so it works whether the user triggered
   // adjust from Settings or via the global shortcut.
   useEffect(() => {
-    if (!isMainWindow) return;
+    if (!isMainWindow || !isTauri) return;
     const unlisten = listen<{ x: number; y: number }>('flash-position-saved', (event) => {
       const current = useSettingsStore.getState().settings;
       useSettingsStore.getState().updateSettings({
@@ -247,10 +254,11 @@ function App() {
       });
     });
     return () => { unlisten.then((fn) => fn()); };
-  }, [isMainWindow]);
+  }, [isMainWindow, isTauri]);
 
   // Tray menu events
   useEffect(() => {
+    if (!isTauri) return;
     const unlistenNew = listen('new-conversation', () => {
       useChatStore.getState().clearMessages();
       useConversationStore.getState().createConversation();
@@ -288,7 +296,7 @@ function App() {
       unlistenUpdates.then(fn => fn());
       unlistenLoadConv.then(fn => fn());
     };
-  }, []);
+  }, [isTauri]);
 
   // Dynamic tray menu sync — rebuild when settings, conversations or streaming state change
   const rebuildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -317,6 +325,7 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!isTauri) return;
     // Subscribe to store changes and rebuild tray menu
     const unsubSettings = useSettingsStore.subscribe(rebuildTrayMenu);
     const unsubConversations = useConversationStore.subscribe(rebuildTrayMenu);
@@ -338,7 +347,7 @@ function App() {
       unsubChat();
       if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current);
     };
-  }, [rebuildTrayMenu]);
+  }, [isTauri, rebuildTrayMenu]);
 
   // Clipboard processing — core feature
   // Flow: user copies text/image → presses shortcut → AI processes → notification with response
@@ -346,7 +355,7 @@ function App() {
   // and without this gate the hidden analysis window also ran the full pipeline, producing
   // two "Processando" + two "Resposta" notifications per trigger on every OS.
   useEffect(() => {
-    if (!isMainWindow) return;
+    if (!isMainWindow || !isTauri) return;
     let isProcessing = false;
     const setProc = (v: boolean) => {
       isProcessing = v;

@@ -12,6 +12,9 @@ export interface DispatchOptions {
   temperature: number;
   maxTokens: number;
   images: string[];
+  roomId?: string;
+  roomShare?: boolean;
+  sourceMessageId?: string;
   onChunk: (chunk: StreamChunk) => void;
   onError: (error: string) => void;
   onDone: () => void;
@@ -49,6 +52,9 @@ export async function dispatchStream(
     temperature: options.temperature,
     maxTokens: options.maxTokens,
     images: options.images,
+    roomId: options.roomId,
+    roomShare: options.roomShare,
+    sourceMessageId: options.sourceMessageId,
     idToken,
     onChunk: options.onChunk,
     onError: options.onError,
