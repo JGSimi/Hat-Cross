@@ -26,7 +26,7 @@ Se o SmartScreen aparecer, clique **Mais informações** -> **Executar mesmo ass
 
 ## Features
 
-- **Multi-provider AI**: Google Gemini, OpenAI, Anthropic Claude, Inception Mercury, OpenRouter, Custom, Ollama local
+- **Hat proxy AI**: o app envia apenas `mode` (`hat` / `hat-pro`) para o Worker `hat-proxy`; a escolha do modelo Gemini e a chave server-side ficam fora deste repo.
 - **Popover flutuante**: chat rápido que fica sempre visível (não fecha ao perder foco)
 - **Clipboard processing**: lê clipboard, processa com IA, devolve resposta (Cmd/Ctrl+Shift+X)
 - **Flash Mode**: resposta do clipboard "piscada" discretamente na tela em vez de notificação do sistema
@@ -54,6 +54,27 @@ npm run tauri dev
 
 # Build
 npm run tauri build
+```
+
+## Modelo IA
+
+Este repo não deve conter identificador de modelo Gemini. O cliente Tauri envia
+somente `mode` para `https://hat-proxy.joao02simi.workers.dev/v1/chat`.
+
+Quando o Google AI Studio avisar troca de modelo no projeto `hat-cross`, mude o
+mapping no Worker externo `hat-proxy`:
+
+| modo do app | modelo no Worker |
+|-------------|------------------|
+| `hat` | `gemini-3.1-flash-lite` |
+| `hat-pro` | confirmar no Worker antes de alterar |
+
+Depois rode localmente:
+
+```bash
+rg -n "gemini-3\\.1" .
+npm test -- --run src/services/ai/__tests__/sanitizeBackendError.test.ts
+cd src-tauri && cargo test streaming
 ```
 
 ## Atalhos globais

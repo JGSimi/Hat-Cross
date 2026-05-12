@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { DoorOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import RoomChatWindow from '../components/Rooms/RoomChatWindow';
 import RoomConsensusPanel from '../components/Rooms/RoomConsensusPanel';
 import RoomHeader from '../components/Rooms/RoomHeader';
 import RoomJoinModal from '../components/Rooms/RoomJoinModal';
 import RoomList from '../components/Rooms/RoomList';
 import RoomNotifications from '../components/Rooms/RoomNotifications';
 import State from '../components/Shared/State';
-import { RoomApiError, createRoom as apiCreateRoom, joinRoom as apiJoinRoom } from '../services/rooms/client';
-import { listenRoomData, listenRooms } from '../services/rooms/listeners';
+import {
+  RoomApiError,
+  createRoom as apiCreateRoom,
+  joinRoom as apiJoinRoom,
+  leaveRoom as apiLeaveRoom,
+} from '../services/rooms/client';
 import { useAuthStore } from '../stores/authStore';
 import { useCreditsStore } from '../stores/creditsStore';
 import { useRoomStore } from '../stores/roomStore';
@@ -26,15 +29,9 @@ export default function RoomsPage() {
   const entries = useRoomStore((s) => s.entries);
   const clusters = useRoomStore((s) => s.clusters);
   const notifications = useRoomStore((s) => s.notifications);
-  const setRooms = useRoomStore((s) => s.setRooms);
   const setActiveRoom = useRoomStore((s) => s.setActiveRoom);
-  const setMembers = useRoomStore((s) => s.setMembers);
-  const setEntries = useRoomStore((s) => s.setEntries);
-  const setClusters = useRoomStore((s) => s.setClusters);
-  const setNotifications = useRoomStore((s) => s.setNotifications);
   const markNotificationRead = useRoomStore((s) => s.markNotificationRead);
   const clearRoomData = useRoomStore((s) => s.clearRoomData);
-  const setError = useRoomStore((s) => s.setError);
   const [joinOpen, setJoinOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -42,43 +39,15 @@ export default function RoomsPage() {
     () => rooms.find((room) => room.id === activeRoomId) ?? null,
     [activeRoomId, rooms],
   );
-
-  useEffect(() => {
-    if (!user) return;
-    return listenRooms(
-      user.uid,
-      (nextRooms) => setRooms(nextRooms),
-      (error) => setError(error.message),
-    );
-  }, [setError, setRooms, user]);
-
-  useEffect(() => {
-    if (!user || !activeRoomId) {
-      clearRoomData();
+  const visibleMemberCount = members.length || activeRoom?.memberCount || 0;
+  const roomReady = visibleMemberCount > 1;
+  const openJoin = () => {
+    if (activeRoom) {
+      useToastStore.getState().showToast(t('toast.errors.activeRoom'), 'error');
       return;
     }
-    return listenRoomData(activeRoomId, user.uid, {
-      onRoom: (room) => {
-        if (!room) return;
-        const current = useRoomStore.getState().rooms.filter((item) => item.id !== room.id);
-        useRoomStore.getState().setRooms([room, ...current]);
-      },
-      onMembers: setMembers,
-      onEntries: setEntries,
-      onClusters: setClusters,
-      onNotifications: setNotifications,
-      onError: (error) => setError(error.message),
-    });
-  }, [
-    activeRoomId,
-    clearRoomData,
-    setClusters,
-    setEntries,
-    setError,
-    setMembers,
-    setNotifications,
-    user,
-  ]);
+    setJoinOpen(true);
+  };
 
   const handleCreate = async (title: string) => {
     setBusy(true);
@@ -104,6 +73,21 @@ export default function RoomsPage() {
         result.charged ? t('toast.joinedCharged') : t('toast.joinedAgain'),
         'success',
       );
+    } catch (err) {
+      useToastStore.getState().showToast(roomErrorMessage(err, t), 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!activeRoom) return;
+    setBusy(true);
+    try {
+      await apiLeaveRoom(activeRoom.id);
+      setActiveRoom(null);
+      clearRoomData();
+      useToastStore.getState().showToast(t('toast.left'), 'success');
     } catch (err) {
       useToastStore.getState().showToast(roomErrorMessage(err, t), 'error');
     } finally {
@@ -146,7 +130,8 @@ export default function RoomsPage() {
           rooms={rooms}
           activeRoomId={activeRoomId}
           onSelect={setActiveRoom}
-          onOpenJoin={() => setJoinOpen(true)}
+          onOpenJoin={openJoin}
+          joinDisabled={Boolean(activeRoom)}
         />
       </aside>
 
@@ -158,20 +143,27 @@ export default function RoomsPage() {
               icon={<DoorOpen size={22} />}
               title={t('emptyActive.title')}
               body={t('emptyActive.body')}
-              action={{ label: t('list.openJoin'), onClick: () => setJoinOpen(true) }}
+              action={{ label: t('list.openJoin'), onClick: openJoin }}
             />
           </div>
         ) : (
           <>
-            <RoomHeader room={{ ...activeRoom, memberCount: members.length || activeRoom.memberCount }} />
+            <RoomHeader
+              room={{ ...activeRoom, memberCount: visibleMemberCount }}
+              leaving={busy}
+              onLeave={handleLeave}
+            />
             <div className="rooms-workspace">
-              <section className="rooms-chat-panel">
-                <RoomChatWindow key={activeRoom.id} room={activeRoom} />
-              </section>
-              <aside className="rooms-consensus-panel">
+              <section className="rooms-consensus-panel rooms-consensus-panel--wide">
                 <RoomNotifications notifications={notifications} onRead={markNotificationRead} />
+                {!roomReady && (
+                  <div className="rooms-waiting-banner">
+                    <strong>{t('waiting.title')}</strong>
+                    <span>{t('waiting.body')}</span>
+                  </div>
+                )}
                 <RoomConsensusPanel clusters={clusters} entries={entries} />
-              </aside>
+              </section>
             </div>
           </>
         )}

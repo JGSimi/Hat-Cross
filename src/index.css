@@ -3006,12 +3006,11 @@ html.theme-transitioning *::after {
 
 .rooms-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(270px, 340px);
+  grid-template-columns: minmax(0, 1fr);
   min-height: 0;
   flex: 1;
 }
 
-.rooms-chat-panel,
 .rooms-consensus-panel {
   min-height: 0;
   overflow: hidden;
@@ -3026,6 +3025,26 @@ html.theme-transitioning *::after {
   background: color-mix(in srgb, var(--bg-secondary) 46%, transparent);
 }
 
+.rooms-consensus-panel--wide {
+  border-left: none;
+}
+
+.rooms-waiting-banner {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.rooms-waiting-banner strong {
+  color: var(--text-strong);
+  font-size: 12px;
+}
+
 @media (max-width: 760px) {
   .rooms-page {
     grid-template-columns: 1fr;
@@ -3038,7 +3057,6 @@ html.theme-transitioning *::after {
   }
   .rooms-workspace {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(360px, 1fr) auto;
   }
   .rooms-consensus-panel {
     border-left: none;

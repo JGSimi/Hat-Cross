@@ -14,6 +14,7 @@
   },
   "list": {
     "openJoin": "Create or join",
+    "leaveFirst": "Leave current room first",
     "emptyTitle": "No open rooms",
     "emptyBody": "Create the first questionnaire room.",
     "members": "members"
@@ -33,7 +34,12 @@
   "header": {
     "members": "members",
     "copyId": "Copy room code",
-    "copied": "Room code copied"
+    "copied": "Room code copied",
+    "leave": "Leave room"
+  },
+  "waiting": {
+    "title": "Waiting for another member",
+    "body": "Clipboard still answers for you, but the room answer key starts only with 2+ members."
   },
   "notifications": {
     "title": "Alerts",
@@ -43,10 +49,13 @@
     "disclaimer": "The final question and answer enter the room. Attachments and thinking are not shared in V1."
   },
   "consensus": {
-    "title": "Consensus",
+    "title": "Compared answer key",
     "emptyTitle": "No comparison yet",
-    "emptyBody": "Send similar questions so the room can build consensus.",
+    "emptyBody": "Copy questions with 2+ members in the room to build the answer key.",
     "answer": "Answer",
+    "question": "Question",
+    "aiAnswer": "AI",
+    "user": "User",
     "pending": "pending",
     "entries": "answers",
     "divergent": "{{count}} divergent answer(s)"
@@ -55,12 +64,14 @@
     "created": "Room created. 800 credits charged.",
     "joinedCharged": "Joined room. 800 credits charged.",
     "joinedAgain": "You were already in this room.",
+    "left": "You left the room.",
     "errors": {
       "auth": "Session expired. Sign in again to use rooms.",
       "insufficient": "Not enough credits to enter the room.",
       "membership": "Join the room before sharing answers.",
       "notFound": "Room not found.",
       "invalidRoom": "Invalid room code.",
+      "activeRoom": "You are already in a room. Leave it before joining another.",
       "generic": "Could not reach rooms."
     }
   }

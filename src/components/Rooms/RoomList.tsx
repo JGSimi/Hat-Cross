@@ -7,16 +7,17 @@ interface Props {
   activeRoomId: string | null;
   onSelect: (roomId: string) => void;
   onOpenJoin: () => void;
+  joinDisabled?: boolean;
 }
 
-export default function RoomList({ rooms, activeRoomId, onSelect, onOpenJoin }: Props) {
+export default function RoomList({ rooms, activeRoomId, onSelect, onOpenJoin, joinDisabled = false }: Props) {
   const { t } = useTranslation('rooms');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
-      <button type="button" onClick={onOpenJoin} style={newRoomButton}>
+      <button type="button" onClick={onOpenJoin} disabled={joinDisabled} style={newRoomButton(joinDisabled)}>
         <DoorOpen size={15} />
-        {t('list.openJoin')}
+        {joinDisabled ? t('list.leaveFirst') : t('list.openJoin')}
       </button>
 
       <div style={{ display: 'grid', gap: 8, overflowY: 'auto', minHeight: 0 }}>
@@ -52,20 +53,22 @@ export default function RoomList({ rooms, activeRoomId, onSelect, onOpenJoin }: 
   );
 }
 
-const newRoomButton: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 8,
-  padding: '10px 12px',
-  borderRadius: 7,
-  border: 'none',
-  background: 'var(--color-accent)',
-  color: 'white',
-  cursor: 'pointer',
-  fontWeight: 700,
-  fontSize: 12,
-};
+function newRoomButton(disabled: boolean): React.CSSProperties {
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: '10px 12px',
+    borderRadius: 7,
+    border: 'none',
+    background: disabled ? 'var(--glass-secondary)' : 'var(--color-accent)',
+    color: disabled ? 'var(--text-muted)' : 'white',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    fontWeight: 700,
+    fontSize: 12,
+  };
+}
 
 const emptyStyle: React.CSSProperties = {
   display: 'grid',

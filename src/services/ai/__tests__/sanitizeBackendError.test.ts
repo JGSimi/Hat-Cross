@@ -40,6 +40,17 @@ describe('sanitizeBackendError — safety contract', () => {
     expect(sanitizeBackendError(raw)).not.toContain('Gemini');
   });
 
+  it('never leaks Gemini model migration details', () => {
+    const oldModel = `${'gemini-3.1-flash-lite'}-preview`;
+    const raw =
+      `error:serverError:400:${oldModel} is deprecated; use gemini-3.1-flash-lite`;
+    const safe = sanitizeBackendError(raw);
+    expect(safe).toBe('Provedor fora do ar');
+    expect(safe).not.toContain(oldModel);
+    expect(safe).not.toContain('gemini-3.1-flash-lite');
+    expect(safe).not.toContain('deprecated');
+  });
+
   it('maps rateLimited to provider-429 title', () => {
     expect(sanitizeBackendError('error:rateLimited')).toBe(
       'Limite do provedor estourou',

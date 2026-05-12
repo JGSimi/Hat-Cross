@@ -19,8 +19,10 @@ import { useClipboardStore } from './stores/clipboardStore';
 import { useDraftsStore } from './stores/draftsStore';
 import { useAuthStore } from './stores/authStore';
 import { useCreditsStore } from './stores/creditsStore';
+import { useRoomStore } from './stores/roomStore';
 import { nextStreamId } from './services/ai';
 import { getIdToken } from './services/auth/firebase';
+import { listenRoomData, listenRooms } from './services/rooms/listeners';
 import { startAutoUpdater } from './services/autoUpdater';
 import { AI_MODES } from './types/account';
 import { CLIPBOARD_SYSTEM_PROMPTS } from './i18n/defaults';
@@ -77,6 +79,8 @@ function App() {
   const theme = useSettingsStore((s) => s.settings.theme);
   const shortcuts = useSettingsStore((s) => s.settings.shortcuts);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
+  const authUser = useAuthStore((s) => s.user);
+  const activeRoomId = useRoomStore((s) => s.activeRoomId);
 
   useEffect(() => {
     if (!isTauri) {
@@ -119,6 +123,53 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (!isMainWindow || !authUser) {
+      useRoomStore.getState().setRooms([]);
+      useRoomStore.getState().setActiveRoom(null);
+      useRoomStore.getState().clearRoomData();
+      return;
+    }
+
+    return listenRooms(
+      authUser.uid,
+      (nextRooms) => {
+        const openRooms = nextRooms.filter((room) => room.status === 'open');
+        const store = useRoomStore.getState();
+        store.setRooms(openRooms);
+        if (openRooms.length === 0) {
+          store.setActiveRoom(null);
+          store.clearRoomData();
+          return;
+        }
+        if (!store.activeRoomId || !openRooms.some((room) => room.id === store.activeRoomId)) {
+          store.setActiveRoom(openRooms[0].id);
+        }
+      },
+      (error) => useRoomStore.getState().setError(error.message),
+    );
+  }, [authUser, isMainWindow]);
+
+  useEffect(() => {
+    if (!isMainWindow || !authUser || !activeRoomId) {
+      useRoomStore.getState().clearRoomData();
+      return;
+    }
+
+    return listenRoomData(activeRoomId, authUser.uid, {
+      onRoom: (room) => {
+        if (!room) return;
+        const current = useRoomStore.getState().rooms.filter((item) => item.id !== room.id);
+        useRoomStore.getState().setRooms([room, ...current]);
+      },
+      onMembers: (members) => useRoomStore.getState().setMembers(members),
+      onEntries: (entries) => useRoomStore.getState().setEntries(entries),
+      onClusters: (clusters) => useRoomStore.getState().setClusters(clusters),
+      onNotifications: (notifications) => useRoomStore.getState().setNotifications(notifications),
+      onError: (error) => useRoomStore.getState().setError(error.message),
+    });
+  }, [activeRoomId, authUser, isMainWindow]);
 
   // Global shortcut registration via JS API (handles CommandOrControl correctly per platform)
   // Only in the main window — each Tauri window boots its own App instance, and
@@ -475,6 +526,12 @@ function App() {
         // completo. Antes era 400 pra tudo → dissertativa vinha truncada.
         const clipboardIntent = detectClipboardIntent(clipText);
         const clipboardMaxTokens = maxTokensForIntent(clipboardIntent);
+        const roomState = useRoomStore.getState();
+        const activeRoom = roomState.rooms.find((room) => room.id === roomState.activeRoomId) ?? null;
+        const activeRoomMemberCount = roomState.members.length || activeRoom?.memberCount || 0;
+        const shouldShareRoom =
+          Boolean(activeRoom && activeRoom.status === 'open' && activeRoomMemberCount > 1);
+        const sourceMessageId = crypto.randomUUID();
 
         let response = '';
         let hasReceivedContent = false;
@@ -542,7 +599,7 @@ function App() {
 
                 // Save to clipboard history (with images if present)
                 useClipboardStore.getState().addEntry({
-                  id: crypto.randomUUID(),
+                  id: sourceMessageId,
                   originalText: clipText || '(imagem)',
                   response: finalResponse,
                   timestamp: Date.now(),
@@ -605,6 +662,9 @@ function App() {
           // caracteres pós-stream.
           maxTokens: clipboardMaxTokens,
           images: clipImages,
+          roomId: shouldShareRoom ? activeRoom?.id : null,
+          roomShare: shouldShareRoom,
+          sourceMessageId: shouldShareRoom ? sourceMessageId : null,
           idToken: hatToken,
           idempotencyKey: crypto.randomUUID(),
         });

@@ -1,13 +1,15 @@
-import { Copy, Users } from 'lucide-react';
+import { Copy, LogOut, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Room } from '../../types/rooms';
 import { useToastStore } from '../../stores/toastStore';
 
 interface Props {
   room: Room;
+  leaving?: boolean;
+  onLeave: () => void;
 }
 
-export default function RoomHeader({ room }: Props) {
+export default function RoomHeader({ room, leaving = false, onLeave }: Props) {
   const { t } = useTranslation('rooms');
 
   const copyRoomId = () => {
@@ -37,20 +39,33 @@ export default function RoomHeader({ room }: Props) {
           <code style={{ color: 'var(--text-dim)', fontSize: 10 }}>{room.id}</code>
         </div>
       </div>
-      <button type="button" onClick={copyRoomId} aria-label={t('header.copyId')} style={{
-        width: 32,
-        height: 32,
-        borderRadius: 7,
-        border: '1px solid var(--border-subtle)',
-        background: 'var(--glass-secondary)',
-        color: 'var(--text-secondary)',
-        cursor: 'pointer',
-        display: 'grid',
-        placeItems: 'center',
-        flexShrink: 0,
-      }}>
-        <Copy size={14} />
-      </button>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <button type="button" onClick={copyRoomId} aria-label={t('header.copyId')} style={iconButton}>
+          <Copy size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={onLeave}
+          disabled={leaving}
+          aria-label={t('header.leave')}
+          style={{ ...iconButton, color: 'var(--error)', cursor: leaving ? 'wait' : 'pointer' }}
+        >
+          <LogOut size={14} />
+        </button>
+      </div>
     </header>
   );
 }
+
+const iconButton: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  borderRadius: 7,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--glass-secondary)',
+  color: 'var(--text-secondary)',
+  cursor: 'pointer',
+  display: 'grid',
+  placeItems: 'center',
+  flexShrink: 0,
+};

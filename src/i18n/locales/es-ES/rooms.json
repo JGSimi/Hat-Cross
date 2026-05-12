@@ -14,6 +14,7 @@
   },
   "list": {
     "openJoin": "Crear o entrar",
+    "leaveFirst": "Sal de la sala actual",
     "emptyTitle": "Sin salas abiertas",
     "emptyBody": "Crea la primera sala del cuestionario.",
     "members": "miembros"
@@ -33,7 +34,12 @@
   "header": {
     "members": "miembros",
     "copyId": "Copiar codigo de sala",
-    "copied": "Codigo de sala copiado"
+    "copied": "Codigo de sala copiado",
+    "leave": "Salir de la sala"
+  },
+  "waiting": {
+    "title": "Esperando otro miembro",
+    "body": "El portapapeles sigue respondiendo para ti, pero la clave de la sala empieza solo con 2+ miembros."
   },
   "notifications": {
     "title": "Alertas",
@@ -43,10 +49,13 @@
     "disclaimer": "La pregunta y respuesta final entran a la sala. Adjuntos y razonamiento no entran en la V1."
   },
   "consensus": {
-    "title": "Consenso",
+    "title": "Clave comparada",
     "emptyTitle": "Aun sin comparacion",
-    "emptyBody": "Envia preguntas similares para que la sala arme consenso.",
+    "emptyBody": "Copia preguntas con 2+ miembros en la sala para armar la clave.",
     "answer": "Respuesta",
+    "question": "Pregunta",
+    "aiAnswer": "IA",
+    "user": "Usuario",
     "pending": "pendiente",
     "entries": "respuestas",
     "divergent": "{{count}} respuesta(s) divergente(s)"
@@ -55,12 +64,14 @@
     "created": "Sala creada. 800 creditos debitados.",
     "joinedCharged": "Entraste a la sala. 800 creditos debitados.",
     "joinedAgain": "Ya estabas en esta sala.",
+    "left": "Saliste de la sala.",
     "errors": {
       "auth": "Sesion expirada. Entra de nuevo para usar salas.",
       "insufficient": "Creditos insuficientes para entrar a la sala.",
       "membership": "Entra a la sala antes de compartir respuestas.",
       "notFound": "Sala no encontrada.",
       "invalidRoom": "Codigo de sala invalido.",
+      "activeRoom": "Ya estas en una sala. Sal de ella antes de entrar a otra.",
       "generic": "Fallo la conexion con salas."
     }
   }

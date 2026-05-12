@@ -12,7 +12,7 @@ export default function RoomConsensusPanel({ clusters, entries }: Props) {
   const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
 
   return (
-    <section style={{ display: 'grid', gap: 10, minHeight: 0 }}>
+    <section style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 10, minHeight: 0, flex: 1, overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <h2 style={{ margin: 0, color: 'var(--text-strong)', fontSize: 13 }}>
           {t('consensus.title')}
@@ -29,6 +29,9 @@ export default function RoomConsensusPanel({ clusters, entries }: Props) {
       ) : (
         <div style={{ display: 'grid', gap: 8, overflowY: 'auto', minHeight: 0 }}>
           {clusters.map((cluster) => {
+            const clusterEntries = cluster.entryIds
+              .map((id) => entriesById.get(id))
+              .filter((entry): entry is RoomEntry => Boolean(entry));
             const divergent = cluster.divergentEntryIds
               .map((id) => entriesById.get(id))
               .filter((entry): entry is RoomEntry => Boolean(entry));
@@ -48,6 +51,23 @@ export default function RoomConsensusPanel({ clusters, entries }: Props) {
                     </p>
                   </div>
                 </div>
+                {clusterEntries.length > 0 && (
+                  <div style={entriesStyle}>
+                    {clusterEntries.map((entry) => (
+                      <div key={entry.id} style={entryStyle}>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>
+                          {t('consensus.user')}: {entry.uid.slice(0, 6)}
+                        </div>
+                        <p style={{ margin: '5px 0 0', color: 'var(--text-strong)', fontSize: 11, lineHeight: 1.35 }}>
+                          {t('consensus.question')}: {entry.questionText}
+                        </p>
+                        <p style={{ margin: '5px 0 0', color: 'var(--text-secondary)', fontSize: 11, lineHeight: 1.35 }}>
+                          {t('consensus.aiAnswer')}: {entry.aiAnswer}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {divergent.length > 0 && (
                   <div style={divergenceStyle}>
                     {t('consensus.divergent', { count: divergent.length })}
@@ -89,4 +109,17 @@ const divergenceStyle: React.CSSProperties = {
   color: 'var(--warning)',
   background: 'color-mix(in srgb, var(--warning) 10%, transparent)',
   fontSize: 11,
+};
+
+const entriesStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: 8,
+  marginTop: 10,
+};
+
+const entryStyle: React.CSSProperties = {
+  borderRadius: 7,
+  border: '1px solid var(--border-subtle)',
+  background: 'color-mix(in srgb, var(--bg-primary) 62%, transparent)',
+  padding: 10,
 };

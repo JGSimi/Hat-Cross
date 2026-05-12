@@ -8,6 +8,7 @@ export type RoomApiErrorCode =
   | 'membership'
   | 'notFound'
   | 'invalidRoom'
+  | 'activeRoom'
   | 'generic';
 
 export class RoomApiError extends Error {
@@ -49,6 +50,9 @@ async function parseResponse<T>(response: Response): Promise<T> {
     if (response.status === 400 && body.error === 'Invalid roomId') {
       throw new RoomApiError('invalidRoom', response.status);
     }
+    if (response.status === 409 && body.error === 'Active room exists') {
+      throw new RoomApiError('activeRoom', response.status);
+    }
     throw new RoomApiError('generic', response.status);
   }
   return body as T;
@@ -70,4 +74,13 @@ export async function joinRoom(roomId: string): Promise<RoomJoinResult> {
     body: JSON.stringify({}),
   });
   return parseResponse<RoomJoinResult>(response);
+}
+
+export async function leaveRoom(roomId: string): Promise<void> {
+  const response = await fetch(`${HAT_PROXY_URL}/v1/rooms/${encodeURIComponent(roomId)}/leave`, {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({}),
+  });
+  await parseResponse<unknown>(response);
 }
