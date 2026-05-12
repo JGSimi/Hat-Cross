@@ -32,6 +32,7 @@ import {
 } from './utils/detectClipboardIntent';
 import { sanitizeBackendError } from './services/ai';
 import { isTauriRuntime } from './utils/tauriRuntime';
+import { withTimeout } from './utils/async';
 
 /** Normalize legacy shortcut format (CmdOrCtrl → CommandOrControl) */
 function normalizeShortcut(s: string): string {
@@ -89,10 +90,30 @@ function App() {
       return;
     }
     (async () => {
-      await loadSettings();
+      try {
+        await withTimeout(loadSettings(), 5_000, 'settings hydration timed out');
+      } catch (error) {
+        console.error('[startup] settings hydration fallback:', error);
+        useSettingsStore.setState({ _hydrated: true });
+      }
+
       await Promise.all([
-        useConversationStore.getState().loadConversations(),
-        useDraftsStore.getState().loadDrafts(),
+        withTimeout(
+          useConversationStore.getState().loadConversations(),
+          5_000,
+          'conversations hydration timed out',
+        ).catch((error) => {
+          console.error('[startup] conversations hydration fallback:', error);
+          useConversationStore.setState({ conversations: [], loaded: true });
+        }),
+        withTimeout(
+          useDraftsStore.getState().loadDrafts(),
+          5_000,
+          'drafts hydration timed out',
+        ).catch((error) => {
+          console.error('[startup] drafts hydration fallback:', error);
+          useDraftsStore.setState({ drafts: {}, loaded: true });
+        }),
       ]);
     })();
     setupSettingsSync();
@@ -110,9 +131,13 @@ function App() {
 
     // Flush pending saves on window close to prevent data loss
     let unlistenClose: (() => void) | undefined;
-    getCurrentWindow().onCloseRequested(async () => {
+    getCurrentWindow().onCloseRequested(() => {
       flushPendingSave();
-      await useConversationStore.getState().saveConversations();
+      void withTimeout(
+        useConversationStore.getState().saveConversations(),
+        1_500,
+        'close save timed out',
+      ).catch((error) => console.error('[close] best-effort save failed:', error));
     }).then((unlisten) => { unlistenClose = unlisten; });
 
     return () => {
@@ -787,6 +812,7 @@ function App() {
       </AnimatePresence>
 
       <Routes>
+        <Route path="/" element={<MainPage />} />
         <Route path="/main" element={<MainPage />} />
         <Route path="/popover" element={<PopoverPage />} />
         <Route path="/flash" element={<FlashPage />} />

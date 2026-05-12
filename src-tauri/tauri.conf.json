@@ -22,7 +22,7 @@
         "decorations": false,
         "transparent": false,
         "visible": true,
-        "url": "/main"
+        "url": "/"
       }
     ],
     "trayIcon": {

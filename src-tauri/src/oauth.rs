@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
+use tokio::time::{timeout, Duration};
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -81,9 +82,9 @@ pub fn open_external_url(url: String) -> Result<(), String> {
 }
 
 async fn handle_oauth_callback(listener: TcpListener) -> Result<OAuthCallbackPayload, String> {
-    let (mut stream, _) = listener
-        .accept()
+    let (mut stream, _) = timeout(Duration::from_secs(60), listener.accept())
         .await
+        .map_err(|_| "OAuth callback listener timed out".to_string())?
         .map_err(|e| format!("Accept failed: {}", e))?;
 
     let mut buf = vec![0u8; 8192];

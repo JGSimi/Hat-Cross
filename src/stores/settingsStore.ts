@@ -17,10 +17,12 @@ import {
   SUPPORTED_LANGUAGES,
 } from '../i18n/defaults';
 import { isTauriRuntime } from '../utils/tauriRuntime';
+import { withTimeout } from '../utils/async';
 
 // --- Tauri persistent store ---
 
 const tauriStore = new LazyStore('settings.json');
+const STORE_LOAD_TIMEOUT_MS = 4_000;
 
 // --- Deep merge helper (preserves nested user values, fills in new defaults) ---
 
@@ -155,7 +157,11 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       return;
     }
     try {
-      const stored = await tauriStore.get<{ settings: AppSettings }>('hat-settings');
+      const stored = await withTimeout(
+        tauriStore.get<{ settings: AppSettings }>('hat-settings'),
+        STORE_LOAD_TIMEOUT_MS,
+        'settings load timed out',
+      );
       if (stored) {
         const merged = deepMerge(DEFAULT_SETTINGS, stored.settings ?? {}) as AppSettings;
         // Accent-only themes were removed — fall back to the default full theme.
@@ -187,6 +193,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       }
     } catch (err) {
       console.error('[SettingsStore] Failed to load settings:', err);
+      i18n.changeLanguage(DEFAULT_SETTINGS.language).catch(() => {});
       set({ _hydrated: true });
     }
   },

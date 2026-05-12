@@ -2,8 +2,10 @@ import { create } from 'zustand';
 import { LazyStore } from '@tauri-apps/plugin-store';
 import type { DraftEntry } from '../types';
 import { isTauriRuntime } from '../utils/tauriRuntime';
+import { withTimeout } from '../utils/async';
 
 const SAVE_DEBOUNCE_MS = 500;
+const STORE_IO_TIMEOUT_MS = 4_000;
 const draftsStore = new LazyStore('drafts-data.json');
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * ONE_DAY_MS;
@@ -43,7 +45,11 @@ export const useDraftsStore = create<DraftsState>()((set, get) => ({
       return;
     }
     try {
-      const drafts = (await draftsStore.get<Record<string, DraftEntry>>('drafts')) ?? {};
+      const drafts = (await withTimeout(
+        draftsStore.get<Record<string, DraftEntry>>('drafts'),
+        STORE_IO_TIMEOUT_MS,
+        'drafts load timed out',
+      )) ?? {};
 
       const now = Date.now();
       let purged = false;
@@ -76,7 +82,11 @@ export const useDraftsStore = create<DraftsState>()((set, get) => ({
     try {
       const { drafts } = get();
       await draftsStore.set('drafts', drafts);
-      await draftsStore.save();
+      await withTimeout(
+        draftsStore.save(),
+        STORE_IO_TIMEOUT_MS,
+        'drafts save timed out',
+      );
     } catch (err) {
       console.error('[DraftsStore] Failed to save drafts:', err);
     }

@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { firebaseAuth } from './firebase';
+import { abortErrorMessage, withTimeout } from '../../utils/async';
 
 // Credentials for the Google OAuth 2.0 "Desktop app" client. The secret is
 // shipped with the binary intentionally — Google explicitly supports this for
@@ -12,6 +13,14 @@ const CLIENT_SECRET = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_SECRET as string 
 interface OAuthCallbackPayload {
   code: string;
   state: string;
+}
+
+const OAUTH_CALLBACK_TIMEOUT_MS = 30_000;
+const OAUTH_STEP_TIMEOUT_MS = 20_000;
+let activeController: AbortController | null = null;
+
+export function cancelGoogleSignIn(): void {
+  activeController?.abort();
 }
 
 // 128 bits of entropy is plenty for state and PKCE verifier.
@@ -45,8 +54,18 @@ export async function signInWithGoogle(): Promise<void> {
     );
   }
 
+  activeController?.abort();
+  const controller = new AbortController();
+  activeController = controller;
+
   // Start the loopback listener and get the port the OS picked for us.
-  const port = await invoke<number>('oauth_start_server');
+  console.info('[oauth] server_starting');
+  const port = await withAbortableStep(
+    invoke<number>('oauth_start_server'),
+    controller.signal,
+    'Servidor OAuth demorou para iniciar.',
+  );
+  console.info('[oauth] server_started');
   const redirectUri = `http://127.0.0.1:${port}/oauth/callback`;
 
   const state = randomBase64Url(16);
@@ -65,27 +84,46 @@ export async function signInWithGoogle(): Promise<void> {
   // the user is already signed in, so they can switch accounts if they want.
   authUrl.searchParams.set('prompt', 'select_account');
 
-  // Race the callback against a timeout. Whichever resolves first wins; the
-  // other's listeners/timer are cleaned up in `finally`.
-  const callbackPromise = waitForCallback(state);
+  // Register listeners before opening the browser. On fast Windows/WebView2
+  // machines, opening first can let the native callback win the race and leave
+  // the UI stuck in "Abrindo..." until timeout.
+  const { codePromise: callbackPromise } = await prepareCallbackListener(state, controller.signal);
+  callbackPromise.catch(() => {});
 
   try {
-    await invoke('open_external_url', { url: authUrl.toString() });
+    console.info('[oauth] browser_opening');
+    await withAbortableStep(
+      invoke('open_external_url', { url: authUrl.toString() }),
+      controller.signal,
+      'Não consegui abrir o navegador do Google.',
+    );
+    console.info('[oauth] browser_opened');
     const code = await callbackPromise;
+    console.info('[oauth] callback_received');
 
     // Exchange the code for tokens. We hit the token endpoint directly from
     // the Worker-less client; this is the Google-recommended flow for desktop.
-    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code,
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        redirect_uri: redirectUri,
-        grant_type: 'authorization_code',
-        code_verifier: codeVerifier,
-      }).toString(),
+    const tokenController = new AbortController();
+    const abortTokenFetch = () => tokenController.abort();
+    controller.signal.addEventListener('abort', abortTokenFetch, { once: true });
+    const tokenRes = await withTimeout(
+      fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        signal: tokenController.signal,
+        body: new URLSearchParams({
+          code,
+          client_id: CLIENT_ID,
+          client_secret: CLIENT_SECRET,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+          code_verifier: codeVerifier,
+        }).toString(),
+      }),
+      OAUTH_STEP_TIMEOUT_MS,
+      'Google demorou para trocar o código de login.',
+    ).finally(() => {
+      controller.signal.removeEventListener('abort', abortTokenFetch);
     });
 
     if (!tokenRes.ok) {
@@ -100,52 +138,97 @@ export async function signInWithGoogle(): Promise<void> {
     if (!tokens.id_token) {
       throw new Error('Google não retornou id_token');
     }
+    console.info('[oauth] token_exchanged');
 
     // Firebase accepts any id_token issued by a client in the same Google
     // Cloud project, so no extra allowlisting is needed beyond having the
     // Desktop client and the Firebase project share a project id.
     const credential = GoogleAuthProvider.credential(tokens.id_token, tokens.access_token);
-    await signInWithCredential(firebaseAuth, credential);
+    await withAbortableStep(
+      signInWithCredential(firebaseAuth, credential),
+      controller.signal,
+      'Firebase demorou para concluir o login.',
+    );
+    console.info('[oauth] firebase_signed_in');
     // onAuthStateChanged fires, authStore updates, UI re-renders. We're done.
+  } catch (error) {
+    controller.abort();
+    throw new Error(abortErrorMessage(error, 'Login com Google cancelado.'));
   } finally {
-    // Nothing to clean up here directly — waitForCallback handles its own
-    // listener teardown. This try/finally is in place in case future code
-    // allocates resources (e.g. a spinner state) that need to be released.
+    if (activeController === controller) {
+      activeController = null;
+    }
   }
 }
 
-function waitForCallback(expectedState: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let cbUnlisten: (() => void) | null = null;
-    let errUnlisten: (() => void) | null = null;
-    const timer = setTimeout(() => {
-      cleanup();
-      reject(new Error('OAuth timeout — tente novamente'));
-    }, 5 * 60 * 1000);
+async function withAbortableStep<T>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+  timeoutMessage: string,
+): Promise<T> {
+  if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
-    const cleanup = () => {
-      clearTimeout(timer);
-      cbUnlisten?.();
-      errUnlisten?.();
-    };
+  return await Promise.race([
+    withTimeout(promise, OAUTH_STEP_TIMEOUT_MS, timeoutMessage),
+    new Promise<never>((_, reject) => {
+      signal.addEventListener(
+        'abort',
+        () => reject(new DOMException('Aborted', 'AbortError')),
+        { once: true },
+      );
+    }),
+  ]);
+}
 
-    listen<OAuthCallbackPayload>('oauth-callback', (event) => {
-      if (event.payload.state !== expectedState) {
-        cleanup();
-        reject(new Error('State mismatch (possível CSRF)'));
-        return;
-      }
-      cleanup();
-      resolve(event.payload.code);
-    }).then((un) => {
-      cbUnlisten = un;
-    });
+async function prepareCallbackListener(
+  expectedState: string,
+  signal: AbortSignal,
+): Promise<{ codePromise: Promise<string> }> {
+  let cbUnlisten: (() => void) | null = null;
+  let errUnlisten: (() => void) | null = null;
 
-    listen<{ error: string }>('oauth-error', (event) => {
-      cleanup();
-      reject(new Error(event.payload.error));
-    }).then((un) => {
-      errUnlisten = un;
-    });
+  const cleanup = () => {
+    cbUnlisten?.();
+    errUnlisten?.();
+  };
+
+  let resolveCode!: (code: string) => void;
+  let rejectCode!: (error: unknown) => void;
+  const codePromise = new Promise<string>((resolve, reject) => {
+    resolveCode = resolve;
+    rejectCode = reject;
   });
+
+  const onAbort = () => rejectCode(new DOMException('Aborted', 'AbortError'));
+  signal.addEventListener('abort', onAbort, { once: true });
+
+  try {
+    [cbUnlisten, errUnlisten] = await Promise.all([
+      listen<OAuthCallbackPayload>('oauth-callback', (event) => {
+        if (event.payload.state !== expectedState) {
+          rejectCode(new Error('State mismatch (possível CSRF)'));
+          return;
+        }
+        resolveCode(event.payload.code);
+      }),
+      listen<{ error: string }>('oauth-error', (event) => {
+        rejectCode(new Error(event.payload.error));
+      }),
+    ]);
+  } catch (error) {
+    cleanup();
+    signal.removeEventListener('abort', onAbort);
+    throw error;
+  }
+
+  return {
+    codePromise: withTimeout(
+    codePromise,
+    OAUTH_CALLBACK_TIMEOUT_MS,
+    'Google não respondeu em 30s. Confirme se o browser abriu e tente de novo.',
+  ).finally(() => {
+    signal.removeEventListener('abort', onAbort);
+    cleanup();
+  }),
+  };
 }

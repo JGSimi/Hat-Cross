@@ -81,7 +81,6 @@ export default function SettingsPanel({ onClose }: Props) {
     >
       {/* Header — drag region for custom titlebar */}
       <div
-        data-tauri-drag-region
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -93,6 +92,7 @@ export default function SettingsPanel({ onClose }: Props) {
         }}
       >
         <motion.button
+          data-no-drag
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           onClick={onClose}
@@ -111,6 +111,8 @@ export default function SettingsPanel({ onClose }: Props) {
           <ArrowLeft size={16} />
         </motion.button>
         <h2
+          className="window-drag-region"
+          data-tauri-drag-region
           style={{
             fontSize: 13,
             fontWeight: 600,

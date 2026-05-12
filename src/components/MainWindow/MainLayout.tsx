@@ -146,6 +146,7 @@ export default function MainLayout() {
               whileTap={{ scale: 0.95 }}
               onClick={activeView === 'clipboard' ? handleBackFromClipboard : () => setSidebarCollapsed(false)}
               title={activeView === 'clipboard' ? 'Voltar aos chats' : 'Expandir sidebar'}
+              aria-label={activeView === 'clipboard' ? 'Voltar aos chats' : 'Expandir sidebar'}
               style={{
                 width: 28, height: '100%',
                 background: 'color-mix(in srgb, var(--bg-secondary) 60%, transparent)',
@@ -170,19 +171,25 @@ export default function MainLayout() {
 
       {/* Main content area */}
       <motion.div variants={itemVariants} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-        {/* Titlebar drag region + window controls */}
-        <div
-          data-tauri-drag-region
-          style={{
-            position: 'absolute', top: 0, left: 0, right: 0, height: 38,
-            zIndex: 50, display: 'flex', alignItems: 'center',
-            justifyContent: 'flex-end',
-            padding: '0 4px',
-            pointerEvents: 'auto',
-          }}
-        >
-          {platform !== 'macos' && <WindowControls variant="header" />}
-        </div>
+        {platform !== 'macos' && (
+          <div
+            style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: 38,
+              zIndex: 50, display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 4px',
+              pointerEvents: 'auto',
+            }}
+          >
+            <div
+              className="window-drag-region"
+              data-tauri-drag-region
+              aria-hidden
+              style={{ alignSelf: 'stretch', flex: 1, minWidth: 0 }}
+            />
+            <WindowControls variant="header" />
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
           {showSettings ? (

@@ -4,8 +4,10 @@ import type { Conversation, Message } from '../types';
 import { useSettingsStore } from './settingsStore';
 import { useDraftsStore } from './draftsStore';
 import { isTauriRuntime } from '../utils/tauriRuntime';
+import { withTimeout } from '../utils/async';
 
 const SAVE_DEBOUNCE_MS = 500;
+const STORE_IO_TIMEOUT_MS = 4_000;
 
 // LazyStore is proven to work in this app (settings.json, conversation-state.json
 // both persist correctly). plugin-fs writeTextFile silently fails with $APPDATA scope.
@@ -78,6 +80,7 @@ interface ConversationState {
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let loadPromise: Promise<void> | null = null;
 
 function debouncedSave(saveFn: () => Promise<void>) {
   if (saveTimer) clearTimeout(saveTimer);
@@ -252,12 +255,18 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
   },
 
   loadConversations: async () => {
+    if (loadPromise) return loadPromise;
     if (!isTauriRuntime()) {
       set({ loaded: true });
       return;
     }
-    try {
-      const data = (await conversationStore.get<Conversation[]>('conversations')) ?? [];
+    loadPromise = (async () => {
+      try {
+      const data = (await withTimeout(
+        conversationStore.get<Conversation[]>('conversations'),
+        STORE_IO_TIMEOUT_MS,
+        'conversations load timed out',
+      )) ?? [];
 
       const maxConv = getMaxConversations();
       let conversations = data;
@@ -271,7 +280,11 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
 
       let persistedActiveId: string | null = null;
       try {
-        persistedActiveId = (await activeIdStore.get<string | null>('activeId')) ?? null;
+        persistedActiveId = (await withTimeout(
+          activeIdStore.get<string | null>('activeId'),
+          STORE_IO_TIMEOUT_MS,
+          'active conversation load timed out',
+        )) ?? null;
       } catch (err) {
         console.error('Failed to read activeId', err);
       }
@@ -289,6 +302,10 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       console.error('[ConversationStore] Failed to load conversations:', err);
       set({ conversations: [], loaded: true });
     }
+    })().finally(() => {
+      loadPromise = null;
+    });
+    return loadPromise;
   },
 
   saveConversations: async () => {
@@ -296,7 +313,11 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
     try {
       const { conversations } = get();
       await conversationStore.set('conversations', conversations);
-      await conversationStore.save();
+      await withTimeout(
+        conversationStore.save(),
+        STORE_IO_TIMEOUT_MS,
+        'conversations save timed out',
+      );
     } catch (err) {
       console.error('[ConversationStore] Failed to save conversations:', err);
     }

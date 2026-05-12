@@ -44,6 +44,7 @@ function MacControls({ appWindow, platform }: { appWindow: ReturnType<typeof get
 
   return (
     <div
+      data-no-drag
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -54,6 +55,7 @@ function MacControls({ appWindow, platform }: { appWindow: ReturnType<typeof get
       }}
     >
       <button
+        data-no-drag
         onClick={() => closeOrQuit(appWindow, platform)}
         style={{
           width: 12,
@@ -77,6 +79,7 @@ function MacControls({ appWindow, platform }: { appWindow: ReturnType<typeof get
         ✕
       </button>
       <button
+        data-no-drag
         onClick={() => appWindow.minimize()}
         style={{
           width: 12,
@@ -100,6 +103,7 @@ function MacControls({ appWindow, platform }: { appWindow: ReturnType<typeof get
         −
       </button>
       <button
+        data-no-drag
         onClick={() => appWindow.toggleMaximize()}
         style={{
           width: 12,
@@ -148,6 +152,7 @@ function MinimalControls({ appWindow, platform }: { appWindow: ReturnType<typeof
 
   return (
     <div
+      data-no-drag
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -156,6 +161,7 @@ function MinimalControls({ appWindow, platform }: { appWindow: ReturnType<typeof
       }}
     >
       <button
+        data-no-drag
         onMouseEnter={() => setHoveredBtn('min')}
         onMouseLeave={() => setHoveredBtn(null)}
         onClick={() => appWindow.minimize()}
@@ -172,6 +178,7 @@ function MinimalControls({ appWindow, platform }: { appWindow: ReturnType<typeof
         </svg>
       </button>
       <button
+        data-no-drag
         onMouseEnter={() => setHoveredBtn('max')}
         onMouseLeave={() => setHoveredBtn(null)}
         onClick={() => appWindow.toggleMaximize()}
@@ -188,6 +195,7 @@ function MinimalControls({ appWindow, platform }: { appWindow: ReturnType<typeof
         </svg>
       </button>
       <button
+        data-no-drag
         onMouseEnter={() => setHoveredBtn('close')}
         onMouseLeave={() => setHoveredBtn(null)}
         onClick={() => closeOrQuit(appWindow, platform)}

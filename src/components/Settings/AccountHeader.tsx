@@ -57,6 +57,7 @@ export default function AccountHeader() {
   const isSigningIn = useAuthStore((s) => s.isSigningIn);
   const signInError = useAuthStore((s) => s.signInError);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
+  const cancelSignIn = useAuthStore((s) => s.cancelSignIn);
   const signOut = useAuthStore((s) => s.signOut);
 
   const credits = useCreditsStore((s) => s.credits);
@@ -132,48 +133,67 @@ export default function AccountHeader() {
             </div>
           )}
         </div>
-        <motion.button
-          whileHover={{ scale: 1.02, y: -1 }}
-          whileTap={{ scale: 0.97 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 24 }}
-          onClick={signInWithGoogle}
-          disabled={isSigningIn}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            padding: '8px 14px',
-            borderRadius: 9,
-            background: 'var(--color-accent)',
-            color: 'var(--on-accent)',
-            border: 'none',
-            fontSize: 11.5,
-            fontWeight: 600,
-            cursor: isSigningIn ? 'default' : 'pointer',
-            opacity: isSigningIn ? 0.7 : 1,
-            boxShadow:
-              '0 4px 12px color-mix(in srgb, var(--color-accent) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.25)',
-            flexShrink: 0,
-          }}
-        >
-          {isSigningIn ? (
-            <>
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                style={{ display: 'flex' }}
-              >
-                <Loader2 size={13} />
-              </motion.div>
-              {t('signingIn')}
-            </>
-          ) : (
-            <>
-              <GoogleIcon size={13} /> {t('signIn')}
-            </>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <motion.button
+            whileHover={{ scale: 1.02, y: -1 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 24 }}
+            onClick={() => { void signInWithGoogle().catch(() => {}); }}
+            disabled={isSigningIn}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '8px 14px',
+              borderRadius: 9,
+              background: 'var(--color-accent)',
+              color: 'var(--on-accent)',
+              border: 'none',
+              fontSize: 11.5,
+              fontWeight: 600,
+              cursor: isSigningIn ? 'default' : 'pointer',
+              opacity: isSigningIn ? 0.7 : 1,
+              boxShadow:
+                '0 4px 12px color-mix(in srgb, var(--color-accent) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.25)',
+            }}
+          >
+            {isSigningIn ? (
+              <>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                  style={{ display: 'flex' }}
+                >
+                  <Loader2 size={13} />
+                </motion.div>
+                {t('signingIn')}
+              </>
+            ) : (
+              <>
+                <GoogleIcon size={13} /> {t('signIn')}
+              </>
+            )}
+          </motion.button>
+          {isSigningIn && (
+            <button
+              type="button"
+              onClick={cancelSignIn}
+              style={{
+                padding: '8px 10px',
+                borderRadius: 9,
+                border: '0.5px solid var(--border-subtle)',
+                background: 'transparent',
+                color: 'var(--text-muted)',
+                fontSize: 11.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Cancelar
+            </button>
           )}
-        </motion.button>
+        </div>
       </div>
     );
   }

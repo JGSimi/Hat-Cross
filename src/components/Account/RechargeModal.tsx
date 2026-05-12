@@ -62,7 +62,9 @@ function whatsappUrl(brl: number | null, email: string | null): string {
 export default function RechargeModal({ open, onClose }: Props) {
   const user = useAuthStore((s) => s.user);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
+  const cancelSignIn = useAuthStore((s) => s.cancelSignIn);
   const isSigningIn = useAuthStore((s) => s.isSigningIn);
+  const signInError = useAuthStore((s) => s.signInError);
   const pricing = useCreditsStore((s) => s.pricing);
   const credits = useCreditsStore((s) => s.credits);
   const creditsLoading = useCreditsStore((s) => s.isLoading);
@@ -209,7 +211,12 @@ export default function RechargeModal({ open, onClose }: Props) {
             <div style={{ maxHeight: '92vh', overflowY: 'auto' }}>
               {!user ? (
                 <div style={{ padding: 26 }}>
-                  <SignedOutGate onSignIn={signInWithGoogle} isSigningIn={isSigningIn} />
+                  <SignedOutGate
+                    onSignIn={signInWithGoogle}
+                    onCancel={cancelSignIn}
+                    isSigningIn={isSigningIn}
+                    signInError={signInError}
+                  />
                 </div>
               ) : (
                 <>
@@ -754,10 +761,14 @@ function PixPill({
 
 function SignedOutGate({
   onSignIn,
+  onCancel,
   isSigningIn,
+  signInError,
 }: {
-  onSignIn: () => void;
+  onSignIn: () => Promise<void>;
+  onCancel: () => void;
   isSigningIn: boolean;
+  signInError: string | null;
 }) {
   const { t } = useTranslation('account');
   return (
@@ -796,7 +807,7 @@ function SignedOutGate({
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.97 }}
-        onClick={onSignIn}
+        onClick={() => { void onSignIn().catch(() => {}); }}
         disabled={isSigningIn}
         style={{
           padding: '10px 22px',
@@ -814,6 +825,30 @@ function SignedOutGate({
       >
         {isSigningIn ? t('signedOutGate.signingIn') : t('signedOutGate.signIn')}
       </motion.button>
+      {isSigningIn && (
+        <button
+          type="button"
+          onClick={onCancel}
+          style={{
+            display: 'block',
+            margin: '10px auto 0',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-muted)',
+            fontSize: 11.5,
+            cursor: 'pointer',
+            padding: '4px 8px',
+            fontFamily: 'inherit',
+          }}
+        >
+          Cancelar login
+        </button>
+      )}
+      {signInError && (
+        <p style={{ margin: '12px auto 0', color: 'var(--error)', fontSize: 11, maxWidth: 320, lineHeight: 1.45 }}>
+          {signInError}
+        </p>
+      )}
     </div>
   );
 }

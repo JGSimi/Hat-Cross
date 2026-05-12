@@ -41,7 +41,7 @@ pub fn show_window(app: &AppHandle, label: &str) {
     } else {
         let url = match label {
             "popover" => "/popover",
-            "main" => "/main",
+            "main" => "/",
             "flash" => "/flash",
             _ => "/main",
         };

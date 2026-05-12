@@ -31,6 +31,7 @@ export default function InputArea({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const shouldAnimatePlunger = useRef(false);
   const { t } = useTranslation('chat');
+  const draftsLoaded = useDraftsStore((s) => s.loaded);
   const selectedMode = useCreditsStore((s) => s.selectedMode);
   // Varies the placeholder per mode so Hat (quick) and Hat Pro (deep
   // analysis) communicate their shape at the point of entry. Falls back
@@ -69,7 +70,7 @@ export default function InputArea({
     setDraftChipLabel(draft ? formatDraftAge(draft.updatedAt) : null);
     // Resize on next tick so auto-grow matches hydrated content after setText commits.
     requestAnimationFrame(resizeTextarea);
-  }, [conversationId, resizeTextarea]);
+  }, [conversationId, draftsLoaded, resizeTextarea]);
 
 
   const handleSend = useCallback(() => {

@@ -112,7 +112,6 @@ export default function Sidebar({
     >
       {/* Header */}
       <div
-        data-tauri-drag-region
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: platform === 'macos' ? '10px 12px' : '12px',
@@ -121,7 +120,11 @@ export default function Sidebar({
           gap: 6,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div
+          className="window-drag-region"
+          data-tauri-drag-region
+          style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}
+        >
           {platform === 'macos' && <WindowControls variant="sidebar" />}
           <span style={{
             fontSize: 14, fontWeight: 700, letterSpacing: -0.5,
@@ -131,7 +134,7 @@ export default function Sidebar({
             Hat
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div data-no-drag style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {/* Clipboard shortcut button */}
           <motion.button
             whileHover={{ scale: 1.1 }}

@@ -1187,9 +1187,14 @@ body {
 }
 
 /* Drag region support for custom titlebar */
+.window-drag-region {
+  -webkit-app-region: drag;
+}
+
 [data-tauri-drag-region] button,
 [data-tauri-drag-region] input,
 [data-tauri-drag-region] a,
+[data-no-drag],
 [data-tauri-drag-region] [data-no-drag] {
   -webkit-app-region: no-drag;
 }

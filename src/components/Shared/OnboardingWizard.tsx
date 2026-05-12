@@ -44,6 +44,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
   const isSigningIn = useAuthStore((s) => s.isSigningIn);
   const signInError = useAuthStore((s) => s.signInError);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
+  const cancelSignIn = useAuthStore((s) => s.cancelSignIn);
   const platform = usePlatform();
   const reducedMotion = useReducedMotion();
   const { t } = useTranslation('onboarding');
@@ -203,6 +204,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
                   isSigningIn={isSigningIn}
                   signInError={signInError}
                   onSignIn={handleGoogleSignIn}
+                  onCancel={cancelSignIn}
                   onSkip={goNext}
                 />
               )}
@@ -603,12 +605,14 @@ function SigninStep({
   isSigningIn,
   signInError,
   onSignIn,
+  onCancel,
   onSkip,
 }: {
   user: { displayName: string | null; email: string | null } | null;
   isSigningIn: boolean;
   signInError: string | null;
   onSignIn: () => void;
+  onCancel: () => void;
   onSkip: () => void;
 }) {
   const { t } = useTranslation('onboarding');
@@ -694,6 +698,28 @@ function SigninStep({
           </>
         )}
       </motion.button>
+
+      {isSigningIn && (
+        <button
+          type="button"
+          onClick={onCancel}
+          style={{
+            display: 'block',
+            margin: '10px auto 0',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-muted)',
+            fontSize: 11.5,
+            cursor: 'pointer',
+            padding: '4px 8px',
+            fontFamily: 'inherit',
+            textDecoration: 'underline',
+            textDecorationColor: 'var(--border-subtle)',
+          }}
+        >
+          Cancelar login
+        </button>
+      )}
 
       {signInError && (
         <p
@@ -853,4 +879,3 @@ function GoogleIcon({ size }: { size: number }) {
     </svg>
   );
 }
-
