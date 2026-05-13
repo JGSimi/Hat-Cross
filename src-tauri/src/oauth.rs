@@ -1,8 +1,9 @@
 use serde::Serialize;
 use std::collections::HashMap;
+use std::net::{Ipv4Addr, SocketAddrV4, TcpListener as StdTcpListener};
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpListener;
+use tokio::net::TcpListener as TokioTcpListener;
 use tokio::time::{timeout, Duration};
 
 #[derive(Serialize, Clone)]
@@ -37,13 +38,9 @@ const CALLBACK_HTML: &str = r#"<!DOCTYPE html>
 // exactly one request either way.
 #[tauri::command]
 pub async fn oauth_start_server(app: AppHandle) -> Result<u16, String> {
-    let listener = TcpListener::bind("127.0.0.1:0")
-        .await
-        .map_err(|e| format!("Bind failed: {}", e))?;
-    let port = listener
-        .local_addr()
-        .map_err(|e| format!("Local addr failed: {}", e))?
-        .port();
+    eprintln!("[oauth] bind_start");
+    let (listener, port) = bind_loopback_listener().map_err(|e| format!("Bind failed: {}", e))?;
+    eprintln!("[oauth] bind_ok port={}", port);
 
     let app_handle = app.clone();
     tokio::spawn(async move {
@@ -56,8 +53,24 @@ pub async fn oauth_start_server(app: AppHandle) -> Result<u16, String> {
             }
         }
     });
+    eprintln!("[oauth] callback_task_spawned");
 
     Ok(port)
+}
+
+fn bind_loopback_listener() -> Result<(TokioTcpListener, u16), String> {
+    let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0);
+    let std_listener = StdTcpListener::bind(addr).map_err(|e| e.to_string())?;
+    std_listener
+        .set_nonblocking(true)
+        .map_err(|e| format!("set_nonblocking failed: {}", e))?;
+    let port = std_listener
+        .local_addr()
+        .map_err(|e| format!("Local addr failed: {}", e))?
+        .port();
+    let listener =
+        TokioTcpListener::from_std(std_listener).map_err(|e| format!("from_std failed: {}", e))?;
+    Ok((listener, port))
 }
 
 // Opens a URL in the user's default system browser. OS-specific shell-out,
@@ -81,7 +94,7 @@ pub fn open_external_url(url: String) -> Result<(), String> {
         .map_err(|e| format!("Failed to open URL: {}", e))
 }
 
-async fn handle_oauth_callback(listener: TcpListener) -> Result<OAuthCallbackPayload, String> {
+async fn handle_oauth_callback(listener: TokioTcpListener) -> Result<OAuthCallbackPayload, String> {
     let (mut stream, _) = timeout(Duration::from_secs(60), listener.accept())
         .await
         .map_err(|_| "OAuth callback listener timed out".to_string())?
@@ -93,8 +106,8 @@ async fn handle_oauth_callback(listener: TcpListener) -> Result<OAuthCallbackPay
         .await
         .map_err(|e| format!("Read failed: {}", e))?;
 
-    let request = std::str::from_utf8(&buf[..n])
-        .map_err(|e| format!("Invalid UTF-8 in request: {}", e))?;
+    let request =
+        std::str::from_utf8(&buf[..n]).map_err(|e| format!("Invalid UTF-8 in request: {}", e))?;
 
     let first_line = request.lines().next().ok_or("Empty request")?;
     let path = first_line
@@ -129,13 +142,27 @@ async fn handle_oauth_callback(listener: TcpListener) -> Result<OAuthCallbackPay
         return Err(format!("OAuth rejected: {}", error));
     }
 
-    let code = params.get("code").ok_or("Missing `code` in redirect")?.clone();
+    let code = params
+        .get("code")
+        .ok_or("Missing `code` in redirect")?
+        .clone();
     let state = params
         .get("state")
         .ok_or("Missing `state` in redirect")?
         .clone();
 
     Ok(OAuthCallbackPayload { code, state })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::bind_loopback_listener;
+
+    #[tokio::test]
+    async fn binds_loopback_listener_on_random_port() {
+        let (_listener, port) = bind_loopback_listener().expect("loopback bind should work");
+        assert!(port > 0);
+    }
 }
 
 // Minimal URL-decoder for application/x-www-form-urlencoded. OAuth codes are

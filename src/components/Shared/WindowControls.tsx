@@ -7,16 +7,8 @@ interface Props {
   variant?: 'sidebar' | 'header';
 }
 
-// On Linux compositors without a system-tray host (Hyprland, sway w/o SNI),
-// the tray icon is invisible — so "close window" leaves an orphaned process
-// the user can't reach. Quit outright instead. Mac/Windows keep the tray
-// convention where X just hides the window.
-function closeOrQuit(appWindow: ReturnType<typeof getCurrentWindow>, platform: Platform) {
-  if (platform === 'linux') {
-    invoke('quit_app').catch(() => appWindow.close());
-  } else {
-    appWindow.close();
-  }
+function closeOrQuit(appWindow: ReturnType<typeof getCurrentWindow>, _platform: Platform) {
+  invoke('quit_app').catch(() => appWindow.close());
 }
 
 export default function WindowControls({ variant = 'sidebar' }: Props) {

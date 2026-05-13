@@ -70,7 +70,7 @@ describe('WindowControls', () => {
     ).toBeInTheDocument();
   });
 
-  it('wires windows controls to Tauri window methods', async () => {
+  it('wires windows controls to Tauri window methods and quits on close', async () => {
     const user = userEvent.setup();
     platformMock.value = 'windows';
     render(<WindowControls variant="header" />);
@@ -81,8 +81,19 @@ describe('WindowControls', () => {
 
     expect(windowMocks.minimize).toHaveBeenCalledTimes(1);
     expect(windowMocks.toggleMaximize).toHaveBeenCalledTimes(1);
-    expect(windowMocks.close).toHaveBeenCalledTimes(1);
-    expect(windowMocks.invoke).not.toHaveBeenCalledWith('quit_app');
+    expect(windowMocks.invoke).toHaveBeenCalledWith('quit_app');
+    expect(windowMocks.close).not.toHaveBeenCalled();
+  });
+
+  it('quits instead of closing on macos', async () => {
+    const user = userEvent.setup();
+    platformMock.value = 'macos';
+    render(<WindowControls variant="sidebar" />);
+
+    await user.click(screen.getByRole('button', { name: 'Fechar janela' }));
+
+    expect(windowMocks.invoke).toHaveBeenCalledWith('quit_app');
+    expect(windowMocks.close).not.toHaveBeenCalled();
   });
 
   it('quits instead of closing on linux', async () => {

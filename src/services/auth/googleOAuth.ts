@@ -17,6 +17,7 @@ interface OAuthCallbackPayload {
 
 const OAUTH_CALLBACK_TIMEOUT_MS = 30_000;
 const OAUTH_STEP_TIMEOUT_MS = 20_000;
+const OAUTH_SERVER_START_TIMEOUT_MS = 45_000;
 let activeController: AbortController | null = null;
 
 export function cancelGoogleSignIn(): void {
@@ -64,6 +65,7 @@ export async function signInWithGoogle(): Promise<void> {
     invoke<number>('oauth_start_server'),
     controller.signal,
     'Servidor OAuth demorou para iniciar.',
+    OAUTH_SERVER_START_TIMEOUT_MS,
   );
   console.info('[oauth] server_started');
   const redirectUri = `http://127.0.0.1:${port}/oauth/callback`;
@@ -165,11 +167,12 @@ async function withAbortableStep<T>(
   promise: Promise<T>,
   signal: AbortSignal,
   timeoutMessage: string,
+  timeoutMs = OAUTH_STEP_TIMEOUT_MS,
 ): Promise<T> {
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
   return await Promise.race([
-    withTimeout(promise, OAUTH_STEP_TIMEOUT_MS, timeoutMessage),
+    withTimeout(promise, timeoutMs, timeoutMessage),
     new Promise<never>((_, reject) => {
       signal.addEventListener(
         'abort',
