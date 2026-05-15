@@ -8,7 +8,14 @@ interface Props {
 }
 
 function closeOrQuit(appWindow: ReturnType<typeof getCurrentWindow>, _platform: Platform) {
-  invoke('quit_app').catch(() => appWindow.close());
+  const quit = invoke('quit_app');
+  const fallback = new Promise<never>((_, reject) => {
+    window.setTimeout(() => reject(new Error('quit_app timed out')), 750);
+  });
+
+  Promise.race([quit, fallback]).catch(() => {
+    void appWindow.close();
+  });
 }
 
 export default function WindowControls({ variant = 'sidebar' }: Props) {

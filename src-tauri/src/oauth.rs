@@ -81,10 +81,10 @@ pub fn open_external_url(url: String) -> Result<(), String> {
     let spawn_result = if cfg!(target_os = "macos") {
         std::process::Command::new("open").arg(&url).spawn()
     } else if cfg!(target_os = "windows") {
-        // `start` via cmd.exe; empty "" is the window title arg so URLs with
-        // spaces (unlikely) don't get swallowed.
-        std::process::Command::new("cmd")
-            .args(["/c", "start", "", &url])
+        // Avoid `cmd /c start`: OAuth URLs contain `&`, which cmd.exe treats as
+        // command separators unless every metacharacter is quoted perfectly.
+        std::process::Command::new("rundll32.exe")
+            .args(["url.dll,FileProtocolHandler", &url])
             .spawn()
     } else {
         std::process::Command::new("xdg-open").arg(&url).spawn()

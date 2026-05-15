@@ -1,0 +1,57 @@
+name: Windows Smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/windows-smoke.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/**'
+      - 'src-tauri/**'
+
+jobs:
+  windows-smoke:
+    name: Windows smoke
+    runs-on: windows-latest
+    timeout-minutes: 35
+
+    env:
+      VITE_GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.VITE_GOOGLE_OAUTH_CLIENT_ID }}
+      VITE_GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.VITE_GOOGLE_OAUTH_CLIENT_SECRET }}
+      VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Install Rust 1.94.1
+        uses: dtolnay/rust-toolchain@1.94.1
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Typecheck and build frontend
+        run: npm run build
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Check Tauri Rust
+        working-directory: src-tauri
+        run: cargo check
+
+      - name: Run Tauri Rust tests
+        working-directory: src-tauri
+        run: cargo test
+
+      - name: Compile Tauri app on Windows
+        run: npx tauri build --no-bundle
