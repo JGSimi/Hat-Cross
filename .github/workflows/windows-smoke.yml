@@ -39,6 +39,10 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
+      - name: Validate auth build secrets
+        run: |
+          node -e "const required=['VITE_GOOGLE_OAUTH_CLIENT_ID','VITE_GOOGLE_OAUTH_CLIENT_SECRET','VITE_FIREBASE_API_KEY','VITE_FIREBASE_AUTH_DOMAIN','VITE_FIREBASE_PROJECT_ID','VITE_FIREBASE_APP_ID']; const missing=required.filter((name)=>!process.env[name]); if (missing.length) { console.error('Missing Windows smoke secrets: '+missing.join(', ')); process.exit(1); }"
+
       - name: Typecheck and build frontend
         run: npm run build
 

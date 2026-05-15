@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { firebaseAuth } from './firebase';
 import { abortErrorMessage, withTimeout } from '../../utils/async';
@@ -15,7 +16,7 @@ interface OAuthCallbackPayload {
   state: string;
 }
 
-const OAUTH_CALLBACK_TIMEOUT_MS = 30_000;
+const OAUTH_CALLBACK_TIMEOUT_MS = 120_000;
 const OAUTH_STEP_TIMEOUT_MS = 20_000;
 const OAUTH_SERVER_START_TIMEOUT_MS = 45_000;
 let activeController: AbortController | null = null;
@@ -95,7 +96,7 @@ export async function signInWithGoogle(): Promise<void> {
   try {
     console.info('[oauth] browser_opening');
     await withAbortableStep(
-      invoke('open_external_url', { url: authUrl.toString() }),
+      openUrl(authUrl),
       controller.signal,
       'Não consegui abrir o navegador do Google.',
     );
@@ -226,12 +227,12 @@ async function prepareCallbackListener(
 
   return {
     codePromise: withTimeout(
-    codePromise,
-    OAUTH_CALLBACK_TIMEOUT_MS,
-    'Google não respondeu em 30s. Confirme se o browser abriu e tente de novo.',
-  ).finally(() => {
-    signal.removeEventListener('abort', onAbort);
-    cleanup();
-  }),
+      codePromise,
+      OAUTH_CALLBACK_TIMEOUT_MS,
+      'Google não respondeu em 2 minutos. Confirme se o browser abriu e tente de novo.',
+    ).finally(() => {
+      signal.removeEventListener('abort', onAbort);
+      cleanup();
+    }),
   };
 }

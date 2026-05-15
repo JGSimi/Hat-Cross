@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { invoke } from '@tauri-apps/api/core';
+import { exit } from '@tauri-apps/plugin-process';
 import { usePlatform, type Platform } from '../../hooks/usePlatform';
 
 interface Props {
@@ -8,13 +8,13 @@ interface Props {
 }
 
 function closeOrQuit(appWindow: ReturnType<typeof getCurrentWindow>, _platform: Platform) {
-  const quit = invoke('quit_app');
+  const quit = exit(0);
   const fallback = new Promise<never>((_, reject) => {
-    window.setTimeout(() => reject(new Error('quit_app timed out')), 750);
+    window.setTimeout(() => reject(new Error('process exit timed out')), 750);
   });
 
   Promise.race([quit, fallback]).catch(() => {
-    void appWindow.close();
+    void appWindow.destroy();
   });
 }
 

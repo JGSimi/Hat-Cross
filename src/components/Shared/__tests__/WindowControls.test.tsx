@@ -6,21 +6,23 @@ import WindowControls from '../WindowControls';
 
 const windowMocks = vi.hoisted(() => ({
   close: vi.fn(),
+  destroy: vi.fn(),
   minimize: vi.fn(),
   toggleMaximize: vi.fn(),
-  invoke: vi.fn(() => Promise.resolve()),
+  exit: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => ({
     close: windowMocks.close,
+    destroy: windowMocks.destroy,
     minimize: windowMocks.minimize,
     toggleMaximize: windowMocks.toggleMaximize,
   }),
 }));
 
-vi.mock('@tauri-apps/api/core', () => ({
-  invoke: windowMocks.invoke,
+vi.mock('@tauri-apps/plugin-process', () => ({
+  exit: windowMocks.exit,
 }));
 
 const platformMock = vi.hoisted(() => ({ value: 'macos' as 'macos' | 'windows' | 'linux' }));
@@ -33,9 +35,10 @@ describe('WindowControls', () => {
   beforeEach(() => {
     platformMock.value = 'macos';
     windowMocks.close.mockClear();
+    windowMocks.destroy.mockClear();
     windowMocks.minimize.mockClear();
     windowMocks.toggleMaximize.mockClear();
-    windowMocks.invoke.mockClear();
+    windowMocks.exit.mockClear();
   });
 
   it('renders the 3 mac traffic-light controls on macos sidebar', () => {
@@ -81,8 +84,9 @@ describe('WindowControls', () => {
 
     expect(windowMocks.minimize).toHaveBeenCalledTimes(1);
     expect(windowMocks.toggleMaximize).toHaveBeenCalledTimes(1);
-    expect(windowMocks.invoke).toHaveBeenCalledWith('quit_app');
+    expect(windowMocks.exit).toHaveBeenCalledWith(0);
     expect(windowMocks.close).not.toHaveBeenCalled();
+    expect(windowMocks.destroy).not.toHaveBeenCalled();
   });
 
   it('quits instead of closing on macos', async () => {
@@ -92,8 +96,9 @@ describe('WindowControls', () => {
 
     await user.click(screen.getByRole('button', { name: 'Fechar janela' }));
 
-    expect(windowMocks.invoke).toHaveBeenCalledWith('quit_app');
+    expect(windowMocks.exit).toHaveBeenCalledWith(0);
     expect(windowMocks.close).not.toHaveBeenCalled();
+    expect(windowMocks.destroy).not.toHaveBeenCalled();
   });
 
   it('quits instead of closing on linux', async () => {
@@ -103,8 +108,9 @@ describe('WindowControls', () => {
 
     await user.click(screen.getByRole('button', { name: 'Fechar janela' }));
 
-    expect(windowMocks.invoke).toHaveBeenCalledWith('quit_app');
+    expect(windowMocks.exit).toHaveBeenCalledWith(0);
     expect(windowMocks.close).not.toHaveBeenCalled();
+    expect(windowMocks.destroy).not.toHaveBeenCalled();
   });
 
   it('passes axe (macos sidebar)', async () => {
