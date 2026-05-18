@@ -49,7 +49,7 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["hat"]
+        "schemes": ["hat", "com.hat.app"]
       }
     },
     "updater": {

@@ -1,8 +1,13 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { openUrl } from '@tauri-apps/plugin-opener';
+import { getCurrent, onOpenUrl } from '@tauri-apps/plugin-deep-link';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { firebaseAuth } from './firebase';
+import {
+  WINDOWS_OAUTH_REDIRECT_URI,
+  isWindowsRuntime,
+  parseWindowsOAuthCallback,
+} from './oauthCallback';
 import { abortErrorMessage, withTimeout } from '../../utils/async';
 
 // Credentials for the Google OAuth 2.0 "Desktop app" client. The secret is
@@ -44,11 +49,8 @@ async function sha256Base64Url(input: string): Promise<string> {
   return base64UrlEncode(new Uint8Array(digest));
 }
 
-// Full Google OAuth loopback flow with PKCE. Opens the consent page in the
-// system browser, starts a one-shot HTTP server on a random local port to
-// catch the redirect, exchanges the auth code for tokens, then hands the
-// id_token to Firebase via signInWithCredential. Firebase's own listener
-// (see authStore.ts) picks up the new user and updates app state.
+// Full Google OAuth flow with PKCE. macOS/Linux use loopback. Windows uses a
+// custom protocol deep link to avoid local server/firewall failures.
 export async function signInWithGoogle(): Promise<void> {
   if (!CLIENT_ID || !CLIENT_SECRET) {
     throw new Error(
@@ -60,20 +62,36 @@ export async function signInWithGoogle(): Promise<void> {
   const controller = new AbortController();
   activeController = controller;
 
-  // Start the loopback listener and get the port the OS picked for us.
-  console.info('[oauth] server_starting');
-  const port = await withAbortableStep(
-    invoke<number>('oauth_start_server'),
-    controller.signal,
-    'Servidor OAuth demorou para iniciar.',
-    OAUTH_SERVER_START_TIMEOUT_MS,
-  );
-  console.info('[oauth] server_started');
-  const redirectUri = `http://127.0.0.1:${port}/oauth/callback`;
-
   const state = randomBase64Url(16);
   const codeVerifier = randomBase64Url(32);
   const codeChallenge = await sha256Base64Url(codeVerifier);
+  const useWindowsDeepLink = isWindowsRuntime();
+
+  let redirectUri = WINDOWS_OAUTH_REDIRECT_URI;
+  let callbackPromise: Promise<string>;
+
+  if (useWindowsDeepLink) {
+    console.info('[oauth] callback_mode=deeplink');
+    ({ codePromise: callbackPromise } = await prepareWindowsDeepLinkCallbackListener(
+      state,
+      controller.signal,
+    ));
+  } else {
+    console.info('[oauth] callback_mode=loopback');
+    console.info('[oauth] server_starting');
+    const port = await withAbortableStep(
+      invoke<number>('oauth_start_server'),
+      controller.signal,
+      'Servidor OAuth demorou para iniciar.',
+      OAUTH_SERVER_START_TIMEOUT_MS,
+    );
+    console.info('[oauth] server_started');
+    redirectUri = `http://127.0.0.1:${port}/oauth/callback`;
+    ({ codePromise: callbackPromise } = await prepareLoopbackCallbackListener(
+      state,
+      controller.signal,
+    ));
+  }
 
   const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   authUrl.searchParams.set('client_id', CLIENT_ID);
@@ -87,16 +105,12 @@ export async function signInWithGoogle(): Promise<void> {
   // the user is already signed in, so they can switch accounts if they want.
   authUrl.searchParams.set('prompt', 'select_account');
 
-  // Register listeners before opening the browser. On fast Windows/WebView2
-  // machines, opening first can let the native callback win the race and leave
-  // the UI stuck in "Abrindo..." until timeout.
-  const { codePromise: callbackPromise } = await prepareCallbackListener(state, controller.signal);
   callbackPromise.catch(() => {});
 
   try {
     console.info('[oauth] browser_opening');
     await withAbortableStep(
-      openUrl(authUrl),
+      invoke('open_external_url', { url: authUrl.toString() }),
       controller.signal,
       'Não consegui abrir o navegador do Google.',
     );
@@ -184,7 +198,7 @@ async function withAbortableStep<T>(
   ]);
 }
 
-async function prepareCallbackListener(
+async function prepareLoopbackCallbackListener(
   expectedState: string,
   signal: AbortSignal,
 ): Promise<{ codePromise: Promise<string> }> {
@@ -219,6 +233,63 @@ async function prepareCallbackListener(
         rejectCode(new Error(event.payload.error));
       }),
     ]);
+  } catch (error) {
+    cleanup();
+    signal.removeEventListener('abort', onAbort);
+    throw error;
+  }
+
+  return {
+    codePromise: withTimeout(
+      codePromise,
+      OAUTH_CALLBACK_TIMEOUT_MS,
+      'Google não respondeu em 2 minutos. Confirme se o browser abriu e tente de novo.',
+    ).finally(() => {
+      signal.removeEventListener('abort', onAbort);
+      cleanup();
+    }),
+  };
+}
+
+async function prepareWindowsDeepLinkCallbackListener(
+  expectedState: string,
+  signal: AbortSignal,
+): Promise<{ codePromise: Promise<string> }> {
+  let unlisten: (() => void) | null = null;
+
+  const cleanup = () => {
+    unlisten?.();
+  };
+
+  let resolveCode!: (code: string) => void;
+  let rejectCode!: (error: unknown) => void;
+  const codePromise = new Promise<string>((resolve, reject) => {
+    resolveCode = resolve;
+    rejectCode = reject;
+  });
+
+  const handleUrl = (rawUrl: string) => {
+    const parsed = parseWindowsOAuthCallback(rawUrl);
+    if (!parsed || parsed.state !== expectedState) return;
+
+    if (parsed.type === 'error') {
+      rejectCode(new Error(`OAuth rejected: ${parsed.error}`));
+      return;
+    }
+
+    resolveCode(parsed.code);
+  };
+
+  const onAbort = () => rejectCode(new DOMException('Aborted', 'AbortError'));
+  signal.addEventListener('abort', onAbort, { once: true });
+
+  try {
+    unlisten = await onOpenUrl((urls) => {
+      for (const rawUrl of urls) handleUrl(rawUrl);
+    });
+
+    const currentUrls = await getCurrent().catch(() => null);
+    for (const rawUrl of currentUrls ?? []) handleUrl(rawUrl);
   } catch (error) {
     cleanup();
     signal.removeEventListener('abort', onAbort);
