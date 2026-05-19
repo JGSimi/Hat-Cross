@@ -12,6 +12,7 @@ import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useRoomSubscriptions } from '../../hooks/useRoomSubscriptions';
+import { startWindowDrag } from '../../utils/windowDrag';
 
 const ClipboardHistory = lazy(() => import('../Clipboard/ClipboardHistory'));
 const RoomsPage = lazy(() => import('../../pages/RoomsPage'));
@@ -209,6 +210,7 @@ export default function MainLayout() {
               className="window-drag-region"
               data-tauri-drag-region
               aria-hidden
+              onPointerDown={startWindowDrag}
               style={{ alignSelf: 'stretch', flex: 1, minWidth: 0 }}
             />
             <WindowControls variant="header" />

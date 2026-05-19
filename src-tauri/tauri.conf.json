@@ -31,7 +31,7 @@
       "tooltip": "Hat — AI Assistant"
     },
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; connect-src 'self' http://ipc.localhost https://hat-proxy.joao02simi.workers.dev https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://www.googleapis.com https://oauth2.googleapis.com https://hat-cross.firebaseapp.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://lh3.googleusercontent.com; frame-ancestors 'none';"
+      "csp": "default-src 'self'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://hat-proxy.joao02simi.workers.dev https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://www.googleapis.com https://oauth2.googleapis.com https://hat-cross.firebaseapp.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://lh3.googleusercontent.com; frame-ancestors 'none';"
     }
   },
   "bundle": {

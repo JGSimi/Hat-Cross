@@ -11,6 +11,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useToastStore } from '../../stores/toastStore';
 import { usePlatform } from '../../hooks/usePlatform';
 import { groupByDate, dateGroupLabel } from '../../utils/dateGroups';
+import { startWindowDrag } from '../../utils/windowDrag';
 import WindowControls from '../Shared/WindowControls';
 import State from '../Shared/State';
 import Skeleton from '../Shared/Skeleton';
@@ -123,6 +124,7 @@ export default function Sidebar({
         <div
           className="window-drag-region"
           data-tauri-drag-region
+          onPointerDown={startWindowDrag}
           style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}
         >
           {platform === 'macos' && <WindowControls variant="sidebar" />}

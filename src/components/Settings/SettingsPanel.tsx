@@ -4,6 +4,7 @@ import { ArrowLeft, Palette, Zap, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import WindowControls from '../Shared/WindowControls';
 import { usePlatform } from '../../hooks/usePlatform';
+import { startWindowDrag } from '../../utils/windowDrag';
 import AccountHeader from './AccountHeader';
 import GeneralCard from './cards/GeneralCard';
 import AppearanceCard from './cards/AppearanceCard';
@@ -113,6 +114,7 @@ export default function SettingsPanel({ onClose }: Props) {
         <h2
           className="window-drag-region"
           data-tauri-drag-region
+          onPointerDown={startWindowDrag}
           style={{
             fontSize: 13,
             fontWeight: 600,
