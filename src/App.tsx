@@ -781,7 +781,8 @@ function App() {
           <Route path="/flash" element={<FlashPage />} />
           <Route path="*" element={<Navigate to="/main" replace />} />
         </Routes>
-
+      </Suspense>
+      <Suspense fallback={null}>
         <ThemeUnlockCelebration />
       </Suspense>
       <ToastContainer />
