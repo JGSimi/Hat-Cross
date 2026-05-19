@@ -18,6 +18,11 @@ interface OAuthCallbackPayload {
   state: string;
 }
 
+interface WindowsOAuthFlowResult {
+  code: string;
+  redirectUri: string;
+}
+
 const OAUTH_CALLBACK_TIMEOUT_MS = 120_000;
 const OAUTH_STEP_TIMEOUT_MS = 20_000;
 const OAUTH_SERVER_START_TIMEOUT_MS = 45_000;
@@ -80,6 +85,31 @@ export async function signInWithGoogle(): Promise<void> {
   const codeChallenge = await withDiagnostic('oauth_pkce_challenge', {}, () =>
     sha256Base64Url(codeVerifier),
   );
+
+  if (isWindowsDesktopRuntime()) {
+    try {
+      await signInWithGoogleWindows({
+        clientId: CLIENT_ID,
+        clientSecret: CLIENT_SECRET,
+        state,
+        codeVerifier,
+        codeChallenge,
+        signal: controller.signal,
+      });
+      return;
+    } catch (error) {
+      logDiagnostic('oauth_flow_error_visible', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      controller.abort();
+      throw new Error(abortErrorMessage(error, 'Login com Google cancelado.'));
+    } finally {
+      if (activeController === controller) {
+        activeController = null;
+      }
+    }
+  }
+
   console.info('[oauth] callback_mode=loopback');
   console.info('[oauth] server_starting');
   const port = await withDiagnostic('oauth_start_server', {}, () =>
@@ -188,6 +218,76 @@ export async function signInWithGoogle(): Promise<void> {
       activeController = null;
     }
   }
+}
+
+async function signInWithGoogleWindows({
+  clientId,
+  clientSecret,
+  state,
+  codeVerifier,
+  codeChallenge,
+  signal,
+}: {
+  clientId: string;
+  clientSecret: string;
+  state: string;
+  codeVerifier: string;
+  codeChallenge: string;
+  signal: AbortSignal;
+}): Promise<void> {
+  const flow = await withAbortableStep(
+    invoke<WindowsOAuthFlowResult>('oauth_run_loopback_flow', {
+      clientId,
+      state,
+      codeChallenge,
+    }),
+    signal,
+    'Não consegui abrir o navegador do Google.',
+    OAUTH_CALLBACK_TIMEOUT_MS + 10_000,
+  );
+
+  const tokenController = new AbortController();
+  const abortTokenFetch = () => tokenController.abort();
+  signal.addEventListener('abort', abortTokenFetch, { once: true });
+  const tokenRes = await withTimeout(
+    fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      signal: tokenController.signal,
+      body: new URLSearchParams({
+        code: flow.code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: flow.redirectUri,
+        grant_type: 'authorization_code',
+        code_verifier: codeVerifier,
+      }).toString(),
+    }),
+    OAUTH_STEP_TIMEOUT_MS,
+    'Google demorou para trocar o código de login.',
+  ).finally(() => {
+    signal.removeEventListener('abort', abortTokenFetch);
+  });
+
+  if (!tokenRes.ok) {
+    const text = await tokenRes.text();
+    throw new Error(`Troca de code por token falhou (${tokenRes.status}): ${text}`);
+  }
+
+  const tokens = (await tokenRes.json()) as {
+    id_token?: string;
+    access_token?: string;
+  };
+  if (!tokens.id_token) {
+    throw new Error('Google não retornou id_token');
+  }
+
+  const credential = GoogleAuthProvider.credential(tokens.id_token, tokens.access_token);
+  await withAbortableStep(
+    signInWithCredential(firebaseAuth, credential),
+    signal,
+    'Firebase demorou para concluir o login.',
+  );
 }
 
 async function openGoogleAuthUrl(authUrl: URL, signal: AbortSignal): Promise<void> {

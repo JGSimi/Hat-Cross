@@ -90,6 +90,14 @@ function App() {
       useConversationStore.setState({ loaded: true });
       return;
     }
+    if (isWindowsDesktop) {
+      useSettingsStore.setState({ _hydrated: true });
+      useConversationStore.setState({ conversations: [], activeConversationId: null, loaded: true });
+      useDraftsStore.setState({ drafts: {}, loaded: true });
+      useClipboardStore.setState({ entries: [], loaded: true });
+      useAuthStore.setState({ user: null, isLoading: false, isHydrated: true });
+      return;
+    }
     (async () => {
       logDiagnostic('startup_hydration_begin', { window: getCurrentWindow().label });
       try {
@@ -183,7 +191,7 @@ function App() {
     return () => {
       unlistenClose?.();
     };
-  }, [isTauri, loadSettings]);
+  }, [isTauri, isWindowsDesktop, loadSettings]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -204,6 +212,7 @@ function App() {
   const registeredShortcuts = useRef<{ clipboard: string; floatingChat: string; adjustFlashPosition: string; emergencyQuit: string }>({ clipboard: '', floatingChat: '', adjustFlashPosition: '', emergencyQuit: '' });
   useEffect(() => {
     if (!isMainWindow || !isTauri) return;
+    if (isWindowsDesktop) return;
     const prev = registeredShortcuts.current;
 
     async function registerShortcuts() {
@@ -307,13 +316,14 @@ function App() {
       if (prev.adjustFlashPosition) { unregister(prev.adjustFlashPosition).catch(() => {}); prev.adjustFlashPosition = ''; }
       if (prev.emergencyQuit) { unregister(prev.emergencyQuit).catch(() => {}); prev.emergencyQuit = ''; }
     };
-  }, [shortcuts.clipboard, shortcuts.floatingChat, shortcuts.adjustFlashPosition, shortcuts.emergencyQuit, isMainWindow, isTauri]);
+  }, [shortcuts.clipboard, shortcuts.floatingChat, shortcuts.adjustFlashPosition, shortcuts.emergencyQuit, isMainWindow, isTauri, isWindowsDesktop]);
 
   // Flash position persistence — listens for the save event emitted by the
   // /flash route in adjust mode. Global so it works whether the user triggered
   // adjust from Settings or via the global shortcut.
   useEffect(() => {
     if (!isMainWindow || !isTauri) return;
+    if (isWindowsDesktop) return;
     const unlisten = listen<{ x: number; y: number }>('flash-position-saved', (event) => {
       const current = useSettingsStore.getState().settings;
       useSettingsStore.getState().updateSettings({
@@ -331,11 +341,12 @@ function App() {
       });
     });
     return () => { unlisten.then((fn) => fn()); };
-  }, [isMainWindow, isTauri]);
+  }, [isMainWindow, isTauri, isWindowsDesktop]);
 
   // Tray menu events
   useEffect(() => {
     if (!isTauri) return;
+    if (isWindowsDesktop) return;
     const unlistenNew = listen('new-conversation', () => {
       useChatStore.getState().clearMessages();
       useConversationStore.getState().createConversation();
@@ -392,7 +403,7 @@ function App() {
       unlistenUpdates.then(fn => fn());
       unlistenLoadConv.then(fn => fn());
     };
-  }, [isTauri]);
+  }, [isTauri, isWindowsDesktop]);
 
   // Dynamic tray menu sync — rebuild when settings, conversations or streaming state change
   const rebuildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -455,6 +466,7 @@ function App() {
   // two "Processando" + two "Resposta" notifications per trigger on every OS.
   useEffect(() => {
     if (!isMainWindow || !isTauri) return;
+    if (isWindowsDesktop) return;
     let isProcessing = false;
     const setProc = (v: boolean) => {
       isProcessing = v;
@@ -732,7 +744,7 @@ function App() {
       }
     });
     return () => { unlisten.then(fn => fn()); };
-  }, [isMainWindow]);
+  }, [isMainWindow, isTauri, isWindowsDesktop]);
 
   return (
     <>

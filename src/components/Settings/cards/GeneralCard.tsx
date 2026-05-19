@@ -22,10 +22,15 @@ export default function GeneralCard() {
   const [availableVersion, setAvailableVersion] = useState<string | null>(null);
   const { t } = useTranslation('settings');
   const showToast = useToastStore((s) => s.showToast);
+  const isWindowsDesktop = typeof navigator !== 'undefined' && /win/i.test(navigator.platform);
 
   useEffect(() => {
+    if (isWindowsDesktop) {
+      setVersion('');
+      return;
+    }
     getVersion().then(setVersion).catch(() => setVersion(''));
-  }, []);
+  }, [isWindowsDesktop]);
 
   const preview = version ? `v${version}` : t('general.preview');
 

@@ -65,6 +65,7 @@ pub fn run() {
             streaming::stream_chat_hat,
             streaming::cancel_stream,
             oauth::oauth_start_server,
+            oauth::oauth_run_loopback_flow,
             oauth::open_external_url,
             tray::rebuild_tray_menu,
             tray::set_tray_icon,

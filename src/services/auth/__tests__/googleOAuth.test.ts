@@ -67,11 +67,7 @@ describe('signInWithGoogle', () => {
     expect(invoke).not.toHaveBeenCalled();
   });
 
-  it('uses the loopback callback flow inside the Tauri desktop runtime, including Windows', async () => {
-    let oauthState: string | null = null;
-    let oauthCallbackHandler: ((event: { payload: { code: string; state: string | null } }) => void) | null =
-      null;
-
+  it('uses the native Rust loopback command on Windows', async () => {
     Object.defineProperty(window.navigator, 'platform', {
       configurable: true,
       value: 'Win32',
@@ -81,33 +77,13 @@ describe('signInWithGoogle', () => {
     };
 
     mockInvoke.mockImplementation((command: string) => {
-      if (command === 'oauth_start_server') return Promise.resolve(49152);
-      if (command === 'open_external_url') {
-        const currentCall = mockInvoke.mock.calls[mockInvoke.mock.calls.length - 1];
-        const openerArgs = currentCall?.[1] as { url?: string } | undefined;
-        const parsed = new URL(String(openerArgs?.url));
-        oauthState = parsed.searchParams.get('state');
-        expect(parsed.searchParams.get('redirect_uri')).toBe(
-          'http://127.0.0.1:49152/oauth/callback',
-        );
-        queueMicrotask(() => {
-          oauthCallbackHandler?.({
-            payload: {
-              code: 'oauth-code',
-              state: oauthState,
-            },
-          });
+      if (command === 'oauth_run_loopback_flow') {
+        return Promise.resolve({
+          code: 'oauth-code',
+          redirectUri: 'http://127.0.0.1:49152/oauth/callback',
         });
-        return Promise.resolve();
       }
       return Promise.reject(new Error(`Unexpected invoke: ${command}`));
-    });
-
-    mockListen.mockImplementation(async (event, handler) => {
-      if (event === 'oauth-callback') {
-        oauthCallbackHandler = handler as typeof oauthCallbackHandler;
-      }
-      return vi.fn(() => undefined);
     });
 
     vi.stubGlobal(
@@ -122,11 +98,15 @@ describe('signInWithGoogle', () => {
 
     await signInWithGoogle();
 
-    expect(mockInvoke).toHaveBeenCalledWith('oauth_start_server');
     expect(mockInvoke).toHaveBeenCalledWith(
-      'open_external_url',
-      expect.objectContaining({ url: expect.stringContaining('accounts.google.com') }),
+      'oauth_run_loopback_flow',
+      expect.objectContaining({
+        clientId: 'test-client-id',
+        state: expect.any(String),
+        codeChallenge: expect.any(String),
+      }),
     );
+    expect(mockListen).not.toHaveBeenCalled();
     expect(mockOpenUrl).not.toHaveBeenCalled();
   });
 
@@ -200,8 +180,7 @@ describe('signInWithGoogle', () => {
     };
 
     mockInvoke.mockImplementation((command: string) => {
-      if (command === 'oauth_start_server') return Promise.resolve(49152);
-      if (command === 'open_external_url') return new Promise(() => undefined);
+      if (command === 'oauth_run_loopback_flow') return new Promise(() => undefined);
       return Promise.reject(new Error(`Unexpected invoke: ${command}`));
     });
     mockOpenUrl.mockReturnValue(new Promise(() => undefined) as ReturnType<typeof openUrl>);
@@ -212,19 +191,17 @@ describe('signInWithGoogle', () => {
     const rejection = expect(promise).rejects.toThrow('Não consegui abrir o navegador do Google.');
 
     for (let i = 0; i < 20; i += 1) {
-      if (mockInvoke.mock.calls.some(([command]) => command === 'open_external_url')) break;
+      if (mockInvoke.mock.calls.some(([command]) => command === 'oauth_run_loopback_flow')) break;
       await vi.advanceTimersByTimeAsync(0);
       await Promise.resolve();
     }
-    expect(mockInvoke.mock.calls.some(([command]) => command === 'open_external_url')).toBe(true);
-    await vi.advanceTimersByTimeAsync(60_003);
+    expect(mockInvoke.mock.calls.some(([command]) => command === 'oauth_run_loopback_flow')).toBe(true);
+    await vi.advanceTimersByTimeAsync(130_003);
     await rejection;
     vi.useRealTimers();
   });
 
   it('rejects when the loopback callback emits an OAuth error', async () => {
-    let oauthErrorHandler: ((event: { payload: { error: string } }) => void) | null = null;
-
     (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {
       invoke: vi.fn(),
     };
@@ -234,21 +211,8 @@ describe('signInWithGoogle', () => {
     });
 
     mockInvoke.mockImplementation((command: string) => {
-      if (command === 'oauth_start_server') return Promise.resolve(49152);
-      if (command === 'open_external_url') {
-        queueMicrotask(() => {
-          oauthErrorHandler?.({ payload: { error: 'access_denied' } });
-        });
-        return Promise.resolve();
-      }
+      if (command === 'oauth_run_loopback_flow') return Promise.reject(new Error('access_denied'));
       return Promise.reject(new Error(`Unexpected invoke: ${command}`));
-    });
-
-    mockListen.mockImplementation(async (event, handler) => {
-      if (event === 'oauth-error') {
-        oauthErrorHandler = handler as typeof oauthErrorHandler;
-      }
-      return vi.fn(() => undefined);
     });
 
     const { signInWithGoogle } = await import('../googleOAuth');

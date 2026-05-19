@@ -23,6 +23,11 @@ export function logDiagnostic(event: string, fields: DiagnosticFields = {}): voi
     return;
   }
 
+  if (typeof navigator !== 'undefined' && /win/i.test(navigator.platform)) {
+    console.info('[diagnostic]', event, payload);
+    return;
+  }
+
   invoke('diagnostic_log', { event, fields: payload }).catch((error) => {
     console.warn('[diagnostic] write failed:', error);
   });
