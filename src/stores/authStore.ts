@@ -1,10 +1,5 @@
 import { create } from 'zustand';
-import { onAuthStateChanged, type User } from 'firebase/auth';
-import { firebaseAuth, signOut as firebaseSignOut } from '../services/auth/firebase';
-import {
-  cancelGoogleSignIn,
-  signInWithGoogle as runGoogleOAuth,
-} from '../services/auth/googleOAuth';
+import type { User } from 'firebase/auth';
 import type { HatUser } from '../types/account';
 
 interface AuthState {
@@ -19,6 +14,9 @@ interface AuthState {
 }
 
 let activeSignInAttempt = 0;
+let authBootstrapped = false;
+let authHydrationFallback: ReturnType<typeof setTimeout> | null = null;
+let cancelGoogleSignInCached: (() => void) | null = null;
 
 function toHatUser(user: User): HatUser {
   return {
@@ -39,6 +37,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     const attempt = ++activeSignInAttempt;
     set({ isSigningIn: true, signInError: null });
     try {
+      const {
+        cancelGoogleSignIn,
+        signInWithGoogle: runGoogleOAuth,
+      } = await import('../services/auth/googleOAuth');
+      cancelGoogleSignInCached = cancelGoogleSignIn;
       await runGoogleOAuth();
       // onAuthStateChanged populates `user` automatically.
     } catch (err) {
@@ -54,30 +57,51 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   cancelSignIn: () => {
     activeSignInAttempt++;
-    cancelGoogleSignIn();
+    cancelGoogleSignInCached?.();
     set({ isSigningIn: false, signInError: null });
   },
   signOut: async () => {
+    const { signOut: firebaseSignOut } = await import('../services/auth/firebase');
     await firebaseSignOut();
     // onAuthStateChanged clears `user` automatically — no need to setState here.
   },
 }));
 
-const authHydrationFallback = setTimeout(() => {
-  const state = useAuthStore.getState();
-  if (!state.isHydrated) {
-    console.warn('[auth] Firebase auth hydration timed out; continuing signed out.');
+export async function bootstrapAuth(): Promise<void> {
+  if (authBootstrapped) return;
+  authBootstrapped = true;
+
+  authHydrationFallback = setTimeout(() => {
+    const state = useAuthStore.getState();
+    if (!state.isHydrated) {
+      console.warn('[auth] Firebase auth hydration timed out; continuing signed out.');
+      useAuthStore.setState({ user: null, isLoading: false, isHydrated: true });
+    }
+  }, 8_000);
+
+  try {
+    const [{ onAuthStateChanged }, { firebaseAuth }] = await Promise.all([
+      import('firebase/auth'),
+      import('../services/auth/firebase'),
+    ]);
+
+    onAuthStateChanged(firebaseAuth, (user) => {
+      if (authHydrationFallback) {
+        clearTimeout(authHydrationFallback);
+        authHydrationFallback = null;
+      }
+      useAuthStore.setState({
+        user: user ? toHatUser(user) : null,
+        isLoading: false,
+        isHydrated: true,
+      });
+    });
+  } catch (error) {
+    console.error('[auth] Firebase auth bootstrap failed:', error);
+    if (authHydrationFallback) {
+      clearTimeout(authHydrationFallback);
+      authHydrationFallback = null;
+    }
     useAuthStore.setState({ user: null, isLoading: false, isHydrated: true });
   }
-}, 8_000);
-
-// Subscribe to Firebase auth state on module load. Fires once synchronously
-// with the cached user (if any) and then on every sign-in / sign-out.
-onAuthStateChanged(firebaseAuth, (user) => {
-  clearTimeout(authHydrationFallback);
-  useAuthStore.setState({
-    user: user ? toHatUser(user) : null,
-    isLoading: false,
-    isHydrated: true,
-  });
-});
+}

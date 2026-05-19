@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useCallback, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { listen, emit } from '@tauri-apps/api/event';
 import { readText, writeText, readImage } from '@tauri-apps/plugin-clipboard-manager';
@@ -6,24 +6,17 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
 import { AnimatePresence, motion } from 'framer-motion';
-import MainPage from './pages/MainPage';
-import PopoverPage from './pages/PopoverPage';
-import FlashPage from './pages/FlashPage';
 import HorseLogo from './components/Shared/HorseLogo';
 import ToastContainer from './components/Shared/ToastContainer';
-import ThemeUnlockCelebration from './components/Settings/ThemeUnlockCelebration';
 import { useSettingsStore, setupSettingsSync } from './stores/settingsStore';
 import { useChatStore } from './stores/chatStore';
 import { useConversationStore, flushPendingSave } from './stores/conversationStore';
 import { useClipboardStore } from './stores/clipboardStore';
 import { useDraftsStore } from './stores/draftsStore';
-import { useAuthStore } from './stores/authStore';
+import { bootstrapAuth, useAuthStore } from './stores/authStore';
 import { useCreditsStore } from './stores/creditsStore';
 import { useRoomStore } from './stores/roomStore';
 import { nextStreamId } from './services/ai';
-import { getIdToken } from './services/auth/firebase';
-import { listenRoomData, listenRooms } from './services/rooms/listeners';
-import { startAutoUpdater } from './services/autoUpdater';
 import { AI_MODES } from './types/account';
 import { CLIPBOARD_SYSTEM_PROMPTS } from './i18n/defaults';
 import {
@@ -33,6 +26,11 @@ import {
 import { sanitizeBackendError } from './services/ai';
 import { isTauriRuntime } from './utils/tauriRuntime';
 import { withTimeout } from './utils/async';
+
+const MainPage = lazy(() => import('./pages/MainPage'));
+const PopoverPage = lazy(() => import('./pages/PopoverPage'));
+const FlashPage = lazy(() => import('./pages/FlashPage'));
+const ThemeUnlockCelebration = lazy(() => import('./components/Settings/ThemeUnlockCelebration'));
 
 /** Normalize legacy shortcut format (CmdOrCtrl → CommandOrControl) */
 function normalizeShortcut(s: string): string {
@@ -81,7 +79,6 @@ function App() {
   const shortcuts = useSettingsStore((s) => s.settings.shortcuts);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const authUser = useAuthStore((s) => s.user);
-  const activeRoomId = useRoomStore((s) => s.activeRoomId);
 
   useEffect(() => {
     if (!isTauri) {
@@ -117,13 +114,16 @@ function App() {
       ]);
     })();
     setupSettingsSync();
+    bootstrapAuth();
     useClipboardStore.getState().loadEntries();
 
     // Auto-updater: initial check 30s after launch, then every 5 min.
     // Only arm it on the main window so multi-window scenarios don't run
     // the 5-min cycle N times in parallel.
     if (getCurrentWindow().label === 'main') {
-      startAutoUpdater();
+      import('./services/autoUpdater')
+        .then(({ startAutoUpdater }) => startAutoUpdater())
+        .catch((e) => console.error('[startup] updater load failed:', e));
       // Pre-create the (hidden) flash window so typewriter mode has a live
       // webview listening to `chat-stream` before the first stream begins.
       invoke('flash_ensure').catch((e) => console.error('[flash] ensure failed:', e));
@@ -150,51 +150,12 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    if (!isMainWindow || !authUser) {
+    if (!authUser) {
       useRoomStore.getState().setRooms([]);
       useRoomStore.getState().setActiveRoom(null);
       useRoomStore.getState().clearRoomData();
-      return;
     }
-
-    return listenRooms(
-      authUser.uid,
-      (nextRooms) => {
-        const openRooms = nextRooms.filter((room) => room.status === 'open');
-        const store = useRoomStore.getState();
-        store.setRooms(openRooms);
-        if (openRooms.length === 0) {
-          store.setActiveRoom(null);
-          store.clearRoomData();
-          return;
-        }
-        if (!store.activeRoomId || !openRooms.some((room) => room.id === store.activeRoomId)) {
-          store.setActiveRoom(openRooms[0].id);
-        }
-      },
-      (error) => useRoomStore.getState().setError(error.message),
-    );
-  }, [authUser, isMainWindow]);
-
-  useEffect(() => {
-    if (!isMainWindow || !authUser || !activeRoomId) {
-      useRoomStore.getState().clearRoomData();
-      return;
-    }
-
-    return listenRoomData(activeRoomId, authUser.uid, {
-      onRoom: (room) => {
-        if (!room) return;
-        const current = useRoomStore.getState().rooms.filter((item) => item.id !== room.id);
-        useRoomStore.getState().setRooms([room, ...current]);
-      },
-      onMembers: (members) => useRoomStore.getState().setMembers(members),
-      onEntries: (entries) => useRoomStore.getState().setEntries(entries),
-      onClusters: (clusters) => useRoomStore.getState().setClusters(clusters),
-      onNotifications: (notifications) => useRoomStore.getState().setNotifications(notifications),
-      onError: (error) => useRoomStore.getState().setError(error.message),
-    });
-  }, [activeRoomId, authUser, isMainWindow]);
+  }, [authUser]);
 
   // Global shortcut registration via JS API (handles CommandOrControl correctly per platform)
   // Only in the main window — each Tauri window boots its own App instance, and
@@ -525,6 +486,7 @@ function App() {
           setProc(false);
           return;
         }
+        const { getIdToken } = await import('./services/auth/firebase');
         const hatToken = await getIdToken();
         if (!hatToken) {
           invoke('send_notification', {
@@ -784,7 +746,7 @@ function App() {
                 fontWeight: 800,
                 letterSpacing: -1,
                 color: 'var(--text-bright)',
-                fontFamily: "'General Sans', -apple-system, sans-serif",
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
               }}
             >
               Hat
@@ -811,16 +773,18 @@ function App() {
         )}
       </AnimatePresence>
 
-      <Routes>
-        <Route path="/" element={<MainPage />} />
-        <Route path="/main" element={<MainPage />} />
-        <Route path="/popover" element={<PopoverPage />} />
-        <Route path="/flash" element={<FlashPage />} />
-        <Route path="*" element={<Navigate to="/main" replace />} />
-      </Routes>
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/" element={<MainPage />} />
+          <Route path="/main" element={<MainPage />} />
+          <Route path="/popover" element={<PopoverPage />} />
+          <Route path="/flash" element={<FlashPage />} />
+          <Route path="*" element={<Navigate to="/main" replace />} />
+        </Routes>
 
+        <ThemeUnlockCelebration />
+      </Suspense>
       <ToastContainer />
-      <ThemeUnlockCelebration />
     </>
   );
 }

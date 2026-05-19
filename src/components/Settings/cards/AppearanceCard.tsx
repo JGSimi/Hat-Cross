@@ -1,13 +1,15 @@
+import { lazy, Suspense } from 'react';
 import { Palette, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import SettingsCard from './SettingsCard';
-import ThemePicker from '../ThemePicker';
 import { Section } from './primitives';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import { useCreditsStore } from '../../../stores/creditsStore';
 import { THEME_PRESETS } from '../../../types';
 import { formatCredits, getProgressToNext } from '../../../utils/themeUnlocks';
+
+const ThemePicker = lazy(() => import('../ThemePicker'));
 
 export default function AppearanceCard() {
   const { settings, setTheme } = useSettingsStore();
@@ -86,7 +88,9 @@ export default function AppearanceCard() {
           )
         }
       >
-        <ThemePicker current={settings.theme} onChange={setTheme} />
+        <Suspense fallback={<div style={{ minHeight: 72 }} />}>
+          <ThemePicker current={settings.theme} onChange={setTheme} />
+        </Suspense>
       </Section>
     </SettingsCard>
   );

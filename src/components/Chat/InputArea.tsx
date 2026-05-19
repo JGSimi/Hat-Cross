@@ -150,8 +150,8 @@ export default function InputArea({
             fontSize: 10,
             color: 'var(--text-muted)',
             background: 'color-mix(in srgb, var(--surface-input) 60%, transparent)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
+            backdropFilter: 'var(--panel-backdrop-filter, blur(8px))',
+            WebkitBackdropFilter: 'var(--panel-backdrop-filter, blur(8px))',
             border: '1px solid var(--border-input)',
             borderRadius: 6,
             letterSpacing: '0.02em',
@@ -169,8 +169,8 @@ export default function InputArea({
           background: isDragOver
             ? 'var(--surface-input-hover)'
             : 'color-mix(in srgb, var(--surface-input) 80%, transparent)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          backdropFilter: 'var(--panel-backdrop-filter, blur(12px))',
+          WebkitBackdropFilter: 'var(--panel-backdrop-filter, blur(12px))',
           border: isFocused ? '1px solid var(--border-focused)' : '1px solid var(--border-input)',
           borderRadius: 14, padding: '10px 14px',
           boxShadow: isFocused

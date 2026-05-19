@@ -84,7 +84,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
         alignItems: 'center',
         justifyContent: 'center',
         background: 'var(--bg-primary)',
-        backdropFilter: 'blur(30px)',
+        backdropFilter: 'var(--panel-backdrop-filter-strong, blur(30px))',
       }}
     >
       {/* Ambient glow for depth */}
@@ -802,7 +802,7 @@ function DoneStep({ platform }: { platform: Platform }) {
                   background: 'var(--surface-secondary)',
                   border: '0.5px solid var(--border-subtle)',
                   color: 'var(--text-bright)',
-                  fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+                  fontFamily: '"SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace',
                   fontSize: 10.5,
                   fontWeight: 600,
                 }}
@@ -862,7 +862,7 @@ const kbdStyle: React.CSSProperties = {
   background: 'var(--bg-primary)',
   border: '0.5px solid var(--border-subtle)',
   boxShadow: '0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.2)',
-  fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+  fontFamily: '"SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace',
   fontSize: 10.5,
   fontWeight: 600,
   color: 'var(--text-bright)',

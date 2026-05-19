@@ -153,8 +153,8 @@ export default function RechargeModal({ open, onClose }: Props) {
             position: 'fixed',
             inset: 0,
             background: 'rgba(0,0,0,0.66)',
-            backdropFilter: 'blur(14px) saturate(1.3)',
-            WebkitBackdropFilter: 'blur(14px) saturate(1.3)',
+            backdropFilter: 'var(--panel-backdrop-filter, blur(14px) saturate(1.3))',
+            WebkitBackdropFilter: 'var(--panel-backdrop-filter, blur(14px) saturate(1.3))',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -199,8 +199,8 @@ export default function RechargeModal({ open, onClose }: Props) {
                 padding: 7,
                 display: 'flex',
                 borderRadius: 8,
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
+                backdropFilter: 'var(--panel-backdrop-filter, blur(8px))',
+                WebkitBackdropFilter: 'var(--panel-backdrop-filter, blur(8px))',
               }}
               aria-label={t('common:actions.close', 'Fechar')}
             >
@@ -721,7 +721,7 @@ function PixPill({
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            fontFamily: "'JetBrains Mono', 'SF Mono', ui-monospace, monospace",
+            fontFamily: '"SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace',
             letterSpacing: -0.2,
           }}
           title={pixKey}
@@ -881,8 +881,8 @@ function CelebrationOverlay({
         inset: 0,
         background:
           'radial-gradient(circle at center, color-mix(in srgb, var(--success, #16A34A) 20%, transparent), var(--bg-primary) 72%)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
+        backdropFilter: 'var(--panel-backdrop-filter-strong, blur(24px))',
+        WebkitBackdropFilter: 'var(--panel-backdrop-filter-strong, blur(24px))',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',

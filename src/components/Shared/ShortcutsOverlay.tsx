@@ -117,8 +117,8 @@ export default function ShortcutsOverlay({ open, onClose }: Props) {
             inset: 0,
             zIndex: 999,
             background: 'color-mix(in srgb, #000 60%, transparent)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
+            backdropFilter: 'var(--panel-backdrop-filter, blur(10px))',
+            WebkitBackdropFilter: 'var(--panel-backdrop-filter, blur(10px))',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -268,7 +268,7 @@ export default function ShortcutsOverlay({ open, onClose }: Props) {
                         <kbd
                           style={{
                             fontFamily:
-                              "'JetBrains Mono', ui-monospace, monospace",
+                              '"SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace',
                             fontSize: 10.5,
                             color: 'var(--text-secondary)',
                             padding: '3px 7px',

@@ -106,7 +106,7 @@ export default function EmptyState({ compact = false }: EmptyStateProps = {}) {
                 }}
               >
                 <kbd style={{
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: '"SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace',
                   fontSize: 10, color: 'var(--text-muted)', fontWeight: 500,
                 }}>
                   {sc.keys}

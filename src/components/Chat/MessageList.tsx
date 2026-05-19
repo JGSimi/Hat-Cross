@@ -1,8 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
 import MessageBubble from './MessageBubble';
 import ThinkingBlock from './ThinkingBlock';
 import type { Message } from '../../types';
@@ -154,9 +151,7 @@ export default function MessageList({ messages, streamingContent, streamingThink
                       paddingLeft: 14,
                     }}
                   >
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-                      {streamingContent}
-                    </ReactMarkdown>
+                    <span style={{ whiteSpace: 'pre-wrap' }}>{streamingContent}</span>
                     <span style={{ display: 'inline-block', width: 6, height: 14, background: 'var(--color-accent)', borderRadius: 1, marginLeft: 2, animation: 'blink 1s step-end infinite' }} />
                   </div>
                 )}

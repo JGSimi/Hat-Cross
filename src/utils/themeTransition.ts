@@ -10,7 +10,7 @@
 
 type TransitionEvent = { clientX: number; clientY: number };
 
-const FALLBACK_DURATION_MS = 1150;
+const FALLBACK_DURATION_MS = 320;
 const FALLBACK_CLASS = 'theme-transitioning';
 
 function setOriginVars(event?: TransitionEvent) {

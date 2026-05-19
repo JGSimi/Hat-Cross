@@ -1,9 +1,7 @@
 import { useState, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, Check } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
+import MarkdownRenderer from '../Shared/MarkdownRenderer';
 import { formatTimestamp } from '../../utils/markdown';
 import ThinkingBlock from './ThinkingBlock';
 import type { Message } from '../../types';
@@ -67,9 +65,7 @@ function MessageBubble({ message, isGrouped }: Props) {
                 paddingLeft: 14,
               }}
             >
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-                {message.content}
-              </ReactMarkdown>
+              <MarkdownRenderer>{message.content}</MarkdownRenderer>
             </div>
           </>
         )}
@@ -94,7 +90,7 @@ function MessageBubble({ message, isGrouped }: Props) {
             aria-live="polite"
             style={{
               background: 'color-mix(in srgb, var(--bg-secondary) 90%, transparent)',
-              backdropFilter: 'blur(8px)',
+              backdropFilter: 'var(--panel-backdrop-filter, blur(8px))',
               border: '1px solid var(--border-subtle)',
               borderRadius: 6, cursor: 'pointer', padding: '3px 7px',
               color: copied ? 'var(--success)' : 'var(--text-faint)',

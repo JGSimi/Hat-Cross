@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import {
   initializeAuth,
+  browserPopupRedirectResolver,
   indexedDBLocalPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
@@ -22,6 +23,7 @@ export const firebaseAuth = initializeAuth(firebaseApp, {
     browserLocalPersistence,
     browserSessionPersistence,
   ],
+  popupRedirectResolver: browserPopupRedirectResolver,
 });
 
 export async function signOut(): Promise<void> {

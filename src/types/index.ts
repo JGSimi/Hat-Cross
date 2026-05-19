@@ -722,7 +722,7 @@ const INITIAL_LANGUAGE = detectInitialLanguage();
 
 export const DEFAULT_SETTINGS: AppSettings = {
   autoLaunch: false,
-  theme: 'lavender',
+  theme: 'noir',
   language: INITIAL_LANGUAGE,
   popover: {
     width: 380,

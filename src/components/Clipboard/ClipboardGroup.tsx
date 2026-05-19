@@ -27,8 +27,8 @@ export default function ClipboardGroup({ label, count, isPinnedGroup, children }
           padding: '14px 4px 8px',
           background:
             'linear-gradient(180deg, color-mix(in srgb, var(--bg-primary) 92%, transparent) 0%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 65%, transparent 100%)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          backdropFilter: 'var(--panel-backdrop-filter, blur(12px))',
+          WebkitBackdropFilter: 'var(--panel-backdrop-filter, blur(12px))',
         }}
       >
         {isPinnedGroup && (

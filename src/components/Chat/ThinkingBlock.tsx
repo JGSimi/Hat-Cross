@@ -1,8 +1,7 @@
 import { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, ChevronRight } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import MarkdownRenderer from '../Shared/MarkdownRenderer';
 
 interface Props {
   thinking: string;
@@ -71,14 +70,12 @@ function ThinkingBlock({ thinking, isStreaming = false }: Props) {
                 color: 'var(--text-muted)',
               }}
             >
-              {thinking.length > 50000 ? (
+              {isStreaming || thinking.length > 50000 ? (
                 <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
                   {thinking}
                 </pre>
               ) : (
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {thinking}
-                </ReactMarkdown>
+                <MarkdownRenderer highlight={false}>{thinking}</MarkdownRenderer>
               )}
               {isStreaming && (
                 <span style={{

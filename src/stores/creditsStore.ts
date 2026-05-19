@@ -1,15 +1,13 @@
 import { create } from 'zustand';
-import { doc, getFirestore, onSnapshot } from 'firebase/firestore';
-import { firebaseApp } from '../services/auth/firebase';
 import { useAuthStore } from './authStore';
 import { VALID_MODES, type AIMode } from '../types/account';
 import type { AppTheme } from '../types';
-import { resolveUnlockedSet } from '../utils/themeUnlocks';
 
 // Defaults applied until the pricing doc loads. Must stay in sync with the
 // admin tool's DEFAULT_BRL_TO_CREDITS, but the live Firestore value wins.
 const DEFAULT_BRL_TO_CREDITS = 700;
 const DEFAULT_TIER_BRLS = [5, 10, 20, 50];
+const FREE_THEME_NAMES: readonly AppTheme[] = ['noir', 'minimal', 'ocean', 'sunset', 'forest'];
 
 export interface PricingSnapshot {
   brlToCredits: number;
@@ -37,7 +35,7 @@ interface CreditsState {
 export const useCreditsStore = create<CreditsState>((set, get) => ({
   credits: 0,
   creditsSpent: 0,
-  unlockedThemes: resolveUnlockedSet(0, undefined),
+  unlockedThemes: new Set<AppTheme>(FREE_THEME_NAMES),
   isLoading: true,
   lastConsumed: null,
   selectedMode: 'hat',
@@ -53,12 +51,24 @@ export const useCreditsStore = create<CreditsState>((set, get) => ({
   isThemeUnlocked: (theme) => get().unlockedThemes.has(theme),
 }));
 
-const firestore = getFirestore(firebaseApp);
 let unsubscribeUser: (() => void) | null = null;
 let unsubscribePricing: (() => void) | null = null;
 
-function attachPricingListener() {
+async function resolveUnlockedThemes(
+  creditsSpent: number,
+  firestoreUnlocked: string[] | undefined,
+): Promise<Set<AppTheme>> {
+  const { resolveUnlockedSet } = await import('../utils/themeUnlocks');
+  return resolveUnlockedSet(creditsSpent, firestoreUnlocked);
+}
+
+async function attachPricingListener() {
   if (unsubscribePricing) return;
+  const [{ doc, getFirestore, onSnapshot }, { firebaseApp }] = await Promise.all([
+    import('firebase/firestore'),
+    import('../services/auth/firebase'),
+  ]);
+  const firestore = getFirestore(firebaseApp);
   const ref = doc(firestore, 'config', 'pricing');
   unsubscribePricing = onSnapshot(
     ref,
@@ -82,7 +92,7 @@ function attachPricingListener() {
   );
 }
 
-useAuthStore.subscribe((state, prev) => {
+useAuthStore.subscribe(async (state, prev) => {
   if (state.user?.uid === prev.user?.uid) return;
 
   if (unsubscribeUser) {
@@ -98,7 +108,7 @@ useAuthStore.subscribe((state, prev) => {
     useCreditsStore.setState({
       credits: 0,
       creditsSpent: 0,
-      unlockedThemes: resolveUnlockedSet(0, undefined),
+      unlockedThemes: new Set<AppTheme>(FREE_THEME_NAMES),
       isLoading: false,
       lastConsumed: null,
     });
@@ -106,22 +116,28 @@ useAuthStore.subscribe((state, prev) => {
   }
 
   useCreditsStore.setState({ isLoading: true });
-  attachPricingListener();
+  await attachPricingListener();
 
+  const [{ doc, getFirestore, onSnapshot }, { firebaseApp }] = await Promise.all([
+    import('firebase/firestore'),
+    import('../services/auth/firebase'),
+  ]);
+  const firestore = getFirestore(firebaseApp);
   const ref = doc(firestore, 'users', state.user.uid);
   unsubscribeUser = onSnapshot(
     ref,
-    (snap) => {
+    async (snap) => {
       const data = snap.exists() ? snap.data() : null;
       const credits = typeof data?.credits === 'number' ? data.credits : 0;
       const creditsSpent = typeof data?.creditsSpent === 'number' ? data.creditsSpent : 0;
       const firestoreUnlocked = Array.isArray(data?.unlockedThemes)
         ? (data.unlockedThemes as unknown[]).filter((v): v is string => typeof v === 'string')
         : undefined;
+      const unlockedThemes = await resolveUnlockedThemes(creditsSpent, firestoreUnlocked);
       useCreditsStore.setState({
         credits,
         creditsSpent,
-        unlockedThemes: resolveUnlockedSet(creditsSpent, firestoreUnlocked),
+        unlockedThemes,
         isLoading: false,
       });
     },

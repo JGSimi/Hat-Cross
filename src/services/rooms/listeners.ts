@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getFirestore,
+  limit,
   onSnapshot,
   query,
   where,
@@ -120,7 +121,10 @@ export function listenRooms(
   onRooms: (rooms: Room[]) => void,
   onError: (error: Error) => void,
 ): () => void {
-  const roomsQuery = collection(firestore, 'users', uid, 'rooms');
+  const roomsQuery = query(
+    collection(firestore, 'users', uid, 'rooms'),
+    limit(20),
+  );
   return onSnapshot(
     roomsQuery,
     (snap) => {
@@ -149,22 +153,22 @@ export function listenRoomData(
       handlers.onError,
     ),
     onSnapshot(
-      collection(firestore, 'rooms', roomId, 'members'),
+      query(collection(firestore, 'rooms', roomId, 'members'), limit(50)),
       (snap) => handlers.onMembers(snap.docs.map((item) => memberFromData(item.id, item.data()))),
       handlers.onError,
     ),
     onSnapshot(
-      collection(firestore, 'rooms', roomId, 'entries'),
+      query(collection(firestore, 'rooms', roomId, 'entries'), limit(100)),
       (snap) => handlers.onEntries(snap.docs.map((item) => entryFromData(item.id, item.data()))),
       handlers.onError,
     ),
     onSnapshot(
-      collection(firestore, 'rooms', roomId, 'clusters'),
+      query(collection(firestore, 'rooms', roomId, 'clusters'), limit(50)),
       (snap) => handlers.onClusters(snap.docs.map((item) => clusterFromData(item.id, item.data()))),
       handlers.onError,
     ),
     onSnapshot(
-      query(collection(firestore, 'rooms', roomId, 'notifications'), where('uid', '==', uid)),
+      query(collection(firestore, 'rooms', roomId, 'notifications'), where('uid', '==', uid), limit(50)),
       (snap) =>
         handlers.onNotifications(snap.docs.map((item) => notificationFromData(item.id, item.data()))),
       handlers.onError,

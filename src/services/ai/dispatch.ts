@@ -3,7 +3,6 @@ import type { ConversationTurn, StreamChunk } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
 import { useCreditsStore } from '../../stores/creditsStore';
 import { useToastStore } from '../../stores/toastStore';
-import { getIdToken } from '../auth/firebase';
 import i18n from '../../i18n';
 
 export interface DispatchOptions {
@@ -38,6 +37,7 @@ export async function dispatchStream(
     return null;
   }
 
+  const { getIdToken } = await import('../auth/firebase');
   const idToken = await getIdToken();
   if (!idToken) {
     setError('Sessão expirada. Faça login de novo em Configurações > Conta.');

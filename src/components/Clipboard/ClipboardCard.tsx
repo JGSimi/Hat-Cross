@@ -1,8 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
+import MarkdownRenderer from '../Shared/MarkdownRenderer';
 import {
   Clipboard, ImageIcon, Clock, Cpu, Pin, ChevronRight,
   Copy, Check, Trash2, MessageSquarePlus, FileText, Sparkles, X,
@@ -484,9 +482,7 @@ function ClipboardCardInner({
                     'linear-gradient(to bottom, transparent 0, black 10px, black calc(100% - 10px), transparent 100%)',
                 }}
               >
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-                  {entry.response || '_Sem resposta_'}
-                </ReactMarkdown>
+                <MarkdownRenderer>{entry.response || '_Sem resposta_'}</MarkdownRenderer>
               </div>
             </div>
 

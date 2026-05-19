@@ -23,8 +23,8 @@ interface Props {
   onChange: (theme: AppTheme) => void;
 }
 
-// Mesmo cooldown do picker anterior — evita View Transitions sobrepostas.
-const COOLDOWN_MS = 1200;
+// Evita View Transitions sobrepostas sem travar a navegação do picker.
+const COOLDOWN_MS = 360;
 const TEASER_LOCKED_COUNT = 3;
 
 export default function ThemePicker({ current, onChange }: Props) {

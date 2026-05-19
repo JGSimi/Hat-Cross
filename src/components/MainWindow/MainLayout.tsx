@@ -1,13 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+import { lazy, Suspense, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PanelLeftOpen } from 'lucide-react';
 import Sidebar, { type SidebarView } from './Sidebar';
 import ChatWindow from '../Chat/ChatWindow';
-import ClipboardHistory from '../Clipboard/ClipboardHistory';
-import RoomsPage from '../../pages/RoomsPage';
-import SettingsPanel from '../Settings/SettingsPanel';
-import OnboardingWizard from '../Shared/OnboardingWizard';
-import ShortcutsOverlay from '../Shared/ShortcutsOverlay';
 import WindowControls from '../Shared/WindowControls';
 import { usePlatform } from '../../hooks/usePlatform';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
@@ -15,6 +10,32 @@ import { useChatStore } from '../../stores/chatStore';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useRoomSubscriptions } from '../../hooks/useRoomSubscriptions';
+
+const ClipboardHistory = lazy(() => import('../Clipboard/ClipboardHistory'));
+const RoomsPage = lazy(() => import('../../pages/RoomsPage'));
+const SettingsPanel = lazy(() => import('../Settings/SettingsPanel'));
+const OnboardingWizard = lazy(() => import('../Shared/OnboardingWizard'));
+const ShortcutsOverlay = lazy(() => import('../Shared/ShortcutsOverlay'));
+
+function ViewFallback({ title }: { title: string }) {
+  return (
+    <div
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '22px 24px',
+        background: 'var(--bg-primary)',
+        color: 'var(--text-primary)',
+      }}
+    >
+      <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-strong)' }}>
+        {title}
+      </h1>
+    </div>
+  );
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -54,6 +75,7 @@ export default function MainLayout() {
   const [activeView, setActiveView] = useState<SidebarView>('chats');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  useRoomSubscriptions(activeView === 'rooms');
 
   // `?` (shift + /) opens the shortcut reference overlay. The hook already
   // ignores keystrokes inside inputs/textareas unless whitelisted, so typing
@@ -106,7 +128,9 @@ export default function MainLayout() {
       {/* Onboarding wizard for first-run users */}
       <AnimatePresence>
         {needsOnboarding && (
-          <OnboardingWizard onComplete={() => updateSettings({ onboardingCompleted: true })} />
+          <Suspense fallback={null}>
+            <OnboardingWizard onComplete={() => updateSettings({ onboardingCompleted: true })} />
+          </Suspense>
         )}
       </AnimatePresence>
 
@@ -150,8 +174,8 @@ export default function MainLayout() {
               style={{
                 width: 28, height: '100%',
                 background: 'color-mix(in srgb, var(--bg-secondary) 60%, transparent)',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
+                backdropFilter: 'var(--panel-backdrop-filter, blur(20px))',
+                WebkitBackdropFilter: 'var(--panel-backdrop-filter, blur(20px))',
                 border: 'none',
                 cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
@@ -201,7 +225,9 @@ export default function MainLayout() {
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               style={{ position: 'absolute', inset: 0, zIndex: 60 }}
             >
-              <SettingsPanel onClose={() => setShowSettings(false)} />
+              <Suspense fallback={<ViewFallback title="Configurações" />}>
+                <SettingsPanel onClose={() => setShowSettings(false)} />
+              </Suspense>
             </motion.div>
           ) : activeView === 'clipboard' ? (
             <motion.div
@@ -212,7 +238,9 @@ export default function MainLayout() {
               transition={{ type: 'spring', stiffness: 300, damping: 28 }}
               style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}
             >
-              <ClipboardHistory onBack={handleBackFromClipboard} />
+              <Suspense fallback={<ViewFallback title="Clipboard" />}>
+                <ClipboardHistory onBack={handleBackFromClipboard} />
+              </Suspense>
             </motion.div>
           ) : activeView === 'rooms' ? (
             <motion.div
@@ -223,7 +251,9 @@ export default function MainLayout() {
               transition={{ type: 'spring', stiffness: 300, damping: 28 }}
               style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}
             >
-              <RoomsPage />
+              <Suspense fallback={<ViewFallback title="Salas" />}>
+                <RoomsPage />
+              </Suspense>
             </motion.div>
           ) : (
             <motion.div
@@ -240,10 +270,14 @@ export default function MainLayout() {
         </AnimatePresence>
       </motion.div>
 
-      <ShortcutsOverlay
-        open={shortcutsOpen}
-        onClose={() => setShortcutsOpen(false)}
-      />
+      {shortcutsOpen && (
+        <Suspense fallback={null}>
+          <ShortcutsOverlay
+            open={shortcutsOpen}
+            onClose={() => setShortcutsOpen(false)}
+          />
+        </Suspense>
+      )}
     </motion.div>
   );
 }
