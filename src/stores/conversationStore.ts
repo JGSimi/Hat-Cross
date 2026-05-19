@@ -5,6 +5,11 @@ import { useSettingsStore } from './settingsStore';
 import { useDraftsStore } from './draftsStore';
 import { isTauriRuntime } from '../utils/tauriRuntime';
 import { withTimeout } from '../utils/async';
+import {
+  readLocalJson,
+  useWindowsWebStorageFallback,
+  writeLocalJson,
+} from '../utils/windowsStorageFallback';
 
 const SAVE_DEBOUNCE_MS = 500;
 const STORE_IO_TIMEOUT_MS = 4_000;
@@ -16,6 +21,10 @@ const activeIdStore = new LazyStore('conversation-state.json');
 
 function persistActiveId(id: string | null): void {
   if (!isTauriRuntime()) return;
+  if (useWindowsWebStorageFallback()) {
+    writeLocalJson('conversation-state', { activeId: id });
+    return;
+  }
   activeIdStore
     .set('activeId', id)
     .then(() => activeIdStore.save())
@@ -260,6 +269,18 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       set({ loaded: true });
       return;
     }
+    if (useWindowsWebStorageFallback()) {
+      const conversations = readLocalJson<Conversation[]>('conversations-data') ?? [];
+      const activeState = readLocalJson<{ activeId: string | null }>('conversation-state');
+      const sorted = sortConversations(conversations);
+      const activeConversationId =
+        activeState?.activeId && sorted.some((c) => c.id === activeState.activeId)
+          ? activeState.activeId
+          : sorted[0]?.id ?? null;
+      set({ conversations: sorted, activeConversationId, loaded: true });
+      pruneDraftOrphans(sorted.map((c) => c.id));
+      return;
+    }
     loadPromise = (async () => {
       try {
       const data = (await withTimeout(
@@ -310,6 +331,12 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
 
   saveConversations: async () => {
     if (!isTauriRuntime()) return;
+    if (useWindowsWebStorageFallback()) {
+      const { conversations, activeConversationId } = get();
+      writeLocalJson('conversations-data', conversations);
+      writeLocalJson('conversation-state', { activeId: activeConversationId });
+      return;
+    }
     try {
       const { conversations } = get();
       await conversationStore.set('conversations', conversations);

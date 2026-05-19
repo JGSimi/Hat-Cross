@@ -4,6 +4,11 @@ import type { ClipboardEntry } from '../types';
 import { isTauriRuntime } from '../utils/tauriRuntime';
 import { withTimeout } from '../utils/async';
 import { withDiagnostic } from '../services/diagnostics';
+import {
+  readLocalJson,
+  useWindowsWebStorageFallback,
+  writeLocalJson,
+} from '../utils/windowsStorageFallback';
 
 const MAX_ENTRIES = 100;
 const clipboardDataStore = new LazyStore('clipboard-data.json');
@@ -81,13 +86,15 @@ export const useClipboardStore = create<ClipboardState>()((set, get) => ({
       return;
     }
     try {
-      const data = (await withDiagnostic('clipboard_store_load', {}, () =>
-        withTimeout(
-          clipboardDataStore.get<ClipboardEntry[]>('entries'),
-          STORE_IO_TIMEOUT_MS,
-          'clipboard load timed out',
-        ),
-      )) ?? [];
+      const data = useWindowsWebStorageFallback()
+        ? readLocalJson<ClipboardEntry[]>('clipboard-data') ?? []
+        : (await withDiagnostic('clipboard_store_load', {}, () =>
+            withTimeout(
+              clipboardDataStore.get<ClipboardEntry[]>('entries'),
+              STORE_IO_TIMEOUT_MS,
+              'clipboard load timed out',
+            ),
+          )) ?? [];
       set({ entries: data.slice(0, MAX_ENTRIES), loaded: true });
     } catch (err) {
       console.error('[ClipboardStore] Failed to load:', err);
@@ -99,6 +106,10 @@ export const useClipboardStore = create<ClipboardState>()((set, get) => ({
     if (!isTauriRuntime()) return;
     try {
       const { entries } = get();
+      if (useWindowsWebStorageFallback()) {
+        writeLocalJson('clipboard-data', entries);
+        return;
+      }
       await withDiagnostic('clipboard_store_save', { entries: entries.length }, async () => {
         await withTimeout(
           clipboardDataStore.set('entries', entries),
