@@ -69,6 +69,7 @@ function App() {
   const location = useLocation();
   const isMainWindow = location.pathname === '/main' || location.pathname === '/';
   const isTauri = isTauriRuntime();
+  const isWindowsDesktop = typeof navigator !== 'undefined' && /win/i.test(navigator.platform);
   const [showSplash, setShowSplash] = useState(isMainWindow);
 
   // Auto-dismiss splash after 2s (then 1s fade-out via AnimatePresence)
@@ -396,6 +397,7 @@ function App() {
   // Dynamic tray menu sync — rebuild when settings, conversations or streaming state change
   const rebuildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rebuildTrayMenu = useCallback(() => {
+    if (isWindowsDesktop) return;
     if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current);
     rebuildTimerRef.current = setTimeout(() => {
       // Tray label reflects the active Hat credits mode (Mini/Standard/Plus).
@@ -417,7 +419,7 @@ function App() {
         state: { providerLabel, isProcessing, recentConversations },
       }).catch(() => {});
     }, 300);
-  }, []);
+  }, [isWindowsDesktop]);
 
   useEffect(() => {
     if (!isTauri) return;
@@ -429,7 +431,9 @@ function App() {
       if (state.isStreaming !== prevStreaming) {
         prevStreaming = state.isStreaming;
         rebuildTrayMenu();
-        invoke('set_tray_icon', { iconState: state.isStreaming ? 'processing' : 'idle' }).catch(() => {});
+        if (!isWindowsDesktop) {
+          invoke('set_tray_icon', { iconState: state.isStreaming ? 'processing' : 'idle' }).catch(() => {});
+        }
       }
     });
 
@@ -442,7 +446,7 @@ function App() {
       unsubChat();
       if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current);
     };
-  }, [isTauri, rebuildTrayMenu]);
+  }, [isTauri, isWindowsDesktop, rebuildTrayMenu]);
 
   // Clipboard processing — core feature
   // Flow: user copies text/image → presses shortcut → AI processes → notification with response

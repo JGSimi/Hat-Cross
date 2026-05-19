@@ -18,16 +18,17 @@ import {
 } from '../i18n/defaults';
 import { isTauriRuntime } from '../utils/tauriRuntime';
 import { withTimeout } from '../utils/async';
-import {
-  readLocalJson,
-  useWindowsWebStorageFallback,
-  writeLocalJson,
-} from '../utils/windowsStorageFallback';
 
 // --- Tauri persistent store ---
 
 const tauriStore = new LazyStore('settings.json');
 const STORE_LOAD_TIMEOUT_MS = 4_000;
+
+function canMutateTrayFromFrontend(): boolean {
+  if (!isTauriRuntime()) return false;
+  if (typeof navigator !== 'undefined' && /win/i.test(navigator.platform)) return false;
+  return true;
+}
 
 // --- Deep merge helper (preserves nested user values, fills in new defaults) ---
 
@@ -120,7 +121,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     i18n.changeLanguage(lang).catch(() => {});
     // Rust side: tenta regenerar o tray na nova língua. Silencia erro se
     // o comando ainda não foi registrado (build antigo durante transição).
-    if (isTauriRuntime()) {
+    if (canMutateTrayFromFrontend()) {
       invoke('set_tray_language', { lang }).catch(() => {});
     }
     return isKnownDefault;
@@ -161,16 +162,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       i18n.changeLanguage(DEFAULT_SETTINGS.language).catch(() => {});
       return;
     }
-    if (useWindowsWebStorageFallback()) {
-      const stored = readLocalJson<{ settings: AppSettings }>('hat-settings');
-      const merged = deepMerge(DEFAULT_SETTINGS, stored?.settings ?? {}) as AppSettings;
-      if (!VALID_THEMES.includes(merged.theme)) merged.theme = DEFAULT_SETTINGS.theme;
-      if (!SUPPORTED_LANGUAGES.includes(merged.language)) merged.language = 'pt-BR';
-      set({ settings: merged, _hydrated: true });
-      i18n.changeLanguage(merged.language).catch(() => {});
-      invoke('set_tray_language', { lang: merged.language }).catch(() => {});
-      return;
-    }
     try {
       const stored = await withTimeout(
         tauriStore.get<{ settings: AppSettings }>('hat-settings'),
@@ -201,7 +192,9 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         set({ settings: merged, _hydrated: true });
         // Sync i18n + tray com o idioma carregado.
         i18n.changeLanguage(merged.language).catch(() => {});
-        invoke('set_tray_language', { lang: merged.language }).catch(() => {});
+        if (canMutateTrayFromFrontend()) {
+          invoke('set_tray_language', { lang: merged.language }).catch(() => {});
+        }
       } else {
         set({ _hydrated: true });
         i18n.changeLanguage(DEFAULT_SETTINGS.language).catch(() => {});
@@ -216,11 +209,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   saveSettings: async () => {
     if (!get()._hydrated) return; // Don't overwrite persisted data before hydration
     if (!isTauriRuntime()) return;
-    if (useWindowsWebStorageFallback()) {
-      writeLocalJson('hat-settings', { settings: get().settings });
-      emit('settings-changed').catch(() => {});
-      return;
-    }
     try {
       const { settings } = get();
       await tauriStore.set('hat-settings', { settings });
