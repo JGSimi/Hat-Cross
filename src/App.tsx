@@ -14,6 +14,7 @@ import { useConversationStore, flushPendingSave } from './stores/conversationSto
 import { useClipboardStore } from './stores/clipboardStore';
 import { useDraftsStore } from './stores/draftsStore';
 import { bootstrapAuth, useAuthStore } from './stores/authStore';
+import { useToastStore } from './stores/toastStore';
 import { useCreditsStore } from './stores/creditsStore';
 import { useRoomStore } from './stores/roomStore';
 import { nextStreamId } from './services/ai';
@@ -26,6 +27,8 @@ import {
 import { sanitizeBackendError } from './services/ai';
 import { isTauriRuntime } from './utils/tauriRuntime';
 import { withTimeout } from './utils/async';
+import { logDiagnostic, withDiagnostic } from './services/diagnostics';
+import { checkForUpdates, installAvailableUpdate, startAutoUpdater } from './services/autoUpdater';
 
 const MainPage = lazy(() => import('./pages/MainPage'));
 const PopoverPage = lazy(() => import('./pages/PopoverPage'));
@@ -87,43 +90,79 @@ function App() {
       return;
     }
     (async () => {
+      logDiagnostic('startup_hydration_begin', { window: getCurrentWindow().label });
       try {
-        await withTimeout(loadSettings(), 5_000, 'settings hydration timed out');
+        await withDiagnostic('startup_settings_hydration', {}, () =>
+          withTimeout(loadSettings(), 5_000, 'settings hydration timed out'),
+        );
       } catch (error) {
         console.error('[startup] settings hydration fallback:', error);
+        logDiagnostic('startup_settings_hydration_fallback', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         useSettingsStore.setState({ _hydrated: true });
       }
 
       await Promise.all([
-        withTimeout(
-          useConversationStore.getState().loadConversations(),
-          5_000,
-          'conversations hydration timed out',
+        withDiagnostic('startup_conversations_hydration', {}, () =>
+          withTimeout(
+            useConversationStore.getState().loadConversations(),
+            5_000,
+            'conversations hydration timed out',
+          ),
         ).catch((error) => {
           console.error('[startup] conversations hydration fallback:', error);
+          logDiagnostic('startup_conversations_hydration_fallback', {
+            error: error instanceof Error ? error.message : String(error),
+          });
           useConversationStore.setState({ conversations: [], loaded: true });
         }),
-        withTimeout(
-          useDraftsStore.getState().loadDrafts(),
-          5_000,
-          'drafts hydration timed out',
+        withDiagnostic('startup_drafts_hydration', {}, () =>
+          withTimeout(
+            useDraftsStore.getState().loadDrafts(),
+            5_000,
+            'drafts hydration timed out',
+          ),
         ).catch((error) => {
           console.error('[startup] drafts hydration fallback:', error);
+          logDiagnostic('startup_drafts_hydration_fallback', {
+            error: error instanceof Error ? error.message : String(error),
+          });
           useDraftsStore.setState({ drafts: {}, loaded: true });
         }),
+        withDiagnostic('startup_clipboard_hydration', {}, () =>
+          withTimeout(
+            useClipboardStore.getState().loadEntries(),
+            5_000,
+            'clipboard hydration timed out',
+          ),
+        ).catch((error) => {
+          console.error('[startup] clipboard hydration fallback:', error);
+          logDiagnostic('startup_clipboard_hydration_fallback', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+          useClipboardStore.setState({ entries: [], loaded: true });
+        }),
+        withDiagnostic('startup_auth_bootstrap', {}, () =>
+          withTimeout(bootstrapAuth(), 10_000, 'auth bootstrap timed out'),
+        ).catch((error) => {
+          console.error('[startup] auth bootstrap fallback:', error);
+          logDiagnostic('startup_auth_bootstrap_fallback', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+          useAuthStore.setState({ user: null, isLoading: false, isHydrated: true });
+        }),
       ]);
+      logDiagnostic('startup_hydration_done', { window: getCurrentWindow().label });
     })();
     setupSettingsSync();
-    bootstrapAuth();
-    useClipboardStore.getState().loadEntries();
 
     // Auto-updater: initial check 30s after launch, then every 5 min.
     // Only arm it on the main window so multi-window scenarios don't run
     // the 5-min cycle N times in parallel.
     if (getCurrentWindow().label === 'main') {
-      import('./services/autoUpdater')
-        .then(({ startAutoUpdater }) => startAutoUpdater())
-        .catch((e) => console.error('[startup] updater load failed:', e));
+      logDiagnostic('startup_updater_arm', {});
+      startAutoUpdater();
       // Pre-create the (hidden) flash window so typewriter mode has a live
       // webview listening to `chat-stream` before the first stream begins.
       invoke('flash_ensure').catch((e) => console.error('[flash] ensure failed:', e));
@@ -305,23 +344,42 @@ function App() {
     });
     const unlistenUpdates = listen('check-updates', async () => {
       try {
-        const { check } = await import('@tauri-apps/plugin-updater');
-        const update = await check();
-        if (update) {
-          await update.downloadAndInstall();
-          // Flush settings to disk before relaunching to preserve API keys
-          await useSettingsStore.getState().saveSettings();
-          const { relaunch } = await import('@tauri-apps/plugin-process');
-          await relaunch();
-        } else {
-          const { notifications } = useSettingsStore.getState().settings;
+        logDiagnostic('update_tray_clicked', {});
+        const result = await checkForUpdates('tray');
+        const { notifications } = useSettingsStore.getState().settings;
+        if (result.status === 'available') {
+          useToastStore.getState().showToast(`Hat v${result.version} disponível.`, 'info', {
+            duration: 60_000,
+            action: {
+              label: 'Instalar',
+              onClick: () => {
+                installAvailableUpdate('tray').catch(() => {});
+              },
+            },
+          });
           if (notifications.enabled && notifications.showUpdateNotification) {
-            invoke('send_notification', { title: 'Hat', body: 'Você já está na versão mais recente!' })
-              .catch((e) => console.error('[notification] update-check failed:', e));
+            invoke('send_notification', {
+              title: `Hat v${result.version} disponível`,
+              body: 'Abra o app e clique em Instalar para aplicar.',
+            }).catch((e) => console.error('[notification] update-check failed:', e));
           }
+          return;
+        }
+
+        if (notifications.enabled && notifications.showUpdateNotification) {
+          invoke('send_notification', { title: 'Hat', body: 'Você já está na versão mais recente!' })
+            .catch((e) => console.error('[notification] update-check failed:', e));
         }
       } catch (e) {
         console.error('Update check failed:', e);
+        logDiagnostic('update_tray_error_visible', {
+          error: e instanceof Error ? e.message : String(e),
+        });
+        useToastStore.getState().showToast(
+          `Erro ao verificar atualização: ${e instanceof Error ? e.message : String(e)}`,
+          'error',
+          { duration: 8000 },
+        );
       }
     });
     const unlistenLoadConv = listen<string>('load-conversation', (event) => {

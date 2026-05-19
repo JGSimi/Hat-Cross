@@ -5,6 +5,7 @@ import { GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'fireb
 import { firebaseAuth } from './firebase';
 import { abortErrorMessage, withTimeout } from '../../utils/async';
 import { isTauriRuntime } from '../../utils/tauriRuntime';
+import { logDiagnostic, withDiagnostic } from '../diagnostics';
 
 // Credentials for the Google OAuth 2.0 "Desktop app" client. The secret is
 // shipped with the binary intentionally — Google explicitly supports this for
@@ -24,6 +25,7 @@ const OAUTH_LISTENER_TIMEOUT_MS = 5_000;
 let activeController: AbortController | null = null;
 
 export function cancelGoogleSignIn(): void {
+  logDiagnostic('oauth_cancel_requested', { hasActiveController: Boolean(activeController) });
   activeController?.abort();
 }
 
@@ -51,11 +53,15 @@ async function sha256Base64Url(input: string): Promise<string> {
 // callback path on every desktop OS avoids custom protocol registration races.
 export async function signInWithGoogle(): Promise<void> {
   if (!isTauriRuntime()) {
-    await signInWithGoogleInBrowser();
+    await withDiagnostic('oauth_browser_popup_flow', {}, signInWithGoogleInBrowser);
     return;
   }
 
   if (!CLIENT_ID || !CLIENT_SECRET) {
+    logDiagnostic('oauth_config_missing', {
+      clientIdPresent: Boolean(CLIENT_ID),
+      clientSecretPresent: Boolean(CLIENT_SECRET),
+    });
     throw new Error(
       'OAuth não configurado. Preencha VITE_GOOGLE_OAUTH_CLIENT_ID e VITE_GOOGLE_OAUTH_CLIENT_SECRET em .env.local.',
     );
@@ -67,14 +73,22 @@ export async function signInWithGoogle(): Promise<void> {
 
   const state = randomBase64Url(16);
   const codeVerifier = randomBase64Url(32);
-  const codeChallenge = await sha256Base64Url(codeVerifier);
+  logDiagnostic('oauth_flow_start', {
+    stateLength: state.length,
+    codeVerifierLength: codeVerifier.length,
+  });
+  const codeChallenge = await withDiagnostic('oauth_pkce_challenge', {}, () =>
+    sha256Base64Url(codeVerifier),
+  );
   console.info('[oauth] callback_mode=loopback');
   console.info('[oauth] server_starting');
-  const port = await withAbortableStep(
-    invoke<number>('oauth_start_server'),
-    controller.signal,
-    'Servidor OAuth demorou para iniciar.',
-    OAUTH_SERVER_START_TIMEOUT_MS,
+  const port = await withDiagnostic('oauth_start_server', {}, () =>
+    withAbortableStep(
+      invoke<number>('oauth_start_server'),
+      controller.signal,
+      'Servidor OAuth demorou para iniciar.',
+      OAUTH_SERVER_START_TIMEOUT_MS,
+    ),
   );
   console.info('[oauth] server_started');
   const redirectUri = `http://127.0.0.1:${port}/oauth/callback`;
@@ -91,18 +105,22 @@ export async function signInWithGoogle(): Promise<void> {
   authUrl.searchParams.set('prompt', 'select_account');
 
   try {
-    const { codePromise: callbackPromise } = await withAbortableStep(
-      prepareLoopbackCallbackListener(state, controller.signal),
-      controller.signal,
-      'Listener OAuth demorou para iniciar.',
-      OAUTH_LISTENER_TIMEOUT_MS,
+    const { codePromise: callbackPromise } = await withDiagnostic('oauth_listener_setup', {}, () =>
+      withAbortableStep(
+        prepareLoopbackCallbackListener(state, controller.signal),
+        controller.signal,
+        'Listener OAuth demorou para iniciar.',
+        OAUTH_LISTENER_TIMEOUT_MS,
+      ),
     );
     callbackPromise.catch(() => {});
 
     console.info('[oauth] browser_opening');
-    await openGoogleAuthUrl(authUrl, controller.signal);
+    await withDiagnostic('oauth_browser_open', { opener: 'auto' }, () =>
+      openGoogleAuthUrl(authUrl, controller.signal),
+    );
     console.info('[oauth] browser_opened');
-    const code = await callbackPromise;
+    const code = await withDiagnostic('oauth_callback_wait', {}, () => callbackPromise);
     console.info('[oauth] callback_received');
 
     // Exchange the code for tokens. We hit the token endpoint directly from
@@ -110,22 +128,24 @@ export async function signInWithGoogle(): Promise<void> {
     const tokenController = new AbortController();
     const abortTokenFetch = () => tokenController.abort();
     controller.signal.addEventListener('abort', abortTokenFetch, { once: true });
-    const tokenRes = await withTimeout(
-      fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        signal: tokenController.signal,
-        body: new URLSearchParams({
-          code,
-          client_id: CLIENT_ID,
-          client_secret: CLIENT_SECRET,
-          redirect_uri: redirectUri,
-          grant_type: 'authorization_code',
-          code_verifier: codeVerifier,
-        }).toString(),
-      }),
-      OAUTH_STEP_TIMEOUT_MS,
-      'Google demorou para trocar o código de login.',
+    const tokenRes = await withDiagnostic('oauth_token_exchange', {}, () =>
+      withTimeout(
+        fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          signal: tokenController.signal,
+          body: new URLSearchParams({
+            code,
+            client_id: CLIENT_ID,
+            client_secret: CLIENT_SECRET,
+            redirect_uri: redirectUri,
+            grant_type: 'authorization_code',
+            code_verifier: codeVerifier,
+          }).toString(),
+        }),
+        OAUTH_STEP_TIMEOUT_MS,
+        'Google demorou para trocar o código de login.',
+      ),
     ).finally(() => {
       controller.signal.removeEventListener('abort', abortTokenFetch);
     });
@@ -148,14 +168,19 @@ export async function signInWithGoogle(): Promise<void> {
     // Cloud project, so no extra allowlisting is needed beyond having the
     // Desktop client and the Firebase project share a project id.
     const credential = GoogleAuthProvider.credential(tokens.id_token, tokens.access_token);
-    await withAbortableStep(
-      signInWithCredential(firebaseAuth, credential),
-      controller.signal,
-      'Firebase demorou para concluir o login.',
+    await withDiagnostic('oauth_firebase_signin', {}, () =>
+      withAbortableStep(
+        signInWithCredential(firebaseAuth, credential),
+        controller.signal,
+        'Firebase demorou para concluir o login.',
+      ),
     );
     console.info('[oauth] firebase_signed_in');
     // onAuthStateChanged fires, authStore updates, UI re-renders. We're done.
   } catch (error) {
+    logDiagnostic('oauth_flow_error_visible', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     controller.abort();
     throw new Error(abortErrorMessage(error, 'Login com Google cancelado.'));
   } finally {
@@ -168,27 +193,39 @@ export async function signInWithGoogle(): Promise<void> {
 async function openGoogleAuthUrl(authUrl: URL, signal: AbortSignal): Promise<void> {
   if (isWindowsDesktopRuntime()) {
     try {
-      await openGoogleAuthUrlWithNativeOpener(authUrl, signal);
+      await withDiagnostic('oauth_browser_open_native_windows', {}, () =>
+        openGoogleAuthUrlWithNativeOpener(authUrl, signal),
+      );
       return;
     } catch (error) {
       if (signal.aborted) throw error;
+      logDiagnostic('oauth_browser_open_native_windows_error', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       console.warn('[oauth] native opener failed, falling back to Tauri opener:', error);
     }
   }
 
   try {
-    await withAbortableStep(
-      openUrl(authUrl),
-      signal,
-      'Não consegui abrir o navegador do Google.',
+    await withDiagnostic('oauth_browser_open_plugin', {}, () =>
+      withAbortableStep(
+        openUrl(authUrl),
+        signal,
+        'Não consegui abrir o navegador do Google.',
+      ),
     );
     return;
   } catch (error) {
     if (signal.aborted) throw error;
+    logDiagnostic('oauth_browser_open_plugin_error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     console.warn('[oauth] plugin opener failed, falling back to native opener:', error);
   }
 
-  await openGoogleAuthUrlWithNativeOpener(authUrl, signal);
+  await withDiagnostic('oauth_browser_open_native_fallback', {}, () =>
+    openGoogleAuthUrlWithNativeOpener(authUrl, signal),
+  );
 }
 
 async function openGoogleAuthUrlWithNativeOpener(
@@ -261,10 +298,16 @@ async function prepareLoopbackCallbackListener(
 
   const onAbort = () => rejectCode(new DOMException('Aborted', 'AbortError'));
   signal.addEventListener('abort', onAbort, { once: true });
+  logDiagnostic('oauth_listener_start', {});
 
   try {
     [cbUnlisten, errUnlisten] = await Promise.all([
       listen<OAuthCallbackPayload>('oauth-callback', (event) => {
+        logDiagnostic('oauth_callback_event', {
+          stateMatches: event.payload.state === expectedState,
+          codeLength: event.payload.code.length,
+          stateLength: event.payload.state.length,
+        });
         if (event.payload.state !== expectedState) {
           rejectCode(new Error('State mismatch (possível CSRF)'));
           return;
@@ -272,12 +315,17 @@ async function prepareLoopbackCallbackListener(
         resolveCode(event.payload.code);
       }),
       listen<{ error: string }>('oauth-error', (event) => {
+        logDiagnostic('oauth_callback_error_event', { error: event.payload.error });
         rejectCode(new Error(event.payload.error));
       }),
     ]);
+    logDiagnostic('oauth_listener_ready', {});
   } catch (error) {
     cleanup();
     signal.removeEventListener('abort', onAbort);
+    logDiagnostic('oauth_listener_error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   }
 

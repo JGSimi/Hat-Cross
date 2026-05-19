@@ -38,6 +38,7 @@
       "title": "Updates",
       "check": "Check for updates",
       "checking": "Checking…",
+      "available": "Install v{{version}}",
       "downloading": "Downloading {{progress}}%",
       "upToDate": "Up to date",
       "error": "Check failed"

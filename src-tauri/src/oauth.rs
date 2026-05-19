@@ -1,4 +1,5 @@
 use serde::Serialize;
+use serde_json::json;
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpListener as StdTcpListener};
 use tauri::{AppHandle, Emitter};
@@ -6,7 +7,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener as TokioTcpListener;
 use tokio::time::{timeout, Duration};
 
-#[derive(Serialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct OAuthCallbackPayload {
     pub code: String,
@@ -39,16 +40,28 @@ const CALLBACK_HTML: &str = r#"<!DOCTYPE html>
 #[tauri::command]
 pub async fn oauth_start_server(app: AppHandle) -> Result<u16, String> {
     eprintln!("[oauth] bind_start");
+    crate::commands::diagnostic_log_event(&app, "oauth_start_server_start", json!({}));
     let (listener, port) = bind_loopback_listener().map_err(|e| format!("Bind failed: {}", e))?;
     eprintln!("[oauth] bind_ok port={}", port);
+    crate::commands::diagnostic_log_event(&app, "oauth_start_server_ok", json!({ "port": port }));
 
     let app_handle = app.clone();
     tokio::spawn(async move {
         match handle_oauth_callback(listener).await {
             Ok(payload) => {
+                crate::commands::diagnostic_log_event(
+                    &app_handle,
+                    "oauth_callback_received",
+                    json!({ "stateLen": payload.state.len(), "codeLen": payload.code.len() }),
+                );
                 let _ = app_handle.emit("oauth-callback", payload);
             }
             Err(err) => {
+                crate::commands::diagnostic_log_event(
+                    &app_handle,
+                    "oauth_callback_error",
+                    json!({ "error": err }),
+                );
                 let _ = app_handle.emit("oauth-error", OAuthErrorPayload { error: err });
             }
         }
@@ -77,7 +90,13 @@ fn bind_loopback_listener() -> Result<(TokioTcpListener, u16), String> {
 // no extra crate dep. Used to launch the Google OAuth consent page during
 // the loopback flow.
 #[tauri::command]
-pub fn open_external_url(url: String) -> Result<(), String> {
+pub fn open_external_url(app: AppHandle, url: String) -> Result<(), String> {
+    let safe_url = redact_url_for_log(&url);
+    crate::commands::diagnostic_log_event(
+        &app,
+        "open_external_url_start",
+        json!({ "url": safe_url }),
+    );
     let spawn_result = if cfg!(target_os = "macos") {
         std::process::Command::new("open").arg(&url).spawn()
     } else if cfg!(target_os = "windows") {
@@ -89,9 +108,25 @@ pub fn open_external_url(url: String) -> Result<(), String> {
     } else {
         std::process::Command::new("xdg-open").arg(&url).spawn()
     };
-    spawn_result
-        .map(|_| ())
-        .map_err(|e| format!("Failed to open URL: {}", e))
+    match spawn_result {
+        Ok(_) => {
+            eprintln!("[oauth] external_url_spawned url={}", safe_url);
+            crate::commands::diagnostic_log_event(
+                &app,
+                "open_external_url_ok",
+                json!({ "url": safe_url }),
+            );
+            Ok(())
+        }
+        Err(e) => {
+            crate::commands::diagnostic_log_event(
+                &app,
+                "open_external_url_error",
+                json!({ "url": safe_url, "error": e.to_string() }),
+            );
+            Err(format!("Failed to open URL: {}", e))
+        }
+    }
 }
 
 async fn handle_oauth_callback(listener: TokioTcpListener) -> Result<OAuthCallbackPayload, String> {
@@ -156,12 +191,80 @@ async fn handle_oauth_callback(listener: TokioTcpListener) -> Result<OAuthCallba
 
 #[cfg(test)]
 mod tests {
-    use super::bind_loopback_listener;
+    use super::{bind_loopback_listener, handle_oauth_callback, redact_url_for_log};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpStream;
 
     #[tokio::test]
     async fn binds_loopback_listener_on_random_port() {
         let (_listener, port) = bind_loopback_listener().expect("loopback bind should work");
         assert!(port > 0);
+    }
+
+    #[tokio::test]
+    async fn parses_successful_loopback_callback() {
+        let (listener, port) = bind_loopback_listener().expect("loopback bind should work");
+        let task = tokio::spawn(handle_oauth_callback(listener));
+
+        let mut stream = TcpStream::connect(("127.0.0.1", port))
+            .await
+            .expect("callback connect should work");
+        stream
+            .write_all(b"GET /oauth/callback?code=abc123&state=state+one HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+            .await
+            .expect("request write should work");
+        let mut response = vec![0; 128];
+        let _ = stream.read(&mut response).await;
+
+        let payload = task.await.expect("task should join").expect("callback should parse");
+        assert_eq!(payload.code, "abc123");
+        assert_eq!(payload.state, "state one");
+    }
+
+    #[tokio::test]
+    async fn surfaces_oauth_access_denied() {
+        let (listener, port) = bind_loopback_listener().expect("loopback bind should work");
+        let task = tokio::spawn(handle_oauth_callback(listener));
+
+        let mut stream = TcpStream::connect(("127.0.0.1", port))
+            .await
+            .expect("callback connect should work");
+        stream
+            .write_all(b"GET /oauth/callback?error=access_denied&state=ignored HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+            .await
+            .expect("request write should work");
+        let mut response = vec![0; 128];
+        let _ = stream.read(&mut response).await;
+
+        let error = task.await.expect("task should join").expect_err("error should surface");
+        assert_eq!(error, "OAuth rejected: access_denied");
+    }
+
+    #[tokio::test]
+    async fn rejects_loopback_callback_without_code() {
+        let (listener, port) = bind_loopback_listener().expect("loopback bind should work");
+        let task = tokio::spawn(handle_oauth_callback(listener));
+
+        let mut stream = TcpStream::connect(("127.0.0.1", port))
+            .await
+            .expect("callback connect should work");
+        stream
+            .write_all(b"GET /oauth/callback?state=ok HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+            .await
+            .expect("request write should work");
+        let mut response = vec![0; 128];
+        let _ = stream.read(&mut response).await;
+
+        let error = task.await.expect("task should join").expect_err("error should surface");
+        assert_eq!(error, "Missing `code` in redirect");
+    }
+
+    #[test]
+    fn redacts_oauth_url_query_for_logs() {
+        assert_eq!(
+            redact_url_for_log("https://accounts.google.com/o/oauth2/v2/auth?client_id=secret&state=s"),
+            "https://accounts.google.com/o/oauth2/v2/auth?<redacted>",
+        );
     }
 }
 
@@ -195,4 +298,11 @@ fn url_decode(input: &str) -> String {
         }
     }
     out
+}
+
+fn redact_url_for_log(input: &str) -> String {
+    input
+        .split_once('?')
+        .map(|(base, _)| format!("{}?<redacted>", base))
+        .unwrap_or_else(|| input.to_string())
 }

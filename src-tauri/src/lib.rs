@@ -52,6 +52,7 @@ pub fn run() {
             commands::toggle_popover_window,
             commands::close_window,
             commands::quit_app,
+            commands::diagnostic_log,
             commands::set_autostart,
             commands::send_notification,
             commands::flash_ensure,

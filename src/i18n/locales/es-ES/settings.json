@@ -38,6 +38,7 @@
       "title": "Actualizaciones",
       "check": "Buscar actualizaciones",
       "checking": "Buscando…",
+      "available": "Instalar v{{version}}",
       "downloading": "Descargando {{progress}}%",
       "upToDate": "Actualizado",
       "error": "Error al buscar"
