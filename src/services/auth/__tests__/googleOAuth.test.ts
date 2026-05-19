@@ -36,8 +36,8 @@ vi.mock('firebase/auth', () => ({
 
     static credential = vi.fn();
   },
-  signInWithCredential: vi.fn(),
-  signInWithPopup: vi.fn(() => Promise.resolve({})),
+  signInWithCredential: vi.fn(() => Promise.resolve({ user: null })),
+  signInWithPopup: vi.fn(() => Promise.resolve({ user: null })),
 }));
 
 vi.mock('../firebase', () => ({
