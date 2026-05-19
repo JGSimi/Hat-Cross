@@ -5,17 +5,27 @@ import { useSettingsStore } from './settingsStore';
 import { useDraftsStore } from './draftsStore';
 import { isTauriRuntime } from '../utils/tauriRuntime';
 import { withTimeout } from '../utils/async';
+import {
+  getWindowsStoreValue,
+  isWindowsStoreRuntime,
+  setWindowsStoreValue,
+} from '../services/windowsStore';
 
 const SAVE_DEBOUNCE_MS = 500;
 const STORE_IO_TIMEOUT_MS = 4_000;
 
-// LazyStore is proven to work in this app (settings.json, conversation-state.json
-// both persist correctly). plugin-fs writeTextFile silently fails with $APPDATA scope.
+// Windows uses Rust file commands for the same JSON files because LazyStore
+// load is the observed startup block there. macOS/Linux keep the Tauri store.
 const conversationStore = new LazyStore('conversations-data.json');
 const activeIdStore = new LazyStore('conversation-state.json');
 
 function persistActiveId(id: string | null): void {
   if (!isTauriRuntime()) return;
+  if (isWindowsStoreRuntime()) {
+    setWindowsStoreValue('conversation-state.json', 'activeId', id)
+      .catch((err) => console.error('Failed to persist activeId', err));
+    return;
+  }
   activeIdStore
     .set('activeId', id)
     .then(() => activeIdStore.save())
@@ -262,46 +272,58 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
     }
     loadPromise = (async () => {
       try {
-      const data = (await withTimeout(
-        conversationStore.get<Conversation[]>('conversations'),
-        STORE_IO_TIMEOUT_MS,
-        'conversations load timed out',
-      )) ?? [];
+        const data = (isWindowsStoreRuntime()
+          ? await withTimeout(
+              getWindowsStoreValue<Conversation[]>('conversations-data.json', 'conversations'),
+              STORE_IO_TIMEOUT_MS,
+              'conversations load timed out',
+            )
+          : await withTimeout(
+              conversationStore.get<Conversation[]>('conversations'),
+              STORE_IO_TIMEOUT_MS,
+              'conversations load timed out',
+            )) ?? [];
 
-      const maxConv = getMaxConversations();
-      let conversations = data;
-      if (conversations.length > maxConv) {
-        const pinned = conversations.filter((c) => c.isPinned);
-        const unpinned = conversations.filter((c) => !c.isPinned);
-        conversations = [...pinned, ...unpinned.slice(0, maxConv - pinned.length)];
-      }
+        const maxConv = getMaxConversations();
+        let conversations = data;
+        if (conversations.length > maxConv) {
+          const pinned = conversations.filter((c) => c.isPinned);
+          const unpinned = conversations.filter((c) => !c.isPinned);
+          conversations = [...pinned, ...unpinned.slice(0, maxConv - pinned.length)];
+        }
 
-      const sorted = sortConversations(conversations);
+        const sorted = sortConversations(conversations);
 
-      let persistedActiveId: string | null = null;
-      try {
-        persistedActiveId = (await withTimeout(
-          activeIdStore.get<string | null>('activeId'),
-          STORE_IO_TIMEOUT_MS,
-          'active conversation load timed out',
-        )) ?? null;
+        let persistedActiveId: string | null = null;
+        try {
+          persistedActiveId = (isWindowsStoreRuntime()
+            ? await withTimeout(
+                getWindowsStoreValue<string | null>('conversation-state.json', 'activeId'),
+                STORE_IO_TIMEOUT_MS,
+                'active conversation load timed out',
+              )
+            : await withTimeout(
+                activeIdStore.get<string | null>('activeId'),
+                STORE_IO_TIMEOUT_MS,
+                'active conversation load timed out',
+              )) ?? null;
+        } catch (err) {
+          console.error('Failed to read activeId', err);
+        }
+        const validatedActiveId =
+          persistedActiveId && sorted.some((c) => c.id === persistedActiveId)
+            ? persistedActiveId
+            : sorted[0]?.id ?? null;
+
+        set({
+          conversations: sorted,
+          activeConversationId: validatedActiveId,
+          loaded: true,
+        });
       } catch (err) {
-        console.error('Failed to read activeId', err);
+        console.error('[ConversationStore] Failed to load conversations:', err);
+        set({ conversations: [], loaded: true });
       }
-      const validatedActiveId =
-        persistedActiveId && sorted.some((c) => c.id === persistedActiveId)
-          ? persistedActiveId
-          : sorted[0]?.id ?? null;
-
-      set({
-        conversations: sorted,
-        activeConversationId: validatedActiveId,
-        loaded: true,
-      });
-    } catch (err) {
-      console.error('[ConversationStore] Failed to load conversations:', err);
-      set({ conversations: [], loaded: true });
-    }
     })().finally(() => {
       loadPromise = null;
     });
@@ -312,12 +334,20 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
     if (!isTauriRuntime()) return;
     try {
       const { conversations } = get();
-      await conversationStore.set('conversations', conversations);
-      await withTimeout(
-        conversationStore.save(),
-        STORE_IO_TIMEOUT_MS,
-        'conversations save timed out',
-      );
+      if (isWindowsStoreRuntime()) {
+        await withTimeout(
+          setWindowsStoreValue('conversations-data.json', 'conversations', conversations),
+          STORE_IO_TIMEOUT_MS,
+          'conversations save timed out',
+        );
+      } else {
+        await conversationStore.set('conversations', conversations);
+        await withTimeout(
+          conversationStore.save(),
+          STORE_IO_TIMEOUT_MS,
+          'conversations save timed out',
+        );
+      }
     } catch (err) {
       console.error('[ConversationStore] Failed to save conversations:', err);
     }

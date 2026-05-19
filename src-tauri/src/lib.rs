@@ -53,6 +53,8 @@ pub fn run() {
             commands::close_window,
             commands::quit_app,
             commands::diagnostic_log,
+            commands::windows_store_get,
+            commands::windows_store_set,
             commands::set_autostart,
             commands::send_notification,
             commands::flash_ensure,

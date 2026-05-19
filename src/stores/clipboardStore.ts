@@ -4,6 +4,11 @@ import type { ClipboardEntry } from '../types';
 import { isTauriRuntime } from '../utils/tauriRuntime';
 import { withTimeout } from '../utils/async';
 import { withDiagnostic } from '../services/diagnostics';
+import {
+  getWindowsStoreValue,
+  isWindowsStoreRuntime,
+  setWindowsStoreValue,
+} from '../services/windowsStore';
 
 const MAX_ENTRIES = 100;
 const clipboardDataStore = new LazyStore('clipboard-data.json');
@@ -82,11 +87,17 @@ export const useClipboardStore = create<ClipboardState>()((set, get) => ({
     }
     try {
       const data = (await withDiagnostic('clipboard_store_load', {}, () =>
-        withTimeout(
-          clipboardDataStore.get<ClipboardEntry[]>('entries'),
-          STORE_IO_TIMEOUT_MS,
-          'clipboard load timed out',
-        ),
+        isWindowsStoreRuntime()
+          ? withTimeout(
+              getWindowsStoreValue<ClipboardEntry[]>('clipboard-data.json', 'entries'),
+              STORE_IO_TIMEOUT_MS,
+              'clipboard load timed out',
+            )
+          : withTimeout(
+              clipboardDataStore.get<ClipboardEntry[]>('entries'),
+              STORE_IO_TIMEOUT_MS,
+              'clipboard load timed out',
+            ),
       )) ?? [];
       set({ entries: data.slice(0, MAX_ENTRIES), loaded: true });
     } catch (err) {
@@ -100,16 +111,24 @@ export const useClipboardStore = create<ClipboardState>()((set, get) => ({
     try {
       const { entries } = get();
       await withDiagnostic('clipboard_store_save', { entries: entries.length }, async () => {
-        await withTimeout(
-          clipboardDataStore.set('entries', entries),
-          STORE_IO_TIMEOUT_MS,
-          'clipboard set timed out',
-        );
-        await withTimeout(
-          clipboardDataStore.save(),
-          STORE_IO_TIMEOUT_MS,
-          'clipboard save timed out',
-        );
+        if (isWindowsStoreRuntime()) {
+          await withTimeout(
+            setWindowsStoreValue('clipboard-data.json', 'entries', entries),
+            STORE_IO_TIMEOUT_MS,
+            'clipboard save timed out',
+          );
+        } else {
+          await withTimeout(
+            clipboardDataStore.set('entries', entries),
+            STORE_IO_TIMEOUT_MS,
+            'clipboard set timed out',
+          );
+          await withTimeout(
+            clipboardDataStore.save(),
+            STORE_IO_TIMEOUT_MS,
+            'clipboard save timed out',
+          );
+        }
       });
     } catch (err) {
       console.error('[ClipboardStore] Failed to save:', err);

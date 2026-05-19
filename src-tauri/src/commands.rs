@@ -1,5 +1,5 @@
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 use std::fs::OpenOptions;
 use std::io::Write;
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
@@ -84,6 +84,61 @@ fn chrono_like_now_ms() -> u128 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis())
         .unwrap_or_default()
+}
+
+fn windows_store_path(app: &AppHandle, file: &str) -> Result<std::path::PathBuf, String> {
+    if !file
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
+    {
+        return Err("invalid store filename".to_string());
+    }
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("app_data_dir failed: {}", e))?;
+    std::fs::create_dir_all(&app_data_dir)
+        .map_err(|e| format!("create store dir failed: {}", e))?;
+    Ok(app_data_dir.join(file))
+}
+
+fn read_windows_store(path: &std::path::Path) -> Result<Map<String, Value>, String> {
+    if !path.exists() {
+        return Ok(Map::new());
+    }
+    let raw = std::fs::read_to_string(path).map_err(|e| format!("read store failed: {}", e))?;
+    if raw.trim().is_empty() {
+        return Ok(Map::new());
+    }
+    let value: Value =
+        serde_json::from_str(&raw).map_err(|e| format!("parse store failed: {}", e))?;
+    Ok(value.as_object().cloned().unwrap_or_default())
+}
+
+#[tauri::command]
+pub fn windows_store_get(
+    app: AppHandle,
+    file: String,
+    key: String,
+) -> Result<Option<Value>, String> {
+    let path = windows_store_path(&app, &file)?;
+    let store = read_windows_store(&path)?;
+    Ok(store.get(&key).cloned())
+}
+
+#[tauri::command]
+pub fn windows_store_set(
+    app: AppHandle,
+    file: String,
+    key: String,
+    value: Value,
+) -> Result<(), String> {
+    let path = windows_store_path(&app, &file)?;
+    let mut store = read_windows_store(&path)?;
+    store.insert(key, value);
+    let raw = serde_json::to_string_pretty(&Value::Object(store))
+        .map_err(|e| format!("serialize store failed: {}", e))?;
+    std::fs::write(path, raw).map_err(|e| format!("write store failed: {}", e))
 }
 
 #[tauri::command]

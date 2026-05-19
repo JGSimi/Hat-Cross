@@ -18,6 +18,11 @@ import {
 } from '../i18n/defaults';
 import { isTauriRuntime } from '../utils/tauriRuntime';
 import { withTimeout } from '../utils/async';
+import {
+  getWindowsStoreValue,
+  isWindowsStoreRuntime,
+  setWindowsStoreValue,
+} from '../services/windowsStore';
 
 // --- Tauri persistent store ---
 
@@ -163,11 +168,17 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       return;
     }
     try {
-      const stored = await withTimeout(
-        tauriStore.get<{ settings: AppSettings }>('hat-settings'),
-        STORE_LOAD_TIMEOUT_MS,
-        'settings load timed out',
-      );
+      const stored = isWindowsStoreRuntime()
+        ? await withTimeout(
+            getWindowsStoreValue<{ settings: AppSettings }>('settings.json', 'hat-settings'),
+            STORE_LOAD_TIMEOUT_MS,
+            'settings load timed out',
+          )
+        : await withTimeout(
+            tauriStore.get<{ settings: AppSettings }>('hat-settings'),
+            STORE_LOAD_TIMEOUT_MS,
+            'settings load timed out',
+          );
       if (stored) {
         const merged = deepMerge(DEFAULT_SETTINGS, stored.settings ?? {}) as AppSettings;
         // Accent-only themes were removed — fall back to the default full theme.
@@ -211,8 +222,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     if (!isTauriRuntime()) return;
     try {
       const { settings } = get();
-      await tauriStore.set('hat-settings', { settings });
-      await tauriStore.save();
+      if (isWindowsStoreRuntime()) {
+        await setWindowsStoreValue('settings.json', 'hat-settings', { settings });
+      } else {
+        await tauriStore.set('hat-settings', { settings });
+        await tauriStore.save();
+      }
       // Notify other windows to reload settings
       emit('settings-changed').catch(() => {});
     } catch (err) {
