@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Hat",
-  "version": "2.60.8",
+  "version": "2.60.9",
   "identifier": "com.hat.app",
   "build": {
     "beforeDevCommand": "npm run dev",
