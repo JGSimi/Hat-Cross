@@ -91,7 +91,11 @@ function App() {
       return;
     }
     if (isWindowsDesktop) {
-      useSettingsStore.setState({ _hydrated: true });
+      const { settings } = useSettingsStore.getState();
+      useSettingsStore.setState({
+        settings: { ...settings, onboardingCompleted: true },
+        _hydrated: true,
+      });
       useConversationStore.setState({ conversations: [], activeConversationId: null, loaded: true });
       useDraftsStore.setState({ drafts: {}, loaded: true });
       useClipboardStore.setState({ entries: [], loaded: true });
