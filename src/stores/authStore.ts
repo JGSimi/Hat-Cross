@@ -46,7 +46,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       cancelGoogleSignInCached = cancelGoogleSignIn;
       await withDiagnostic('signIn_google_flow', { attempt }, runGoogleOAuth);
       logDiagnostic('signIn_google_flow_done', { attempt });
-      // onAuthStateChanged populates `user` automatically.
+      const { firebaseAuth } = await import('../services/auth/firebase');
+      if (attempt === activeSignInAttempt) {
+        set({
+          user: firebaseAuth.currentUser ? toHatUser(firebaseAuth.currentUser) : null,
+          isLoading: false,
+          isHydrated: true,
+        });
+      }
     } catch (err) {
       logDiagnostic('signIn_google_flow_visible_error', {
         attempt,
