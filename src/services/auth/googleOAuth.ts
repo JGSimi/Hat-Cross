@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithCredential, signInWithPopup, type User } from 'firebase/auth';
 import { firebaseAuth } from './firebase';
 import { abortErrorMessage, withTimeout } from '../../utils/async';
 import { isTauriRuntime } from '../../utils/tauriRuntime';
@@ -56,10 +56,9 @@ async function sha256Base64Url(input: string): Promise<string> {
 // Full Google OAuth loopback flow with PKCE. Google's Desktop OAuth client
 // supports loopback redirect URIs on Windows, macOS and Linux; keeping the same
 // callback path on every desktop OS avoids custom protocol registration races.
-export async function signInWithGoogle(): Promise<void> {
+export async function signInWithGoogle(): Promise<User | null> {
   if (!isTauriRuntime()) {
-    await withDiagnostic('oauth_browser_popup_flow', {}, signInWithGoogleInBrowser);
-    return;
+    return await withDiagnostic('oauth_browser_popup_flow', {}, signInWithGoogleInBrowser);
   }
 
   if (!CLIENT_ID || !CLIENT_SECRET) {
@@ -88,7 +87,7 @@ export async function signInWithGoogle(): Promise<void> {
 
   if (isWindowsDesktopRuntime()) {
     try {
-      await signInWithGoogleWindows({
+      return await signInWithGoogleWindows({
         clientId: CLIENT_ID,
         clientSecret: CLIENT_SECRET,
         state,
@@ -96,7 +95,6 @@ export async function signInWithGoogle(): Promise<void> {
         codeChallenge,
         signal: controller.signal,
       });
-      return;
     } catch (error) {
       logDiagnostic('oauth_flow_error_visible', {
         error: error instanceof Error ? error.message : String(error),
@@ -198,7 +196,7 @@ export async function signInWithGoogle(): Promise<void> {
     // Cloud project, so no extra allowlisting is needed beyond having the
     // Desktop client and the Firebase project share a project id.
     const credential = GoogleAuthProvider.credential(tokens.id_token, tokens.access_token);
-    await withDiagnostic('oauth_firebase_signin', {}, () =>
+    const userCredential = await withDiagnostic('oauth_firebase_signin', {}, () =>
       withAbortableStep(
         signInWithCredential(firebaseAuth, credential),
         controller.signal,
@@ -206,7 +204,7 @@ export async function signInWithGoogle(): Promise<void> {
       ),
     );
     console.info('[oauth] firebase_signed_in');
-    // onAuthStateChanged fires, authStore updates, UI re-renders. We're done.
+    return userCredential.user;
   } catch (error) {
     logDiagnostic('oauth_flow_error_visible', {
       error: error instanceof Error ? error.message : String(error),
@@ -234,7 +232,7 @@ async function signInWithGoogleWindows({
   codeVerifier: string;
   codeChallenge: string;
   signal: AbortSignal;
-}): Promise<void> {
+}): Promise<User | null> {
   const flow = await withAbortableStep(
     invoke<WindowsOAuthFlowResult>('oauth_run_loopback_flow', {
       clientId,
@@ -283,11 +281,12 @@ async function signInWithGoogleWindows({
   }
 
   const credential = GoogleAuthProvider.credential(tokens.id_token, tokens.access_token);
-  await withAbortableStep(
+  const userCredential = await withAbortableStep(
     signInWithCredential(firebaseAuth, credential),
     signal,
     'Firebase demorou para concluir o login.',
   );
+  return userCredential.user;
 }
 
 async function openGoogleAuthUrl(authUrl: URL, signal: AbortSignal): Promise<void> {
@@ -344,17 +343,18 @@ function isWindowsDesktopRuntime(): boolean {
   return /win/i.test(navigator.platform);
 }
 
-async function signInWithGoogleInBrowser(): Promise<void> {
+async function signInWithGoogleInBrowser(): Promise<User | null> {
   const provider = new GoogleAuthProvider();
   provider.addScope('email');
   provider.addScope('profile');
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  await withTimeout(
+  const userCredential = await withTimeout(
     signInWithPopup(firebaseAuth, provider),
     OAUTH_CALLBACK_TIMEOUT_MS,
     'Google não respondeu em 2 minutos. Confirme se o popup abriu e tente de novo.',
   );
+  return userCredential.user;
 }
 
 async function withAbortableStep<T>(

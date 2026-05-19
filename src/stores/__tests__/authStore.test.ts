@@ -39,13 +39,13 @@ describe('authStore', () => {
     mocks.runGoogleOAuth.mockResolvedValue(undefined);
   });
 
-  it('applies the Firebase user after Google sign-in resolves', async () => {
-    mocks.firebaseAuth.currentUser = {
+  it('applies the user returned by Google sign-in', async () => {
+    mocks.runGoogleOAuth.mockResolvedValue({
       uid: 'user-1',
       email: 'user@example.com',
       displayName: 'Test User',
       photoURL: 'https://example.com/avatar.png',
-    };
+    });
 
     const { useAuthStore } = await import('../authStore');
 
@@ -60,5 +60,25 @@ describe('authStore', () => {
     expect(useAuthStore.getState().isLoading).toBe(false);
     expect(useAuthStore.getState().isHydrated).toBe(true);
     expect(useAuthStore.getState().isSigningIn).toBe(false);
+  });
+
+  it('falls back to Firebase currentUser when the OAuth helper returns no user', async () => {
+    mocks.firebaseAuth.currentUser = {
+      uid: 'user-2',
+      email: 'fallback@example.com',
+      displayName: 'Fallback User',
+      photoURL: null,
+    };
+
+    const { useAuthStore } = await import('../authStore');
+
+    await useAuthStore.getState().signInWithGoogle();
+
+    expect(useAuthStore.getState().user).toEqual({
+      uid: 'user-2',
+      email: 'fallback@example.com',
+      displayName: 'Fallback User',
+      photoURL: null,
+    });
   });
 });
