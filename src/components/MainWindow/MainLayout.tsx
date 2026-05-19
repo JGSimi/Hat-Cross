@@ -4,6 +4,7 @@ import { PanelLeftOpen } from 'lucide-react';
 import Sidebar, { type SidebarView } from './Sidebar';
 import ChatWindow from '../Chat/ChatWindow';
 import WindowControls from '../Shared/WindowControls';
+import SettingsPanel from '../Settings/SettingsPanel';
 import { usePlatform } from '../../hooks/usePlatform';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useChatStore } from '../../stores/chatStore';
@@ -14,7 +15,6 @@ import { useRoomSubscriptions } from '../../hooks/useRoomSubscriptions';
 
 const ClipboardHistory = lazy(() => import('../Clipboard/ClipboardHistory'));
 const RoomsPage = lazy(() => import('../../pages/RoomsPage'));
-const SettingsPanel = lazy(() => import('../Settings/SettingsPanel'));
 const OnboardingWizard = lazy(() => import('../Shared/OnboardingWizard'));
 const ShortcutsOverlay = lazy(() => import('../Shared/ShortcutsOverlay'));
 
@@ -225,9 +225,7 @@ export default function MainLayout() {
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               style={{ position: 'absolute', inset: 0, zIndex: 60 }}
             >
-              <Suspense fallback={<ViewFallback title="Configurações" />}>
-                <SettingsPanel onClose={() => setShowSettings(false)} />
-              </Suspense>
+              <SettingsPanel onClose={() => setShowSettings(false)} />
             </motion.div>
           ) : activeView === 'clipboard' ? (
             <motion.div
