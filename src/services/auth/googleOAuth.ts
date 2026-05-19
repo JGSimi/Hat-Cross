@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';
 import { firebaseAuth } from './firebase';
 import { abortErrorMessage, withTimeout } from '../../utils/async';
@@ -19,6 +20,7 @@ interface OAuthCallbackPayload {
 const OAUTH_CALLBACK_TIMEOUT_MS = 120_000;
 const OAUTH_STEP_TIMEOUT_MS = 20_000;
 const OAUTH_SERVER_START_TIMEOUT_MS = 45_000;
+const OAUTH_LISTENER_TIMEOUT_MS = 5_000;
 let activeController: AbortController | null = null;
 
 export function cancelGoogleSignIn(): void {
@@ -76,11 +78,6 @@ export async function signInWithGoogle(): Promise<void> {
   );
   console.info('[oauth] server_started');
   const redirectUri = `http://127.0.0.1:${port}/oauth/callback`;
-  const { codePromise: callbackPromise } = await prepareLoopbackCallbackListener(
-    state,
-    controller.signal,
-  );
-
   const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   authUrl.searchParams.set('client_id', CLIENT_ID);
   authUrl.searchParams.set('redirect_uri', redirectUri);
@@ -93,15 +90,17 @@ export async function signInWithGoogle(): Promise<void> {
   // the user is already signed in, so they can switch accounts if they want.
   authUrl.searchParams.set('prompt', 'select_account');
 
-  callbackPromise.catch(() => {});
-
   try {
-    console.info('[oauth] browser_opening');
-    await withAbortableStep(
-      invoke('open_external_url', { url: authUrl.toString() }),
+    const { codePromise: callbackPromise } = await withAbortableStep(
+      prepareLoopbackCallbackListener(state, controller.signal),
       controller.signal,
-      'Não consegui abrir o navegador do Google.',
+      'Listener OAuth demorou para iniciar.',
+      OAUTH_LISTENER_TIMEOUT_MS,
     );
+    callbackPromise.catch(() => {});
+
+    console.info('[oauth] browser_opening');
+    await openGoogleAuthUrl(authUrl, controller.signal);
     console.info('[oauth] browser_opened');
     const code = await callbackPromise;
     console.info('[oauth] callback_received');
@@ -164,6 +163,26 @@ export async function signInWithGoogle(): Promise<void> {
       activeController = null;
     }
   }
+}
+
+async function openGoogleAuthUrl(authUrl: URL, signal: AbortSignal): Promise<void> {
+  try {
+    await withAbortableStep(
+      openUrl(authUrl),
+      signal,
+      'Não consegui abrir o navegador do Google.',
+    );
+    return;
+  } catch (error) {
+    if (signal.aborted) throw error;
+    console.warn('[oauth] plugin opener failed, falling back to native opener:', error);
+  }
+
+  await withAbortableStep(
+    invoke('open_external_url', { url: authUrl.toString() }),
+    signal,
+    'Não consegui abrir o navegador do Google.',
+  );
 }
 
 async function signInWithGoogleInBrowser(): Promise<void> {
