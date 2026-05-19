@@ -25,6 +25,7 @@ let checkPromise: Promise<UpdateCheckResult> | null = null;
 let installPromise: Promise<void> | null = null;
 
 async function flushBeforeInstall(source: UpdateSource): Promise<void> {
+  if (isWindowsDesktopRuntime()) return;
   await withDiagnostic('update_flush_before_install', { source }, async () => {
     await Promise.all([
       withTimeout(
@@ -39,6 +40,10 @@ async function flushBeforeInstall(source: UpdateSource): Promise<void> {
       ),
     ]);
   });
+}
+
+function isWindowsDesktopRuntime(): boolean {
+  return typeof navigator !== 'undefined' && /win/i.test(navigator.platform);
 }
 
 function announceAvailable(version: string): void {

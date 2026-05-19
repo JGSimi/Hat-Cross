@@ -14,6 +14,13 @@ pub struct OAuthCallbackPayload {
     pub state: String,
 }
 
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowsOAuthFlowResult {
+    pub code: String,
+    pub redirect_uri: String,
+}
+
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct OAuthErrorPayload {
@@ -69,6 +76,72 @@ pub async fn oauth_start_server(app: AppHandle) -> Result<u16, String> {
     eprintln!("[oauth] callback_task_spawned");
 
     Ok(port)
+}
+
+#[tauri::command]
+pub async fn oauth_run_loopback_flow(
+    app: AppHandle,
+    client_id: String,
+    state: String,
+    code_challenge: String,
+) -> Result<WindowsOAuthFlowResult, String> {
+    crate::commands::diagnostic_log_event(&app, "oauth_windows_flow_start", json!({}));
+    let (listener, port) = bind_loopback_listener().map_err(|e| format!("Bind failed: {}", e))?;
+    let redirect_uri = format!("http://127.0.0.1:{}/oauth/callback", port);
+    let auth_url = build_google_auth_url(&client_id, &redirect_uri, &state, &code_challenge);
+
+    open_external_url(app.clone(), auth_url)?;
+
+    let payload = timeout(Duration::from_secs(120), handle_oauth_callback(listener))
+        .await
+        .map_err(|_| "Google não respondeu em 2 minutos.".to_string())??;
+
+    if payload.state != state {
+        crate::commands::diagnostic_log_event(
+            &app,
+            "oauth_windows_state_mismatch",
+            json!({ "stateLen": payload.state.len() }),
+        );
+        return Err("State mismatch (possível CSRF)".to_string());
+    }
+
+    crate::commands::diagnostic_log_event(
+        &app,
+        "oauth_windows_code_received",
+        json!({ "codeLen": payload.code.len() }),
+    );
+    Ok(WindowsOAuthFlowResult {
+        code: payload.code,
+        redirect_uri,
+    })
+}
+
+fn build_google_auth_url(
+    client_id: &str,
+    redirect_uri: &str,
+    state: &str,
+    code_challenge: &str,
+) -> String {
+    format!(
+        "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope=openid%20email%20profile&state={}&code_challenge={}&code_challenge_method=S256&prompt=select_account",
+        url_encode_query_value(client_id),
+        url_encode_query_value(redirect_uri),
+        url_encode_query_value(state),
+        url_encode_query_value(code_challenge),
+    )
+}
+
+fn url_encode_query_value(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    for byte in input.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(byte as char)
+            }
+            _ => out.push_str(&format!("%{:02X}", byte)),
+        }
+    }
+    out
 }
 
 fn bind_loopback_listener() -> Result<(TokioTcpListener, u16), String> {
