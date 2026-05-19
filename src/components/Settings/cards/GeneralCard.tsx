@@ -9,6 +9,8 @@ import { Row, Section, Toggle, ShortcutRecorder } from './primitives';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import { useToastStore } from '../../../stores/toastStore';
 import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES, type AppLanguage } from '../../../i18n/defaults';
+import { checkForUpdates, installAvailableUpdate } from '../../../services/autoUpdater';
+import { logDiagnostic } from '../../../services/diagnostics';
 
 type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'uptodate' | 'error';
 
@@ -17,6 +19,7 @@ export default function GeneralCard() {
   const [version, setVersion] = useState('');
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle');
   const [updateProgress, setUpdateProgress] = useState(0);
+  const [availableVersion, setAvailableVersion] = useState<string | null>(null);
   const { t } = useTranslation('settings');
   const showToast = useToastStore((s) => s.showToast);
 
@@ -39,25 +42,30 @@ export default function GeneralCard() {
   };
 
   const handleCheckUpdate = async () => {
-    setUpdateStatus('checking');
+    setUpdateProgress(0);
     try {
-      const { check } = await import('@tauri-apps/plugin-updater');
-      const update = await check();
-      if (update) {
+      logDiagnostic('update_settings_clicked', { currentStatus: updateStatus });
+      if (updateStatus === 'available') {
         setUpdateStatus('downloading');
         let downloaded = 0;
         let contentLength = 0;
-        await update.downloadAndInstall((event) => {
+        await installAvailableUpdate('settings', (event) => {
           if (event.event === 'Started') contentLength = event.data.contentLength ?? 0;
           if (event.event === 'Progress') {
             downloaded += event.data.chunkLength;
             if (contentLength > 0) setUpdateProgress(Math.round((downloaded / contentLength) * 100));
           }
         });
-        await useSettingsStore.getState().saveSettings();
-        const { relaunch } = await import('@tauri-apps/plugin-process');
-        await relaunch();
+        return;
+      }
+
+      setUpdateStatus('checking');
+      const result = await checkForUpdates('settings');
+      if (result.status === 'available') {
+        setAvailableVersion(result.version);
+        setUpdateStatus('available');
       } else {
+        setAvailableVersion(null);
         setUpdateStatus('uptodate');
         setTimeout(() => setUpdateStatus('idle'), 3000);
       }
@@ -251,11 +259,13 @@ export default function GeneralCard() {
               </motion.span>
             )}
             {updateStatus === 'downloading' && <Download size={12} />}
+            {updateStatus === 'available' && <Download size={12} />}
             {updateStatus === 'uptodate' && <Check size={12} />}
             {updateStatus === 'error' && <AlertCircle size={12} />}
             {updateStatus === 'idle' && <RefreshCw size={12} />}
             {updateStatus === 'checking' ? t('general.updates.checking') :
              updateStatus === 'downloading' ? t('general.updates.downloading', { progress: updateProgress }) :
+             updateStatus === 'available' ? t('general.updates.available', { version: availableVersion }) :
              updateStatus === 'uptodate' ? t('general.updates.upToDate') :
              updateStatus === 'error' ? t('general.updates.error') :
              t('general.updates.check')}

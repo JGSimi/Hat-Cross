@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import { check } from '@tauri-apps/plugin-updater';
-import { relaunch } from '@tauri-apps/plugin-process';
-import { useSettingsStore } from '../stores/settingsStore';
-import { useConversationStore } from '../stores/conversationStore';
+import {
+  checkForUpdates as checkForUpdatesService,
+  installAvailableUpdate,
+} from '../services/autoUpdater';
 
 export type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
 
@@ -17,16 +17,14 @@ export function useUpdater() {
     setError(null);
 
     try {
-      const update = await check();
-
-      if (update) {
-        setNewVersion(update.version);
+      const result = await checkForUpdatesService('settings');
+      if (result.status === 'available') {
+        setNewVersion(result.version);
         setStatus('available');
-        return update;
-      } else {
-        setStatus('idle');
-        return null;
+        return result;
       }
+      setStatus('idle');
+      return null;
     } catch (e) {
       setError(String(e));
       setStatus('error');
@@ -38,8 +36,8 @@ export function useUpdater() {
     setStatus('checking');
 
     try {
-      const update = await check();
-      if (!update) {
+      const result = await checkForUpdatesService('settings');
+      if (result.status !== 'available') {
         setStatus('idle');
         return;
       }
@@ -48,7 +46,7 @@ export function useUpdater() {
       let downloaded = 0;
       let contentLength = 0;
 
-      await update.downloadAndInstall((event) => {
+      await installAvailableUpdate('settings', (event) => {
         switch (event.event) {
           case 'Started':
             contentLength = event.data.contentLength ?? 0;
@@ -66,10 +64,6 @@ export function useUpdater() {
       });
 
       setStatus('ready');
-      // Flush ALL stores before relaunching to prevent data loss
-      await useSettingsStore.getState().saveSettings();
-      await useConversationStore.getState().saveConversations();
-      await relaunch();
     } catch (e) {
       setError(String(e));
       setStatus('error');

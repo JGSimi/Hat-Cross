@@ -22,6 +22,13 @@ vi.mock('@tauri-apps/plugin-opener', () => ({
   openUrl: vi.fn(),
 }));
 
+vi.mock('../../diagnostics', () => ({
+  logDiagnostic: vi.fn(),
+  withDiagnostic: vi.fn((_event: string, _fields: unknown, operation: () => Promise<unknown>) =>
+    operation(),
+  ),
+}));
+
 vi.mock('firebase/auth', () => ({
   GoogleAuthProvider: class {
     addScope = vi.fn();
@@ -39,6 +46,7 @@ vi.mock('../firebase', () => ({
 
 describe('signInWithGoogle', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     vi.resetModules();
     vi.clearAllMocks();
     vi.stubEnv('VITE_GOOGLE_OAUTH_CLIENT_ID', 'test-client-id');
@@ -179,5 +187,72 @@ describe('signInWithGoogle', () => {
       'open_external_url',
       expect.objectContaining({ url: expect.stringContaining('accounts.google.com') }),
     );
+  });
+
+  it('rejects instead of spinning forever when the browser opener never resolves', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(window.navigator, 'platform', {
+      configurable: true,
+      value: 'Win32',
+    });
+    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {
+      invoke: vi.fn(),
+    };
+
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === 'oauth_start_server') return Promise.resolve(49152);
+      if (command === 'open_external_url') return new Promise(() => undefined);
+      return Promise.reject(new Error(`Unexpected invoke: ${command}`));
+    });
+    mockOpenUrl.mockReturnValue(new Promise(() => undefined) as ReturnType<typeof openUrl>);
+    mockListen.mockResolvedValue(vi.fn(() => undefined));
+
+    const { signInWithGoogle } = await import('../googleOAuth');
+    const promise = signInWithGoogle();
+    const rejection = expect(promise).rejects.toThrow('Não consegui abrir o navegador do Google.');
+
+    for (let i = 0; i < 20; i += 1) {
+      if (mockInvoke.mock.calls.some(([command]) => command === 'open_external_url')) break;
+      await vi.advanceTimersByTimeAsync(0);
+      await Promise.resolve();
+    }
+    expect(mockInvoke.mock.calls.some(([command]) => command === 'open_external_url')).toBe(true);
+    await vi.advanceTimersByTimeAsync(60_003);
+    await rejection;
+    vi.useRealTimers();
+  });
+
+  it('rejects when the loopback callback emits an OAuth error', async () => {
+    let oauthErrorHandler: ((event: { payload: { error: string } }) => void) | null = null;
+
+    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {
+      invoke: vi.fn(),
+    };
+    Object.defineProperty(window.navigator, 'platform', {
+      configurable: true,
+      value: 'Win32',
+    });
+
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === 'oauth_start_server') return Promise.resolve(49152);
+      if (command === 'open_external_url') {
+        queueMicrotask(() => {
+          oauthErrorHandler?.({ payload: { error: 'access_denied' } });
+        });
+        return Promise.resolve();
+      }
+      return Promise.reject(new Error(`Unexpected invoke: ${command}`));
+    });
+
+    mockListen.mockImplementation(async (event, handler) => {
+      if (event === 'oauth-error') {
+        oauthErrorHandler = handler as typeof oauthErrorHandler;
+      }
+      return vi.fn(() => undefined);
+    });
+
+    const { signInWithGoogle } = await import('../googleOAuth');
+
+    await expect(signInWithGoogle()).rejects.toThrow('access_denied');
   });
 });

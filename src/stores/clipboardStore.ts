@@ -2,10 +2,13 @@ import { create } from 'zustand';
 import { LazyStore } from '@tauri-apps/plugin-store';
 import type { ClipboardEntry } from '../types';
 import { isTauriRuntime } from '../utils/tauriRuntime';
+import { withTimeout } from '../utils/async';
+import { withDiagnostic } from '../services/diagnostics';
 
 const MAX_ENTRIES = 100;
 const clipboardDataStore = new LazyStore('clipboard-data.json');
 const SAVE_DEBOUNCE_MS = 500;
+const STORE_IO_TIMEOUT_MS = 4_000;
 
 interface ClipboardState {
   entries: ClipboardEntry[];
@@ -78,7 +81,13 @@ export const useClipboardStore = create<ClipboardState>()((set, get) => ({
       return;
     }
     try {
-      const data = (await clipboardDataStore.get<ClipboardEntry[]>('entries')) ?? [];
+      const data = (await withDiagnostic('clipboard_store_load', {}, () =>
+        withTimeout(
+          clipboardDataStore.get<ClipboardEntry[]>('entries'),
+          STORE_IO_TIMEOUT_MS,
+          'clipboard load timed out',
+        ),
+      )) ?? [];
       set({ entries: data.slice(0, MAX_ENTRIES), loaded: true });
     } catch (err) {
       console.error('[ClipboardStore] Failed to load:', err);
@@ -90,8 +99,18 @@ export const useClipboardStore = create<ClipboardState>()((set, get) => ({
     if (!isTauriRuntime()) return;
     try {
       const { entries } = get();
-      await clipboardDataStore.set('entries', entries);
-      await clipboardDataStore.save();
+      await withDiagnostic('clipboard_store_save', { entries: entries.length }, async () => {
+        await withTimeout(
+          clipboardDataStore.set('entries', entries),
+          STORE_IO_TIMEOUT_MS,
+          'clipboard set timed out',
+        );
+        await withTimeout(
+          clipboardDataStore.save(),
+          STORE_IO_TIMEOUT_MS,
+          'clipboard save timed out',
+        );
+      });
     } catch (err) {
       console.error('[ClipboardStore] Failed to save:', err);
     }

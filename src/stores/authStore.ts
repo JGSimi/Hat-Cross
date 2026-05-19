@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User } from 'firebase/auth';
 import type { HatUser } from '../types/account';
+import { logDiagnostic, withDiagnostic } from '../services/diagnostics';
 
 interface AuthState {
   user: HatUser | null;
@@ -35,6 +36,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   signInError: null,
   signInWithGoogle: async () => {
     const attempt = ++activeSignInAttempt;
+    logDiagnostic('signIn_clicked', { attempt });
     set({ isSigningIn: true, signInError: null });
     try {
       const {
@@ -42,9 +44,14 @@ export const useAuthStore = create<AuthState>((set) => ({
         signInWithGoogle: runGoogleOAuth,
       } = await import('../services/auth/googleOAuth');
       cancelGoogleSignInCached = cancelGoogleSignIn;
-      await runGoogleOAuth();
+      await withDiagnostic('signIn_google_flow', { attempt }, runGoogleOAuth);
+      logDiagnostic('signIn_google_flow_done', { attempt });
       // onAuthStateChanged populates `user` automatically.
     } catch (err) {
+      logDiagnostic('signIn_google_flow_visible_error', {
+        attempt,
+        error: err instanceof Error ? err.message : String(err),
+      });
       if (attempt === activeSignInAttempt) {
         set({ signInError: err instanceof Error ? err.message : String(err) });
       }
@@ -58,6 +65,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   cancelSignIn: () => {
     activeSignInAttempt++;
     cancelGoogleSignInCached?.();
+    logDiagnostic('signIn_cancel_clicked', { attempt: activeSignInAttempt });
     set({ isSigningIn: false, signInError: null });
   },
   signOut: async () => {
@@ -70,11 +78,13 @@ export const useAuthStore = create<AuthState>((set) => ({
 export async function bootstrapAuth(): Promise<void> {
   if (authBootstrapped) return;
   authBootstrapped = true;
+  logDiagnostic('auth_bootstrap_start', {});
 
   authHydrationFallback = setTimeout(() => {
     const state = useAuthStore.getState();
     if (!state.isHydrated) {
       console.warn('[auth] Firebase auth hydration timed out; continuing signed out.');
+      logDiagnostic('auth_bootstrap_timeout', {});
       useAuthStore.setState({ user: null, isLoading: false, isHydrated: true });
     }
   }, 8_000);
@@ -90,6 +100,11 @@ export async function bootstrapAuth(): Promise<void> {
         clearTimeout(authHydrationFallback);
         authHydrationFallback = null;
       }
+      logDiagnostic('auth_state_changed', {
+        signedIn: Boolean(user),
+        uidPresent: Boolean(user?.uid),
+        emailPresent: Boolean(user?.email),
+      });
       useAuthStore.setState({
         user: user ? toHatUser(user) : null,
         isLoading: false,
@@ -98,6 +113,9 @@ export async function bootstrapAuth(): Promise<void> {
     });
   } catch (error) {
     console.error('[auth] Firebase auth bootstrap failed:', error);
+    logDiagnostic('auth_bootstrap_error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     if (authHydrationFallback) {
       clearTimeout(authHydrationFallback);
       authHydrationFallback = null;

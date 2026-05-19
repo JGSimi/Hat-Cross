@@ -1,4 +1,7 @@
 use serde::Serialize;
+use serde_json::{json, Value};
+use std::fs::OpenOptions;
+use std::io::Write;
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
 use crate::windows;
@@ -39,6 +42,49 @@ pub struct FlashShowPayload {
 // Post-BYOK: the in-memory API_KEYS HashMap and the set/get provider-key
 // commands are gone. Every LLM call now goes through the Hat proxy Worker,
 // which holds the server-side Gemini key and never lets it touch the client.
+
+pub(crate) fn diagnostic_log_event(app: &AppHandle, event: &str, fields: Value) {
+    let payload = json!({
+        "ts": chrono_like_now_ms(),
+        "event": event,
+        "platform": std::env::consts::OS,
+        "version": app.package_info().version.to_string(),
+        "fields": fields,
+    });
+
+    if let Err(err) = append_diagnostic_line(app, &payload.to_string()) {
+        eprintln!("[diagnostic] write failed: {}", err);
+    }
+}
+
+#[tauri::command]
+pub fn diagnostic_log(app: AppHandle, event: String, fields: Option<Value>) -> Result<(), String> {
+    diagnostic_log_event(&app, &event, fields.unwrap_or_else(|| json!({})));
+    Ok(())
+}
+
+fn append_diagnostic_line(app: &AppHandle, line: &str) -> Result<(), String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("app_data_dir failed: {}", e))?;
+    let log_dir = app_data_dir.join("logs");
+    std::fs::create_dir_all(&log_dir).map_err(|e| format!("create logs dir failed: {}", e))?;
+    let log_path = log_dir.join("diagnostic.log");
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .map_err(|e| format!("open diagnostic log failed: {}", e))?;
+    writeln!(file, "{}", line).map_err(|e| format!("write diagnostic log failed: {}", e))
+}
+
+fn chrono_like_now_ms() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or_default()
+}
 
 #[tauri::command]
 pub async fn set_autostart(app: AppHandle, enabled: bool) -> Result<(), String> {
@@ -203,4 +249,3 @@ pub fn flash_exit_adjust_mode(app: AppHandle) -> Result<(), String> {
     }
     Ok(())
 }
-
