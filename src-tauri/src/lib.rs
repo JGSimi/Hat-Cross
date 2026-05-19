@@ -7,8 +7,29 @@ mod windows;
 
 use tauri_plugin_autostart::MacosLauncher;
 
+#[cfg(target_os = "windows")]
+fn configure_windows_webview2() {
+    const KEY: &str = "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS";
+    const DISABLE_GPU: &str = "--disable-gpu";
+
+    let existing = std::env::var(KEY).unwrap_or_default();
+    if existing.split_whitespace().any(|arg| arg == DISABLE_GPU) {
+        return;
+    }
+
+    let next = if existing.trim().is_empty() {
+        DISABLE_GPU.to_string()
+    } else {
+        format!("{} {}", existing, DISABLE_GPU)
+    };
+    std::env::set_var(KEY, next);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "windows")]
+    configure_windows_webview2();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cwd| {}))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
