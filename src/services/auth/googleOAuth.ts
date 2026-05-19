@@ -166,6 +166,16 @@ export async function signInWithGoogle(): Promise<void> {
 }
 
 async function openGoogleAuthUrl(authUrl: URL, signal: AbortSignal): Promise<void> {
+  if (isWindowsDesktopRuntime()) {
+    try {
+      await openGoogleAuthUrlWithNativeOpener(authUrl, signal);
+      return;
+    } catch (error) {
+      if (signal.aborted) throw error;
+      console.warn('[oauth] native opener failed, falling back to Tauri opener:', error);
+    }
+  }
+
   try {
     await withAbortableStep(
       openUrl(authUrl),
@@ -178,11 +188,23 @@ async function openGoogleAuthUrl(authUrl: URL, signal: AbortSignal): Promise<voi
     console.warn('[oauth] plugin opener failed, falling back to native opener:', error);
   }
 
+  await openGoogleAuthUrlWithNativeOpener(authUrl, signal);
+}
+
+async function openGoogleAuthUrlWithNativeOpener(
+  authUrl: URL,
+  signal: AbortSignal,
+): Promise<void> {
   await withAbortableStep(
     invoke('open_external_url', { url: authUrl.toString() }),
     signal,
     'Não consegui abrir o navegador do Google.',
   );
+}
+
+function isWindowsDesktopRuntime(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /win/i.test(navigator.platform);
 }
 
 async function signInWithGoogleInBrowser(): Promise<void> {

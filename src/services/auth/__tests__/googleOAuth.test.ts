@@ -43,6 +43,10 @@ describe('signInWithGoogle', () => {
     vi.clearAllMocks();
     vi.stubEnv('VITE_GOOGLE_OAUTH_CLIENT_ID', 'test-client-id');
     vi.stubEnv('VITE_GOOGLE_OAUTH_CLIENT_SECRET', 'test-client-secret');
+    Object.defineProperty(window.navigator, 'platform', {
+      configurable: true,
+      value: 'MacIntel',
+    });
     delete (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
   });
 
@@ -68,24 +72,26 @@ describe('signInWithGoogle', () => {
       invoke: vi.fn(),
     };
 
-    mockOpenUrl.mockImplementation(async (url) => {
-      const parsed = new URL(String(url));
-      oauthState = parsed.searchParams.get('state');
-      expect(parsed.searchParams.get('redirect_uri')).toBe(
-        'http://127.0.0.1:49152/oauth/callback',
-      );
-      queueMicrotask(() => {
-        oauthCallbackHandler?.({
-          payload: {
-            code: 'oauth-code',
-            state: oauthState,
-          },
-        });
-      });
-    });
-
     mockInvoke.mockImplementation((command: string) => {
       if (command === 'oauth_start_server') return Promise.resolve(49152);
+      if (command === 'open_external_url') {
+        const currentCall = mockInvoke.mock.calls[mockInvoke.mock.calls.length - 1];
+        const openerArgs = currentCall?.[1] as { url?: string } | undefined;
+        const parsed = new URL(String(openerArgs?.url));
+        oauthState = parsed.searchParams.get('state');
+        expect(parsed.searchParams.get('redirect_uri')).toBe(
+          'http://127.0.0.1:49152/oauth/callback',
+        );
+        queueMicrotask(() => {
+          oauthCallbackHandler?.({
+            payload: {
+              code: 'oauth-code',
+              state: oauthState,
+            },
+          });
+        });
+        return Promise.resolve();
+      }
       return Promise.reject(new Error(`Unexpected invoke: ${command}`));
     });
 
@@ -109,7 +115,11 @@ describe('signInWithGoogle', () => {
     await signInWithGoogle();
 
     expect(mockInvoke).toHaveBeenCalledWith('oauth_start_server');
-    expect(mockOpenUrl).toHaveBeenCalledWith(expect.any(URL));
+    expect(mockInvoke).toHaveBeenCalledWith(
+      'open_external_url',
+      expect.objectContaining({ url: expect.stringContaining('accounts.google.com') }),
+    );
+    expect(mockOpenUrl).not.toHaveBeenCalled();
   });
 
   it('falls back to the native opener if the Tauri opener plugin fails', async () => {
