@@ -3,6 +3,11 @@ import { LazyStore } from '@tauri-apps/plugin-store';
 import type { DraftEntry } from '../types';
 import { isTauriRuntime } from '../utils/tauriRuntime';
 import { withTimeout } from '../utils/async';
+import {
+  getWindowsStoreValue,
+  isWindowsStoreRuntime,
+  setWindowsStoreValue,
+} from '../services/windowsStore';
 
 const SAVE_DEBOUNCE_MS = 500;
 const STORE_IO_TIMEOUT_MS = 4_000;
@@ -45,11 +50,17 @@ export const useDraftsStore = create<DraftsState>()((set, get) => ({
       return;
     }
     try {
-      const drafts = (await withTimeout(
-        draftsStore.get<Record<string, DraftEntry>>('drafts'),
-        STORE_IO_TIMEOUT_MS,
-        'drafts load timed out',
-      )) ?? {};
+      const drafts = (isWindowsStoreRuntime()
+        ? await withTimeout(
+            getWindowsStoreValue<Record<string, DraftEntry>>('drafts-data.json', 'drafts'),
+            STORE_IO_TIMEOUT_MS,
+            'drafts load timed out',
+          )
+        : await withTimeout(
+            draftsStore.get<Record<string, DraftEntry>>('drafts'),
+            STORE_IO_TIMEOUT_MS,
+            'drafts load timed out',
+          )) ?? {};
 
       const now = Date.now();
       let purged = false;
@@ -81,12 +92,20 @@ export const useDraftsStore = create<DraftsState>()((set, get) => ({
     if (!isTauriRuntime()) return;
     try {
       const { drafts } = get();
-      await draftsStore.set('drafts', drafts);
-      await withTimeout(
-        draftsStore.save(),
-        STORE_IO_TIMEOUT_MS,
-        'drafts save timed out',
-      );
+      if (isWindowsStoreRuntime()) {
+        await withTimeout(
+          setWindowsStoreValue('drafts-data.json', 'drafts', drafts),
+          STORE_IO_TIMEOUT_MS,
+          'drafts save timed out',
+        );
+      } else {
+        await draftsStore.set('drafts', drafts);
+        await withTimeout(
+          draftsStore.save(),
+          STORE_IO_TIMEOUT_MS,
+          'drafts save timed out',
+        );
+      }
     } catch (err) {
       console.error('[DraftsStore] Failed to save drafts:', err);
     }
