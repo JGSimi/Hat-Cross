@@ -3,11 +3,6 @@ import { LazyStore } from '@tauri-apps/plugin-store';
 import type { DraftEntry } from '../types';
 import { isTauriRuntime } from '../utils/tauriRuntime';
 import { withTimeout } from '../utils/async';
-import {
-  readLocalJson,
-  useWindowsWebStorageFallback,
-  writeLocalJson,
-} from '../utils/windowsStorageFallback';
 
 const SAVE_DEBOUNCE_MS = 500;
 const STORE_IO_TIMEOUT_MS = 4_000;
@@ -50,13 +45,11 @@ export const useDraftsStore = create<DraftsState>()((set, get) => ({
       return;
     }
     try {
-      const drafts = useWindowsWebStorageFallback()
-        ? readLocalJson<Record<string, DraftEntry>>('drafts-data') ?? {}
-        : (await withTimeout(
-            draftsStore.get<Record<string, DraftEntry>>('drafts'),
-            STORE_IO_TIMEOUT_MS,
-            'drafts load timed out',
-          )) ?? {};
+      const drafts = (await withTimeout(
+        draftsStore.get<Record<string, DraftEntry>>('drafts'),
+        STORE_IO_TIMEOUT_MS,
+        'drafts load timed out',
+      )) ?? {};
 
       const now = Date.now();
       let purged = false;
@@ -88,10 +81,6 @@ export const useDraftsStore = create<DraftsState>()((set, get) => ({
     if (!isTauriRuntime()) return;
     try {
       const { drafts } = get();
-      if (useWindowsWebStorageFallback()) {
-        writeLocalJson('drafts-data', drafts);
-        return;
-      }
       await draftsStore.set('drafts', drafts);
       await withTimeout(
         draftsStore.save(),
