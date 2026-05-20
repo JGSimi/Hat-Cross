@@ -1,0 +1,137 @@
+name: Hat Flash
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/hat-flash-release.yml'
+      - 'apps/hat-flash/**'
+  push:
+    tags:
+      - 'hat-flash-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.artifact }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            artifact: HatFlash-windows-x64
+          - os: macos-15-intel
+            platform: macos
+            artifact: HatFlash-macos-x64
+          - os: macos-15
+            platform: macos
+            artifact: HatFlash-macos-arm64
+
+    env:
+      VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/hat-flash/go.mod
+          cache-dependency-path: apps/hat-flash/go.sum
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: apps/hat-flash/frontend/package-lock.json
+
+      - name: Install Wails v3 on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.94
+          "$((go env GOPATH))\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install Wails v3 on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.94
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install frontend dependencies
+        working-directory: apps/hat-flash/frontend
+        run: npm ci
+
+      - name: Go tests
+        working-directory: apps/hat-flash
+        run: go test ./...
+
+      - name: Frontend tests
+        working-directory: apps/hat-flash/frontend
+        run: npm test
+
+      - name: Frontend build
+        working-directory: apps/hat-flash/frontend
+        run: npm run build
+
+      - name: Build Windows executable
+        if: matrix.platform == 'windows'
+        working-directory: apps/hat-flash
+        run: wails3 build
+
+      - name: Smoke Windows executable
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        working-directory: apps/hat-flash
+        run: |
+          $exe = Get-ChildItem -Path bin -Filter HatFlash.exe -Recurse | Select-Object -First 1
+          if (-not $exe) { throw "No Windows executable found in apps/hat-flash/bin" }
+          $process = Start-Process -FilePath $exe.FullName -PassThru
+          Start-Sleep -Seconds 15
+          if ($process.HasExited) { throw "Hat Flash exited during 15s smoke" }
+          Stop-Process -Id $process.Id -Force
+
+      - name: Package macOS app
+        if: matrix.platform == 'macos'
+        shell: bash
+        working-directory: apps/hat-flash
+        run: wails3 task darwin:package
+
+      - name: Collect Windows artifact
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        working-directory: apps/hat-flash
+        run: |
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          $exe = Get-ChildItem -Path bin -Filter HatFlash.exe -Recurse | Select-Object -First 1
+          Copy-Item $exe.FullName "release/${{ matrix.artifact }}.exe"
+
+      - name: Collect macOS artifact
+        if: matrix.platform == 'macos'
+        shell: bash
+        working-directory: apps/hat-flash
+        run: |
+          mkdir -p release
+          ditto -c -k --keepParent "bin/HatFlash.app" "release/${{ matrix.artifact }}.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: apps/hat-flash/release/*
+
+      - name: Publish release assets
+        if: startsWith(github.ref, 'refs/tags/hat-flash-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apps/hat-flash/release/*
