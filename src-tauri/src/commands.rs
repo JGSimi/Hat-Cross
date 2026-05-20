@@ -2,6 +2,7 @@ use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
 use crate::windows;
@@ -68,6 +69,10 @@ fn append_diagnostic_line(app: &AppHandle, line: &str) -> Result<(), String> {
         .path()
         .app_data_dir()
         .map_err(|e| format!("app_data_dir failed: {}", e))?;
+    append_diagnostic_line_to_dir(&app_data_dir, line)
+}
+
+fn append_diagnostic_line_to_dir(app_data_dir: &Path, line: &str) -> Result<(), String> {
     let log_dir = app_data_dir.join("logs");
     std::fs::create_dir_all(&log_dir).map_err(|e| format!("create logs dir failed: {}", e))?;
     let log_path = log_dir.join("diagnostic.log");
@@ -86,11 +91,15 @@ fn chrono_like_now_ms() -> u128 {
         .unwrap_or_default()
 }
 
-fn windows_store_path(app: &AppHandle, file: &str) -> Result<std::path::PathBuf, String> {
-    if !file
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
-    {
+fn is_safe_windows_store_file(file: &str) -> bool {
+    !file.is_empty()
+        && file
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
+}
+
+fn windows_store_path(app: &AppHandle, file: &str) -> Result<PathBuf, String> {
+    if !is_safe_windows_store_file(file) {
         return Err("invalid store filename".to_string());
     }
     let app_data_dir = app
@@ -139,6 +148,74 @@ pub fn windows_store_set(
     let raw = serde_json::to_string_pretty(&Value::Object(store))
         .map_err(|e| format!("serialize store failed: {}", e))?;
     std::fs::write(path, raw).map_err(|e| format!("write store failed: {}", e))
+}
+
+#[cfg(test)]
+mod command_tests {
+    use super::{
+        append_diagnostic_line_to_dir, is_safe_windows_store_file, read_windows_store,
+    };
+    use serde_json::json;
+    use std::fs;
+
+    fn temp_test_dir(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "hat-cross-commands-test-{}-{}",
+            name,
+            std::process::id(),
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("test dir should be created");
+        dir
+    }
+
+    #[test]
+    fn validates_windows_store_filename_before_joining_app_data() {
+        assert!(is_safe_windows_store_file("settings.json"));
+        assert!(is_safe_windows_store_file("conversation-state.json"));
+        assert!(is_safe_windows_store_file("drafts_data-1.json"));
+
+        assert!(!is_safe_windows_store_file(""));
+        assert!(!is_safe_windows_store_file("../settings.json"));
+        assert!(!is_safe_windows_store_file("nested/settings.json"));
+        assert!(!is_safe_windows_store_file("settings json"));
+    }
+
+    #[test]
+    fn reads_windows_store_json_objects_and_missing_files_as_empty() {
+        let dir = temp_test_dir("read-store");
+        let missing = dir.join("missing.json");
+        assert!(read_windows_store(&missing).expect("missing file should be empty").is_empty());
+
+        let store = dir.join("settings.json");
+        fs::write(&store, r#"{"hat-settings":{"settings":{"language":"en-US"}}}"#)
+            .expect("store fixture should write");
+        let parsed = read_windows_store(&store).expect("store should parse");
+
+        assert_eq!(
+            parsed.get("hat-settings"),
+            Some(&json!({ "settings": { "language": "en-US" } })),
+        );
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn appends_diagnostic_lines_to_persistent_log_file() {
+        let dir = temp_test_dir("diagnostic-log");
+
+        append_diagnostic_line_to_dir(&dir, r#"{"event":"boot_start"}"#)
+            .expect("first line should write");
+        append_diagnostic_line_to_dir(&dir, r#"{"event":"boot_ok"}"#)
+            .expect("second line should append");
+
+        let log = fs::read_to_string(dir.join("logs").join("diagnostic.log"))
+            .expect("diagnostic log should exist");
+        assert!(log.contains(r#"{"event":"boot_start"}"#));
+        assert!(log.contains(r#"{"event":"boot_ok"}"#));
+
+        let _ = fs::remove_dir_all(dir);
+    }
 }
 
 #[tauri::command]
@@ -216,9 +293,8 @@ pub fn quit_app(app: AppHandle) {
     app.exit(0);
 }
 
-/// Pre-creates the flash window hidden on app startup so the webview is ready
-/// to receive `chat-stream` chunks in typewriter mode (which needs the listener
-/// mounted before the stream begins). Safe to call repeatedly.
+/// Lazily creates the flash window hidden so callers can wait for the webview
+/// listener handshake before sending `flash-show`. Safe to call repeatedly.
 #[tauri::command]
 pub fn flash_ensure(app: AppHandle) -> Result<(), String> {
     if let Some(window) = windows::ensure_flash(&app) {

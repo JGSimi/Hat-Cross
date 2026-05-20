@@ -22,14 +22,26 @@ const activeIdStore = new LazyStore('conversation-state.json');
 function persistActiveId(id: string | null): void {
   if (!isTauriRuntime()) return;
   if (isWindowsStoreRuntime()) {
-    setWindowsStoreValue('conversation-state.json', 'activeId', id)
+    withTimeout(
+      setWindowsStoreValue('conversation-state.json', 'activeId', id),
+      STORE_IO_TIMEOUT_MS,
+      'active conversation save timed out',
+    )
       .catch((err) => console.error('Failed to persist activeId', err));
     return;
   }
-  activeIdStore
-    .set('activeId', id)
-    .then(() => activeIdStore.save())
-    .catch((err) => console.error('Failed to persist activeId', err));
+  (async () => {
+    await withTimeout(
+      activeIdStore.set('activeId', id),
+      STORE_IO_TIMEOUT_MS,
+      'active conversation set timed out',
+    );
+    await withTimeout(
+      activeIdStore.save(),
+      STORE_IO_TIMEOUT_MS,
+      'active conversation save timed out',
+    );
+  })().catch((err) => console.error('Failed to persist activeId', err));
 }
 
 function pruneDraftOrphans(validIds: string[]): void {
@@ -341,7 +353,11 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
           'conversations save timed out',
         );
       } else {
-        await conversationStore.set('conversations', conversations);
+        await withTimeout(
+          conversationStore.set('conversations', conversations),
+          STORE_IO_TIMEOUT_MS,
+          'conversations set timed out',
+        );
         await withTimeout(
           conversationStore.save(),
           STORE_IO_TIMEOUT_MS,

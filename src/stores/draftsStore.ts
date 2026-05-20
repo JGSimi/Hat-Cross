@@ -99,7 +99,11 @@ export const useDraftsStore = create<DraftsState>()((set, get) => ({
           'drafts save timed out',
         );
       } else {
-        await draftsStore.set('drafts', drafts);
+        await withTimeout(
+          draftsStore.set('drafts', drafts),
+          STORE_IO_TIMEOUT_MS,
+          'drafts set timed out',
+        );
         await withTimeout(
           draftsStore.save(),
           STORE_IO_TIMEOUT_MS,
