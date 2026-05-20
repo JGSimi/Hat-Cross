@@ -72,10 +72,6 @@ jobs:
         working-directory: apps/hat-flash/frontend
         run: npm ci
 
-      - name: Go tests
-        working-directory: apps/hat-flash
-        run: go test ./...
-
       - name: Frontend tests
         working-directory: apps/hat-flash/frontend
         run: npm test
@@ -83,6 +79,10 @@ jobs:
       - name: Frontend build
         working-directory: apps/hat-flash/frontend
         run: npm run build
+
+      - name: Go tests
+        working-directory: apps/hat-flash
+        run: go test ./...
 
       - name: Build Windows executable
         if: matrix.platform == 'windows'
