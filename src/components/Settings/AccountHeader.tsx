@@ -52,6 +52,21 @@ function Divider() {
   return <div aria-hidden className="account-header__divider" />;
 }
 
+function formatExpiryDistance(expiresAt: number, now: number, locale: string) {
+  const diff = expiresAt - now;
+  if (diff <= 0) return null;
+
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'always', style: 'short' });
+
+  if (diff < hour) return rtf.format(Math.max(1, Math.ceil(diff / minute)), 'minute');
+  if (diff < 2 * day) return rtf.format(Math.ceil(diff / hour), 'hour');
+  if (diff < 60 * day) return rtf.format(Math.ceil(diff / day), 'day');
+  return rtf.format(Math.ceil(diff / (30 * day)), 'month');
+}
+
 export default function AccountHeader() {
   const user = useAuthStore((s) => s.user);
   const isSigningIn = useAuthStore((s) => s.isSigningIn);
@@ -62,12 +77,43 @@ export default function AccountHeader() {
 
   const credits = useCreditsStore((s) => s.credits);
   const creditsLoading = useCreditsStore((s) => s.isLoading);
+  const nextCreditExpiresAt = useCreditsStore((s) => s.nextCreditExpiresAt);
+  const creditsExpiringNext = useCreditsStore((s) => s.creditsExpiringNext);
+  const hasLegacyBalanceWithoutLots = useCreditsStore((s) => s.hasLegacyBalanceWithoutLots);
   const selectedMode = useCreditsStore((s) => s.selectedMode);
   const setSelectedMode = useCreditsStore((s) => s.setSelectedMode);
 
   const [recharging, setRecharging] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const reducedMotion = useReducedMotion();
-  const { t } = useTranslation('account');
+  const { t, i18n } = useTranslation('account');
+
+  useEffect(() => {
+    if (!nextCreditExpiresAt) return undefined;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [nextCreditExpiresAt]);
+
+  const expiryDistance = nextCreditExpiresAt
+    ? formatExpiryDistance(nextCreditExpiresAt, now, i18n.language)
+    : null;
+  const expiryText = creditsLoading
+    ? null
+    : hasLegacyBalanceWithoutLots
+      ? t('creditExpiryLegacy')
+      : nextCreditExpiresAt && expiryDistance
+        ? t('creditExpiryNext', {
+            amount: creditsExpiringNext.toLocaleString(i18n.language),
+            time: expiryDistance,
+          })
+        : t('creditExpiryNone');
+  const expiryTitle = nextCreditExpiresAt
+    ? new Intl.DateTimeFormat(i18n.language, {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }).format(new Date(nextCreditExpiresAt))
+    : undefined;
 
   // --- NOT SIGNED IN: compact inline Google button + error -----------------
   if (!user) {
@@ -454,6 +500,32 @@ export default function AccountHeader() {
               />
             ) : (
               <CountUp value={credits} reducedMotion={reducedMotion} />
+            )}
+          </div>
+          <div
+            title={expiryTitle}
+            style={{
+              minHeight: 16,
+              fontSize: 11,
+              lineHeight: 1.35,
+              color: hasLegacyBalanceWithoutLots
+                ? '#FBBF24'
+                : 'color-mix(in srgb, var(--text-muted) 84%, var(--text-bright))',
+              fontVariantNumeric: 'tabular-nums',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {creditsLoading ? (
+              <Skeleton
+                width={150}
+                height={12}
+                radius={6}
+                ariaLabel={t('validityLoading', { defaultValue: 'Carregando validade...' })}
+              />
+            ) : (
+              expiryText
             )}
           </div>
           <motion.button

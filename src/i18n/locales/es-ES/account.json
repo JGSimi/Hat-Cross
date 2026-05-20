@@ -20,6 +20,11 @@
   "creditsSuffix": "créditos",
   "messagesEstimate": "~{{count}} mensajes",
   "creditsBrief": "{{count}} créd.",
+  "creditValidity": "Validez: 1 mes",
+  "creditExpiryNext": "{{amount}} vencen {{time}}",
+  "creditExpiryNone": "Sin créditos activos",
+  "creditExpiryLegacy": "Saldo antiguo sin lote de validez",
+  "validityLoading": "Cargando validez...",
   "forAmount": "por",
   "viaPix": "vía PIX",
   "signedOutGate": {
