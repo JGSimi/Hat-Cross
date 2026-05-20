@@ -28,6 +28,7 @@ import {
 
 const tauriStore = new LazyStore('settings.json');
 const STORE_LOAD_TIMEOUT_MS = 4_000;
+const STORE_SAVE_TIMEOUT_MS = 4_000;
 
 function canMutateTrayFromFrontend(): boolean {
   if (!isTauriRuntime()) return false;
@@ -71,6 +72,7 @@ function deepMerge(defaults: any, stored: any): any {
 interface SettingsState {
   settings: AppSettings;
   _hydrated: boolean;
+  _loadedFromDisk: boolean;
   showSettingsPanel: boolean;
 
   // Actions
@@ -93,6 +95,7 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
   settings: { ...DEFAULT_SETTINGS },
   _hydrated: false,
+  _loadedFromDisk: false,
   showSettingsPanel: false,
 
   setShowSettingsPanel: (show) => {
@@ -200,20 +203,20 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         const clipLegacy = merged.clipboard as unknown as Record<string, unknown>;
         if ('customPrompt' in clipLegacy) delete clipLegacy.customPrompt;
         if ('useCustomPrompt' in clipLegacy) delete clipLegacy.useCustomPrompt;
-        set({ settings: merged, _hydrated: true });
+        set({ settings: merged, _hydrated: true, _loadedFromDisk: true });
         // Sync i18n + tray com o idioma carregado.
         i18n.changeLanguage(merged.language).catch(() => {});
         if (canMutateTrayFromFrontend()) {
           invoke('set_tray_language', { lang: merged.language }).catch(() => {});
         }
       } else {
-        set({ _hydrated: true });
+        set({ _hydrated: true, _loadedFromDisk: false });
         i18n.changeLanguage(DEFAULT_SETTINGS.language).catch(() => {});
       }
     } catch (err) {
       console.error('[SettingsStore] Failed to load settings:', err);
       i18n.changeLanguage(DEFAULT_SETTINGS.language).catch(() => {});
-      set({ _hydrated: true });
+      set({ _hydrated: true, _loadedFromDisk: false });
     }
   },
 
@@ -223,10 +226,22 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     try {
       const { settings } = get();
       if (isWindowsStoreRuntime()) {
-        await setWindowsStoreValue('settings.json', 'hat-settings', { settings });
+        await withTimeout(
+          setWindowsStoreValue('settings.json', 'hat-settings', { settings }),
+          STORE_SAVE_TIMEOUT_MS,
+          'settings save timed out',
+        );
       } else {
-        await tauriStore.set('hat-settings', { settings });
-        await tauriStore.save();
+        await withTimeout(
+          tauriStore.set('hat-settings', { settings }),
+          STORE_SAVE_TIMEOUT_MS,
+          'settings set timed out',
+        );
+        await withTimeout(
+          tauriStore.save(),
+          STORE_SAVE_TIMEOUT_MS,
+          'settings save timed out',
+        );
       }
       // Notify other windows to reload settings
       emit('settings-changed').catch(() => {});

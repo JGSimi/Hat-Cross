@@ -3,6 +3,7 @@ import { listen, emit } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import type { FlashTiming, FlashAppearance } from '../types';
+import { isTauriRuntime } from '../utils/tauriRuntime';
 
 interface FlashShowPayload {
   text: string;
@@ -18,6 +19,10 @@ interface ChatStreamChunk {
   contentType?: string;
 }
 
+interface FlashReadyPayload {
+  streamId?: number | null;
+}
+
 type Phase = 'hidden' | 'in' | 'hold' | 'out';
 
 const FONT_STACK =
@@ -31,6 +36,7 @@ function computeAutoHoldMs(text: string): number {
 }
 
 export default function FlashPage() {
+  const isTauri = isTauriRuntime();
   const [mode, setMode] = useState<'show' | 'adjust' | 'idle'>('idle');
   const [displayedText, setDisplayedText] = useState('');
   const [timing, setTiming] = useState<FlashTiming | null>(null);
@@ -78,106 +84,135 @@ export default function FlashPage() {
   };
 
   useEffect(() => {
+    if (!isTauri) return;
+
     const unlistens: Array<() => void> = [];
+    let disposed = false;
 
-    listen<FlashShowPayload>('flash-show', (event) => {
-      clearTimers();
-      const payload = event.payload;
-      currentStreamId.current = payload.streamId;
-      timingRef.current = payload.timing;
-      setMode('show');
-      setTiming(payload.timing);
-      setAppearance(payload.appearance);
+    const sendReady = (streamId: number | null = null) => {
+      emit('flash-ready', { streamId }).catch((error) => {
+        console.error('[flash] ready emit failed:', error);
+      });
+    };
 
-      const isTypewriter = payload.timing.mode === 'typewriter';
+    const registerListeners = async () => {
+      const registered = await Promise.all([
+        listen<FlashShowPayload>('flash-show', (event) => {
+          clearTimers();
+          const payload = event.payload;
+          currentStreamId.current = payload.streamId;
+          timingRef.current = payload.timing;
+          setMode('show');
+          setTiming(payload.timing);
+          setAppearance(payload.appearance);
 
-      // Drain any chunks that arrived before this event (race condition).
-      const buffered = pendingChunks.current.get(payload.streamId) ?? '';
-      const wasFinished = pendingFinished.current.has(payload.streamId);
-      pendingChunks.current.delete(payload.streamId);
-      pendingFinished.current.delete(payload.streamId);
+          const isTypewriter = payload.timing.mode === 'typewriter';
 
-      setDisplayedText(isTypewriter ? buffered : payload.text);
-      setPhase('in');
+          // Drain any chunks that arrived before this event (race condition).
+          const buffered = pendingChunks.current.get(payload.streamId) ?? '';
+          const wasFinished = pendingFinished.current.has(payload.streamId);
+          pendingChunks.current.delete(payload.streamId);
+          pendingFinished.current.delete(payload.streamId);
 
-      if (payload.timing.mode === 'instant') {
-        const hold = payload.timing.holdMs ?? computeAutoHoldMs(payload.text);
-        schedule(() => setPhase('out'), hold);
-        schedule(() => {
-          setPhase('hidden');
-          invoke('flash_hide').catch(() => {});
-        }, hold + 16);
-      } else if (payload.timing.mode === 'fade') {
-        const fadeIn = payload.timing.fadeInMs;
-        const hold = payload.timing.holdMs ?? computeAutoHoldMs(payload.text);
-        const fadeOut = payload.timing.fadeOutMs;
-        schedule(() => setPhase('hold'), fadeIn);
-        schedule(() => setPhase('out'), fadeIn + hold);
-        schedule(() => {
-          setPhase('hidden');
-          invoke('flash_hide').catch(() => {});
-        }, fadeIn + hold + fadeOut);
-      } else if (isTypewriter && wasFinished) {
-        // Stream already finished before we mounted — fade out on the
-        // buffered text now.
-        const hold = payload.timing.holdMs ?? computeAutoHoldMs(buffered);
-        schedule(() => setPhase('out'), hold);
-        schedule(() => {
-          setPhase('hidden');
-          invoke('flash_hide').catch(() => {});
-        }, hold + payload.timing.fadeOutMs);
-      }
-      fitWindowToContent();
-    }).then((u) => unlistens.push(u));
+          setDisplayedText(isTypewriter ? buffered : payload.text);
+          setPhase('in');
 
-    listen<ChatStreamChunk>('chat-stream', (event) => {
-      if (event.payload.contentType === 'thinking') return;
-      const chunkStream = event.payload.streamId;
-
-      // If we're the active typewriter stream, apply live.
-      if (
-        currentStreamId.current === chunkStream &&
-        timingRef.current?.mode === 'typewriter'
-      ) {
-        if (!event.payload.isFinished && event.payload.text) {
-          setDisplayedText((prev) => prev + event.payload.text);
-          fitWindowToContent();
-        }
-        if (event.payload.isFinished) {
-          const timingNow = timingRef.current!;
-          setDisplayedText((prev) => {
-            const hold = timingNow.holdMs ?? computeAutoHoldMs(prev);
+          if (payload.timing.mode === 'instant') {
+            const hold = payload.timing.holdMs ?? computeAutoHoldMs(payload.text);
             schedule(() => setPhase('out'), hold);
             schedule(() => {
               setPhase('hidden');
               invoke('flash_hide').catch(() => {});
-            }, hold + timingNow.fadeOutMs);
-            return prev;
-          });
-        }
+            }, hold + 16);
+          } else if (payload.timing.mode === 'fade') {
+            const fadeIn = payload.timing.fadeInMs;
+            const hold = payload.timing.holdMs ?? computeAutoHoldMs(payload.text);
+            const fadeOut = payload.timing.fadeOutMs;
+            schedule(() => setPhase('hold'), fadeIn);
+            schedule(() => setPhase('out'), fadeIn + hold);
+            schedule(() => {
+              setPhase('hidden');
+              invoke('flash_hide').catch(() => {});
+            }, fadeIn + hold + fadeOut);
+          } else if (isTypewriter && wasFinished) {
+            // Stream already finished before we mounted — fade out on the
+            // buffered text now.
+            const hold = payload.timing.holdMs ?? computeAutoHoldMs(buffered);
+            schedule(() => setPhase('out'), hold);
+            schedule(() => {
+              setPhase('hidden');
+              invoke('flash_hide').catch(() => {});
+            }, hold + payload.timing.fadeOutMs);
+          }
+          fitWindowToContent();
+        }),
+
+        listen<ChatStreamChunk>('chat-stream', (event) => {
+          if (event.payload.contentType === 'thinking') return;
+          const chunkStream = event.payload.streamId;
+
+          // If we're the active typewriter stream, apply live.
+          if (
+            currentStreamId.current === chunkStream &&
+            timingRef.current?.mode === 'typewriter'
+          ) {
+            if (!event.payload.isFinished && event.payload.text) {
+              setDisplayedText((prev) => prev + event.payload.text);
+              fitWindowToContent();
+            }
+            if (event.payload.isFinished) {
+              const timingNow = timingRef.current!;
+              setDisplayedText((prev) => {
+                const hold = timingNow.holdMs ?? computeAutoHoldMs(prev);
+                schedule(() => setPhase('out'), hold);
+                schedule(() => {
+                  setPhase('hidden');
+                  invoke('flash_hide').catch(() => {});
+                }, hold + timingNow.fadeOutMs);
+                return prev;
+              });
+            }
+            return;
+          }
+
+          // Otherwise buffer for a later flash-show that references this stream.
+          if (!event.payload.isFinished && event.payload.text) {
+            const existing = pendingChunks.current.get(chunkStream) ?? '';
+            pendingChunks.current.set(chunkStream, existing + event.payload.text);
+          }
+          if (event.payload.isFinished) {
+            pendingFinished.current.add(chunkStream);
+          }
+        }),
+
+        listen<void>('flash-adjust-enter', () => {
+          clearTimers();
+          setMode('adjust');
+          setPhase('in');
+          getCurrentWindow()
+            .setSize(new LogicalSize(260, 110))
+            .catch(() => {});
+        }),
+
+        listen<FlashReadyPayload>('flash-ready-request', (event) => {
+          sendReady(event.payload?.streamId ?? null);
+        }),
+      ]);
+
+      if (disposed) {
+        registered.forEach((u) => u());
         return;
       }
+      unlistens.push(...registered);
+      sendReady(null);
+    };
 
-      // Otherwise buffer for a later flash-show that references this stream.
-      if (!event.payload.isFinished && event.payload.text) {
-        const existing = pendingChunks.current.get(chunkStream) ?? '';
-        pendingChunks.current.set(chunkStream, existing + event.payload.text);
-      }
-      if (event.payload.isFinished) {
-        pendingFinished.current.add(chunkStream);
-      }
-    }).then((u) => unlistens.push(u));
-
-    listen<void>('flash-adjust-enter', () => {
-      clearTimers();
-      setMode('adjust');
-      setPhase('in');
-      getCurrentWindow()
-        .setSize(new LogicalSize(260, 110))
-        .catch(() => {});
-    }).then((u) => unlistens.push(u));
+    registerListeners().catch((error) => {
+      console.error('[flash] listener setup failed:', error);
+    });
 
     return () => {
+      disposed = true;
       clearTimers();
       if (resizeTimeoutRef.current !== null) {
         window.clearTimeout(resizeTimeoutRef.current);
@@ -185,7 +220,7 @@ export default function FlashPage() {
       unlistens.forEach((u) => u());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isTauri]);
 
   useEffect(() => {
     if (mode === 'show') fitWindowToContent();
@@ -368,4 +403,3 @@ export default function FlashPage() {
     </div>
   );
 }
-

@@ -97,6 +97,17 @@ fn current_labels() -> TrayLabels {
     labels_for(lang_str)
 }
 
+fn truncate_recent_title(title: &str) -> String {
+    const MAX_CHARS: usize = 35;
+    const TRUNCATED_CHARS: usize = 32;
+
+    if title.chars().count() > MAX_CHARS {
+        format!("{}...", title.chars().take(TRUNCATED_CHARS).collect::<String>())
+    } else {
+        title.to_string()
+    }
+}
+
 // --- Build menu from state ---
 
 fn build_tray_menu(app: &AppHandle, state: Option<&TrayState>) -> Result<Menu<tauri::Wry>, Box<dyn std::error::Error>> {
@@ -133,11 +144,7 @@ fn build_tray_menu(app: &AppHandle, state: Option<&TrayState>) -> Result<Menu<ta
         if !s.recent_conversations.is_empty() {
             let submenu = Submenu::new(app, labels.recent_conversations, true)?;
             for conv in s.recent_conversations.iter().take(5) {
-                let title = if conv.title.len() > 35 {
-                    format!("{}...", &conv.title[..32])
-                } else {
-                    conv.title.clone()
-                };
+                let title = truncate_recent_title(&conv.title);
                 let item_id = format!("conv_{}", conv.id);
                 let item = MenuItem::with_id(app, &item_id, &title, true, None::<&str>)?;
                 submenu.append(&item)?;
@@ -280,4 +287,27 @@ pub fn set_tray_language(app: AppHandle, lang: String) -> Result<(), String> {
     tray.set_menu(Some(menu)).map_err(|e| e.to_string())?;
     let _ = tray.set_tooltip(Some(current_labels().tooltip));
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::truncate_recent_title;
+
+    #[test]
+    fn truncates_recent_titles_on_char_boundaries() {
+        let title = "Conversa com emoji 🚀 e acentos áéíóú sobre Windows";
+
+        let truncated = truncate_recent_title(title);
+
+        assert!(truncated.ends_with("..."));
+        assert!(truncated.len() < title.len());
+        assert_eq!(truncated.chars().count(), 35);
+    }
+
+    #[test]
+    fn keeps_short_unicode_titles_unchanged() {
+        let title = "Pergunta matemática 🚀";
+
+        assert_eq!(truncate_recent_title(title), title);
+    }
 }

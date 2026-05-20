@@ -29,8 +29,12 @@ import { isTauriRuntime } from './utils/tauriRuntime';
 import { withTimeout } from './utils/async';
 import { logDiagnostic, withDiagnostic } from './services/diagnostics';
 import { checkForUpdates, installAvailableUpdate, startAutoUpdater } from './services/autoUpdater';
+import type { FlashAppearance, FlashPosition, FlashTiming } from './types';
 import {
   canProcessClipboardEvents,
+  canRebuildTrayMenu,
+  canRunStartupHydration,
+  canListenTrayEvents,
   canRegisterGlobalShortcuts,
   isWindowsDesktopPlatform,
 } from './utils/desktopFeatureGates';
@@ -39,6 +43,21 @@ const MainPage = lazy(() => import('./pages/MainPage'));
 const PopoverPage = lazy(() => import('./pages/PopoverPage'));
 const FlashPage = lazy(() => import('./pages/FlashPage'));
 const ThemeUnlockCelebration = lazy(() => import('./components/Settings/ThemeUnlockCelebration'));
+
+const TRAY_CIRCUIT_FAILURE_LIMIT = 2;
+const TRAY_CIRCUIT_OPEN_MS = 45_000;
+
+interface FlashShowArgs extends Record<string, unknown> {
+  text: string;
+  position: FlashPosition;
+  timing: FlashTiming;
+  appearance: FlashAppearance;
+  streamId: number;
+}
+
+interface FlashReadyPayload {
+  streamId?: number | null;
+}
 
 /** Normalize legacy shortcut format (CmdOrCtrl → CommandOrControl) */
 function normalizeShortcut(s: string): string {
@@ -70,12 +89,73 @@ async function readClipboardTextWithRetry(attempts = 3, delayMs = 60): Promise<s
   return '';
 }
 
+async function waitForFlashReady(streamId: number): Promise<void> {
+  let unlisten: (() => void) | null = null;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let settled = false;
+
+  await new Promise<void>((resolve) => {
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      unlisten?.();
+      resolve();
+    };
+
+    timeoutId = setTimeout(finish, 1_500);
+
+    listen<FlashReadyPayload>('flash-ready', (event) => {
+      const readyStream = event.payload?.streamId ?? null;
+      if (readyStream === null || readyStream === streamId) {
+        finish();
+      }
+    }).then((fn) => {
+      if (settled) {
+        fn();
+        return undefined;
+      }
+      unlisten = fn;
+      return invoke('flash_ensure');
+    }).then(() => {
+      if (settled) return undefined;
+      return emit('flash-ready-request', { streamId });
+    }).catch((error) => {
+      console.error('[flash] ready wait failed:', error);
+      finish();
+    });
+  });
+}
+
+async function showFlashWindow(args: FlashShowArgs, options: { waitForReady?: boolean } = {}): Promise<boolean> {
+  try {
+    if (options.waitForReady) {
+      await withDiagnostic('flash_ready_wait', { streamId: args.streamId, mode: args.timing.mode }, () =>
+        withTimeout(waitForFlashReady(args.streamId), 1_800, 'flash ready timed out'),
+      );
+    }
+
+    await withDiagnostic('flash_show', { streamId: args.streamId, mode: args.timing.mode }, () =>
+      withTimeout(
+        invoke('flash_show', args),
+        1_500,
+        'flash show timed out',
+      ),
+    );
+    return true;
+  } catch (error) {
+    console.error('[flash] show failed:', error);
+    return false;
+  }
+}
+
 function App() {
   const location = useLocation();
   const isMainWindow = location.pathname === '/main' || location.pathname === '/';
   const isTauri = isTauriRuntime();
   const isWindowsDesktop = typeof navigator !== 'undefined' && isWindowsDesktopPlatform();
   const [showSplash, setShowSplash] = useState(isMainWindow);
+  const [bootReady, setBootReady] = useState(!isTauri);
 
   // Auto-dismiss splash after 2s (then 1s fade-out via AnimatePresence)
   useEffect(() => {
@@ -85,26 +165,21 @@ function App() {
   }, [showSplash]);
 
   const theme = useSettingsStore((s) => s.settings.theme);
+  const language = useSettingsStore((s) => s.settings.language);
+  const settingsLoadedFromDisk = useSettingsStore((s) => s._loadedFromDisk);
   const shortcuts = useSettingsStore((s) => s.settings.shortcuts);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const authUser = useAuthStore((s) => s.user);
 
   useEffect(() => {
-    if (!isTauri) {
+    setBootReady(false);
+    if (!canRunStartupHydration({ isTauri, isWindowsDesktop })) {
       useSettingsStore.setState({ _hydrated: true });
       useConversationStore.setState({ loaded: true });
-      return;
-    }
-    if (isWindowsDesktop) {
-      const { settings } = useSettingsStore.getState();
-      useSettingsStore.setState({
-        settings: { ...settings, onboardingCompleted: true },
-        _hydrated: true,
-      });
-      useConversationStore.setState({ conversations: [], activeConversationId: null, loaded: true });
-      useDraftsStore.setState({ drafts: {}, loaded: true });
-      useClipboardStore.setState({ entries: [], loaded: true });
+      useDraftsStore.setState({ loaded: true });
+      useClipboardStore.setState({ loaded: true });
       useAuthStore.setState({ user: null, isLoading: false, isHydrated: true });
+      setBootReady(true);
       return;
     }
     (async () => {
@@ -172,6 +247,7 @@ function App() {
         }),
       ]);
       logDiagnostic('startup_hydration_done', { window: getCurrentWindow().label });
+      setBootReady(true);
     })();
     setupSettingsSync();
 
@@ -181,9 +257,6 @@ function App() {
     if (getCurrentWindow().label === 'main') {
       logDiagnostic('startup_updater_arm', {});
       startAutoUpdater();
-      // Pre-create the (hidden) flash window so typewriter mode has a live
-      // webview listening to `chat-stream` before the first stream begins.
-      invoke('flash_ensure').catch((e) => console.error('[flash] ensure failed:', e));
     }
 
     // Flush pending saves on window close to prevent data loss
@@ -191,7 +264,12 @@ function App() {
     getCurrentWindow().onCloseRequested(() => {
       flushPendingSave();
       void withTimeout(
-        useConversationStore.getState().saveConversations(),
+        Promise.all([
+          useConversationStore.getState().saveConversations(),
+          useSettingsStore.getState().saveSettings(),
+          useDraftsStore.getState().saveDrafts(),
+          useClipboardStore.getState().saveEntries(),
+        ]),
         1_500,
         'close save timed out',
       ).catch((error) => console.error('[close] best-effort save failed:', error));
@@ -200,7 +278,34 @@ function App() {
     return () => {
       unlistenClose?.();
     };
-  }, [isTauri, isWindowsDesktop, loadSettings]);
+  }, [isMainWindow, isTauri, isWindowsDesktop, loadSettings]);
+
+  useEffect(() => {
+    if (!isMainWindow || !isTauri || !bootReady || !settingsLoadedFromDisk) return;
+    const enabled = useSettingsStore.getState().settings.autoLaunch;
+    withDiagnostic('startup_autostart_reconcile', { enabled }, () =>
+      withTimeout(
+        invoke('set_autostart', { enabled }),
+        2_000,
+        'autostart reconcile timed out',
+      ),
+    ).catch((error) => {
+      console.error('[startup] autostart reconcile failed:', error);
+    });
+  }, [bootReady, isMainWindow, isTauri, settingsLoadedFromDisk]);
+
+  useEffect(() => {
+    if (!isMainWindow || !isTauri || !bootReady) return;
+    withDiagnostic('tray_language_sync', { language }, () =>
+      withTimeout(
+        invoke('set_tray_language', { lang: language }),
+        1_000,
+        'tray language sync timed out',
+      ),
+    ).catch((error) => {
+      console.error('[tray] language sync failed:', error);
+    });
+  }, [bootReady, isMainWindow, isTauri, language]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -246,9 +351,15 @@ function App() {
       // Register clipboard shortcut
       if (clipShortcut && clipShortcut !== prev.clipboard) {
         try {
-          await register(clipShortcut, () => {
-            emit('process-clipboard');
-          });
+          await withDiagnostic('shortcut_register', { shortcutName: 'clipboard', accelerator: clipShortcut }, () =>
+            withTimeout(
+              register(clipShortcut, () => {
+                emit('process-clipboard');
+              }),
+              750,
+              'clipboard shortcut register timed out',
+            ),
+          );
           prev.clipboard = clipShortcut;
         } catch (e) {
           console.error('Failed to register clipboard shortcut:', e);
@@ -262,13 +373,19 @@ function App() {
       if (floatingChatShortcut && floatingChatShortcut !== prev.floatingChat) {
         let lastToggleTime = 0;
         try {
-          await register(floatingChatShortcut, () => {
-            const now = Date.now();
-            if (now - lastToggleTime > 400) {
-              lastToggleTime = now;
-              invoke('toggle_popover_window').catch(() => {});
-            }
-          });
+          await withDiagnostic('shortcut_register', { shortcutName: 'floatingChat', accelerator: floatingChatShortcut }, () =>
+            withTimeout(
+              register(floatingChatShortcut, () => {
+                const now = Date.now();
+                if (now - lastToggleTime > 400) {
+                  lastToggleTime = now;
+                  invoke('toggle_popover_window').catch(() => {});
+                }
+              }),
+              750,
+              'floating chat shortcut register timed out',
+            ),
+          );
           prev.floatingChat = floatingChatShortcut;
         } catch (e) {
           console.error('Failed to register floating chat shortcut:', e);
@@ -281,12 +398,18 @@ function App() {
       // dig into Settings to retune the on-screen spot.
       if (adjustFlashShortcut && adjustFlashShortcut !== prev.adjustFlashPosition) {
         try {
-          await register(adjustFlashShortcut, () => {
-            const pos = useSettingsStore.getState().settings.clipboard.flash.position;
-            invoke('flash_enter_adjust_mode', {
-              position: { x: pos.x, y: pos.y },
-            }).catch((e) => console.error('[flash] enter adjust via shortcut failed:', e));
-          });
+          await withDiagnostic('shortcut_register', { shortcutName: 'adjustFlashPosition', accelerator: adjustFlashShortcut }, () =>
+            withTimeout(
+              register(adjustFlashShortcut, () => {
+                const pos = useSettingsStore.getState().settings.clipboard.flash.position;
+                invoke('flash_enter_adjust_mode', {
+                  position: { x: pos.x, y: pos.y },
+                }).catch((e) => console.error('[flash] enter adjust via shortcut failed:', e));
+              }),
+              750,
+              'adjust flash shortcut register timed out',
+            ),
+          );
           prev.adjustFlashPosition = adjustFlashShortcut;
         } catch (e) {
           console.error('Failed to register adjust-flash shortcut:', e);
@@ -298,16 +421,26 @@ function App() {
       // being focused so the user can kill it from anywhere.
       if (emergencyQuitShortcut && emergencyQuitShortcut !== prev.emergencyQuit) {
         try {
-          await register(emergencyQuitShortcut, async () => {
-            try {
-              flushPendingSave();
-              await useConversationStore.getState().saveConversations();
-              await useSettingsStore.getState().saveSettings();
-            } catch (e) {
-              console.error('[emergency-quit] flush failed:', e);
-            }
-            invoke('quit_app').catch(() => {});
-          });
+          await withDiagnostic('shortcut_register', { shortcutName: 'emergencyQuit', accelerator: emergencyQuitShortcut }, () =>
+            withTimeout(
+              register(emergencyQuitShortcut, async () => {
+                try {
+                  flushPendingSave();
+                  await Promise.all([
+                    useConversationStore.getState().saveConversations(),
+                    useSettingsStore.getState().saveSettings(),
+                    useDraftsStore.getState().saveDrafts(),
+                    useClipboardStore.getState().saveEntries(),
+                  ]);
+                } catch (e) {
+                  console.error('[emergency-quit] flush failed:', e);
+                }
+                invoke('quit_app').catch(() => {});
+              }),
+              750,
+              'emergency quit shortcut register timed out',
+            ),
+          );
           prev.emergencyQuit = emergencyQuitShortcut;
         } catch (e) {
           console.error('Failed to register emergency-quit shortcut:', e);
@@ -352,8 +485,7 @@ function App() {
 
   // Tray menu events
   useEffect(() => {
-    if (!isTauri) return;
-    if (isWindowsDesktop) return;
+    if (!canListenTrayEvents({ isTauri, isWindowsDesktop })) return;
     const unlistenNew = listen('new-conversation', () => {
       useChatStore.getState().clearMessages();
       useConversationStore.getState().createConversation();
@@ -414,8 +546,37 @@ function App() {
 
   // Dynamic tray menu sync — rebuild when settings, conversations or streaming state change
   const rebuildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const trayFailureCountRef = useRef(0);
+  const trayCircuitOpenUntilRef = useRef(0);
+  const isTrayCircuitOpen = useCallback(() => {
+    const now = Date.now();
+    if (trayCircuitOpenUntilRef.current > now) return true;
+    if (trayCircuitOpenUntilRef.current !== 0) {
+      trayCircuitOpenUntilRef.current = 0;
+      trayFailureCountRef.current = 0;
+      logDiagnostic('tray_circuit_half_open', {});
+    }
+    return false;
+  }, []);
+  const recordTraySuccess = useCallback(() => {
+    trayFailureCountRef.current = 0;
+    trayCircuitOpenUntilRef.current = 0;
+  }, []);
+  const recordTrayFailure = useCallback((operation: string, error: unknown) => {
+    trayFailureCountRef.current += 1;
+    console.error(`[tray] ${operation} failed:`, error);
+    if (trayFailureCountRef.current >= TRAY_CIRCUIT_FAILURE_LIMIT) {
+      trayCircuitOpenUntilRef.current = Date.now() + TRAY_CIRCUIT_OPEN_MS;
+      logDiagnostic('tray_circuit_open', {
+        operation,
+        failureCount: trayFailureCountRef.current,
+        openMs: TRAY_CIRCUIT_OPEN_MS,
+      });
+    }
+  }, []);
   const rebuildTrayMenu = useCallback(() => {
-    if (isWindowsDesktop) return;
+    if (!canRebuildTrayMenu({ isTauri, isWindowsDesktop, bootReady })) return;
+    if (isTrayCircuitOpen()) return;
     if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current);
     rebuildTimerRef.current = setTimeout(() => {
       // Tray label reflects the active Hat credits mode (Mini/Standard/Plus).
@@ -433,11 +594,20 @@ function App() {
 
       const isProcessing = useChatStore.getState().isStreaming;
 
-      invoke('rebuild_tray_menu', {
-        state: { providerLabel, isProcessing, recentConversations },
-      }).catch(() => {});
+      withDiagnostic('tray_rebuild_menu', {
+        recentConversationCount: recentConversations.length,
+        isProcessing,
+      }, () =>
+        withTimeout(
+          invoke('rebuild_tray_menu', {
+            state: { providerLabel, isProcessing, recentConversations },
+          }),
+          1_000,
+          'tray menu rebuild timed out',
+        ),
+      ).then(recordTraySuccess).catch((error) => recordTrayFailure('rebuild', error));
     }, 300);
-  }, [isWindowsDesktop]);
+  }, [bootReady, isTauri, isWindowsDesktop, isTrayCircuitOpen, recordTrayFailure, recordTraySuccess]);
 
   useEffect(() => {
     if (!isTauri) return;
@@ -449,8 +619,14 @@ function App() {
       if (state.isStreaming !== prevStreaming) {
         prevStreaming = state.isStreaming;
         rebuildTrayMenu();
-        if (!isWindowsDesktop) {
-          invoke('set_tray_icon', { iconState: state.isStreaming ? 'processing' : 'idle' }).catch(() => {});
+        if (canRebuildTrayMenu({ isTauri, isWindowsDesktop, bootReady }) && !isTrayCircuitOpen()) {
+          withDiagnostic('tray_set_icon', { iconState: state.isStreaming ? 'processing' : 'idle' }, () =>
+            withTimeout(
+              invoke('set_tray_icon', { iconState: state.isStreaming ? 'processing' : 'idle' }),
+              1_000,
+              'tray icon update timed out',
+            ),
+          ).then(recordTraySuccess).catch((error) => recordTrayFailure('icon', error));
         }
       }
     });
@@ -464,7 +640,7 @@ function App() {
       unsubChat();
       if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current);
     };
-  }, [isTauri, isWindowsDesktop, rebuildTrayMenu]);
+  }, [bootReady, isTauri, isWindowsDesktop, isTrayCircuitOpen, rebuildTrayMenu, recordTrayFailure, recordTraySuccess]);
 
   // Clipboard processing — core feature
   // Flow: user copies text/image → presses shortcut → AI processes → notification with response
@@ -600,11 +776,23 @@ function App() {
           Boolean(activeRoom && activeRoom.status === 'open' && activeRoomMemberCount > 1);
         const sourceMessageId = crypto.randomUUID();
 
-        let response = '';
-        let hasReceivedContent = false;
-        const streamId = nextStreamId();
+	        let response = '';
+	        let hasReceivedContent = false;
+	        const streamId = nextStreamId();
+	        let flashTypewriterArmed = false;
+	        const sendResponseNotification = (finalResponse: string) => {
+	          const notifications = useSettingsStore.getState().settings.notifications;
+	          if (!notifications.enabled || !notifications.showResponseNotification) return;
+	          const notifBody = finalResponse.length > 500
+	            ? finalResponse.slice(0, 500) + '...'
+	            : finalResponse;
+	          invoke('send_notification', {
+	            title: clip.copyResponseToClipboard ? 'Hat — Copiado para clipboard' : 'Hat — Resposta',
+	            body: notifBody,
+	          }).catch((e) => console.error('[notification] response failed:', e));
+	        };
 
-        chunkUnlisten = await listen<{ streamId: number; text: string; isFinished: boolean; contentType?: string }>(
+	        chunkUnlisten = await listen<{ streamId: number; text: string; isFinished: boolean; contentType?: string }>(
           'chat-stream',
           (event) => {
             // Filter by streamId so we don't pick up chunks from other concurrent streams.
@@ -640,29 +828,26 @@ function App() {
 
                 // Response delivery: Flash Mode replaces the system notification
                 // when enabled (typewriter streams are pre-armed before
-                // stream_chat_hat, so we only show non-typewriter modes here).
-                const currentNotif = useSettingsStore.getState().settings.notifications;
-                const currentFlash = useSettingsStore.getState().settings.clipboard.flash;
-                if (currentFlash.enabled) {
-                  if (currentFlash.timing.mode !== 'typewriter') {
-                    const preview = finalResponse.slice(0, currentFlash.previewLength);
-                    invoke('flash_show', {
-                      text: preview,
-                      position: currentFlash.position,
-                      timing: currentFlash.timing,
-                      appearance: currentFlash.appearance,
-                      streamId,
-                    }).catch((e) => console.error('[flash] show failed:', e));
-                  }
-                } else if (currentNotif.enabled && currentNotif.showResponseNotification) {
-                  const notifBody = finalResponse.length > 500
-                    ? finalResponse.slice(0, 500) + '...'
-                    : finalResponse;
-                  invoke('send_notification', {
-                    title: clip.copyResponseToClipboard ? 'Hat — Copiado para clipboard' : 'Hat — Resposta',
-                    body: notifBody,
-                  }).catch((e) => console.error('[notification] response failed:', e));
-                }
+	                // stream_chat_hat, so we only show non-typewriter modes here).
+	                const currentFlash = useSettingsStore.getState().settings.clipboard.flash;
+	                if (currentFlash.enabled) {
+	                  if (currentFlash.timing.mode !== 'typewriter') {
+	                    const preview = finalResponse.slice(0, currentFlash.previewLength);
+	                    showFlashWindow({
+	                      text: preview,
+	                      position: currentFlash.position,
+	                      timing: currentFlash.timing,
+	                      appearance: currentFlash.appearance,
+	                      streamId,
+	                    }, { waitForReady: true }).then((shown) => {
+	                      if (!shown) sendResponseNotification(finalResponse);
+	                    });
+	                  } else if (!flashTypewriterArmed) {
+	                    sendResponseNotification(finalResponse);
+	                  }
+	                } else {
+	                  sendResponseNotification(finalResponse);
+	                }
 
                 // Save to clipboard history (with images if present)
                 useClipboardStore.getState().addEntry({
@@ -706,17 +891,17 @@ function App() {
           },
         );
 
-        // Typewriter flash mode: pre-show the (empty) flash window now so the
-        // FlashPage's chat-stream listener is mounted before chunks start.
-        if (clip.flash.enabled && clip.flash.timing.mode === 'typewriter') {
-          invoke('flash_show', {
-            text: '',
-            position: clip.flash.position,
-            timing: clip.flash.timing,
-            appearance: clip.flash.appearance,
-            streamId,
-          }).catch((e) => console.error('[flash] typewriter pre-show failed:', e));
-        }
+	        // Typewriter flash mode: pre-show the (empty) flash window now so the
+	        // FlashPage's chat-stream listener is mounted before chunks start.
+	        if (clip.flash.enabled && clip.flash.timing.mode === 'typewriter') {
+	          flashTypewriterArmed = await showFlashWindow({
+	            text: '',
+	            position: clip.flash.position,
+	            timing: clip.flash.timing,
+	            appearance: clip.flash.appearance,
+	            streamId,
+	          }, { waitForReady: true });
+	        }
 
         await invoke('stream_chat_hat', {
           streamId,
