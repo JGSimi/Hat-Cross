@@ -44,8 +44,80 @@ export const firestore = firebaseApp ? getFirestore(firebaseApp) : null;
 
 export interface HatUserDoc {
   credits?: number;
+  creditLots?: unknown[];
   creditsSpent?: number;
   unlockedThemes?: string[];
+}
+
+export interface CreditValidityInfo {
+  credits: number;
+  nextCreditExpiresAt: number | null;
+  creditsExpiringNext: number;
+  hasLegacyBalanceWithoutLots: boolean;
+}
+
+interface ActiveCreditLot {
+  remaining: number;
+  expiresAt: number;
+}
+
+function readMillis(value: unknown): number | null {
+  if (!value) return null;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'string') {
+    const time = Date.parse(value);
+    return Number.isNaN(time) ? null : time;
+  }
+  if (typeof value === 'object') {
+    const maybeTimestamp = value as { toMillis?: () => number; seconds?: number; _seconds?: number };
+    if (typeof maybeTimestamp.toMillis === 'function') return maybeTimestamp.toMillis();
+    if (typeof maybeTimestamp.seconds === 'number') return maybeTimestamp.seconds * 1000;
+    if (typeof maybeTimestamp._seconds === 'number') return maybeTimestamp._seconds * 1000;
+  }
+  return null;
+}
+
+export function summarizeCredits(doc: HatUserDoc): CreditValidityInfo {
+  const storedCredits = typeof doc.credits === 'number' ? doc.credits : 0;
+  const lots = Array.isArray(doc.creditLots) ? doc.creditLots : [];
+  if (lots.length === 0) {
+    return {
+      credits: storedCredits,
+      nextCreditExpiresAt: null,
+      creditsExpiringNext: 0,
+      hasLegacyBalanceWithoutLots: storedCredits > 0,
+    };
+  }
+
+  const now = Date.now();
+  const activeLots = lots.reduce<ActiveCreditLot[]>((acc, raw) => {
+    if (!raw || typeof raw !== 'object') return acc;
+    const lot = raw as Record<string, unknown>;
+    const remaining = typeof lot.remaining === 'number' ? Math.trunc(lot.remaining) : 0;
+    const expiresAt = readMillis(lot.expiresAt);
+    if (remaining > 0 && expiresAt !== null && expiresAt > now) {
+      acc.push({ remaining, expiresAt });
+    }
+    return acc;
+  }, []);
+
+  activeLots.sort((a, b) => a.expiresAt - b.expiresAt);
+  const credits = activeLots.reduce((sum, lot) => sum + lot.remaining, 0);
+  const nextCreditExpiresAt = activeLots[0]?.expiresAt ?? null;
+  const creditsExpiringNext =
+    nextCreditExpiresAt === null
+      ? 0
+      : activeLots.reduce(
+          (sum, lot) => (lot.expiresAt === nextCreditExpiresAt ? sum + lot.remaining : sum),
+          0,
+        );
+
+  return {
+    credits,
+    nextCreditExpiresAt,
+    creditsExpiringNext,
+    hasLegacyBalanceWithoutLots: false,
+  };
 }
 
 export async function signInWithGoogle(): Promise<User> {

@@ -8,31 +8,37 @@ import {
   Copy,
   DoorOpen,
   Hash,
-  KeyRound,
-  Keyboard,
   Loader2,
+  LogIn,
   LogOut,
   MessageSquare,
   MonitorUp,
   MoreHorizontal,
-  PanelRightOpen,
   Power,
   RadioTower,
   RefreshCw,
   RotateCcw,
-  Search,
   Send,
   Settings,
   ShieldAlert,
   Sparkles,
   Square,
   Trash2,
-  Wand2,
+  UserCircle,
   X,
   Zap,
 } from 'lucide-react';
 import type { User } from 'firebase/auth';
-import { firebaseAuth, firebaseReady, signInWithGoogle, signOutGoogle, watchAuth, watchCredits } from '../services/firebase';
+import {
+  firebaseAuth,
+  firebaseReady,
+  signInWithGoogle,
+  signOutGoogle,
+  summarizeCredits,
+  watchAuth,
+  watchCredits,
+  type CreditValidityInfo,
+} from '../services/firebase';
 import { createRoom, joinRoom, leaveRoom } from '../services/rooms';
 import { hat, type ChatStreamRequest, type Settings as HatSettings } from '../bridge/hat';
 import { useHatStore } from '../stores/hatStore';
@@ -40,12 +46,18 @@ import { useHatStore } from '../stores/hatStore';
 type Status = 'idle' | 'busy' | 'error';
 type DrawerView = 'chat' | 'clipboard' | 'rooms' | 'system';
 type ShortcutKey = keyof HatSettings['shortcuts'];
+type SidebarChat = {
+  id: string;
+  title: string;
+  prompt: string;
+  response: string;
+};
 
 const shortcutLabels: Record<ShortcutKey, { label: string; hint: string }> = {
-  clipboard: { label: 'Clipboard', hint: 'Captura texto e imagem' },
-  floatingChat: { label: 'Popover', hint: 'Chat rapido sobre outra janela' },
-  adjustFlashPosition: { label: 'Flash', hint: 'Ajusta posicao do overlay' },
-  emergencyQuit: { label: 'Sair', hint: 'Fecha o app imediatamente' },
+  clipboard: { label: 'Clipboard', hint: 'Texto/imagem' },
+  floatingChat: { label: 'Mini', hint: 'Popover' },
+  adjustFlashPosition: { label: 'Flash', hint: 'Posicao' },
+  emergencyQuit: { label: 'Sair', hint: 'Fecha' },
 };
 
 const defaultShortcuts: Record<ShortcutKey, string> = {
@@ -60,12 +72,12 @@ function friendlyError(err: unknown) {
   const text = raw.toLowerCase();
   if (text === 'auth' || text.includes('auth') || text.includes('firebase')) return 'Conecte sua conta Google para continuar.';
   if (text.includes('clipboard')) return 'Clipboard vazio ou bloqueado pelo Windows.';
-  if (text.includes('network') || text.includes('fetch')) return 'Sem conexao com o Hat. Tente novamente.';
-  return raw || 'Algo falhou. Tente novamente.';
+  if (text.includes('network') || text.includes('fetch')) return 'Sem rede.';
+  return raw || 'Falhou.';
 }
 
 function shortEmail(email?: string | null) {
-  if (!email) return 'Desconectado';
+  if (!email) return 'Offline';
   const [name, domain] = email.split('@');
   return `${name}@${domain?.split('.')[0] ?? ''}`;
 }
@@ -82,6 +94,31 @@ function shortcutTokenLabel(token: string) {
   if (normalized === 'option') return 'Alt';
   if (normalized === 'escape') return 'Esc';
   return token.length === 1 ? token.toUpperCase() : token;
+}
+
+function formatExpiryDistance(expiresAt: number, now: number) {
+  const diff = expiresAt - now;
+  if (diff <= 0) return null;
+
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  const rtf = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'always', style: 'short' });
+
+  if (diff < hour) return rtf.format(Math.max(1, Math.ceil(diff / minute)), 'minute');
+  if (diff < 2 * day) return rtf.format(Math.ceil(diff / hour), 'hour');
+  if (diff < 60 * day) return rtf.format(Math.ceil(diff / day), 'day');
+  return rtf.format(Math.ceil(diff / (30 * day)), 'month');
+}
+
+function creditValidityLabel(info: CreditValidityInfo | null, now: number) {
+  if (!info) return '';
+  if (info.hasLegacyBalanceWithoutLots) return 'sem validade';
+  if (!info.nextCreditExpiresAt) return '0 ativo';
+
+  const distance = formatExpiryDistance(info.nextCreditExpiresAt, now);
+  if (!distance) return 'vence agora';
+  return `${info.creditsExpiringNext.toLocaleString('pt-BR')} vence ${distance}`;
 }
 
 function normalizeShortcutKey(key: string) {
@@ -122,13 +159,15 @@ export function Main() {
   const clipboardText = useHatStore((s) => s.clipboardText);
   const clipboardImage = useHatStore((s) => s.clipboardImage);
   const setClipboard = useHatStore((s) => s.setClipboard);
+  const loadSnapshot = useHatStore((s) => s.loadSnapshot);
   const resetStream = useHatStore((s) => s.resetStream);
   const saveSettings = useHatStore((s) => s.saveSettings);
   const loadSettings = useHatStore((s) => s.loadSettings);
 
   const [drawer, setDrawer] = useState<DrawerView>('chat');
   const [user, setUser] = useState<User | null>(firebaseAuth?.currentUser ?? null);
-  const [credits, setCredits] = useState<number | null>(null);
+  const [creditInfo, setCreditInfo] = useState<CreditValidityInfo | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [status, setStatus] = useState<Status>('idle');
   const [activeAction, setActiveAction] = useState('');
   const [error, setError] = useState('');
@@ -138,7 +177,10 @@ export function Main() {
   const [roomShare, setRoomShare] = useState(false);
   const [updateMessage, setUpdateMessage] = useState('');
   const [quitConfirm, setQuitConfirm] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [activeChatID, setActiveChatID] = useState<string>(() => crypto.randomUUID());
+  const [chatHistory, setChatHistory] = useState<SidebarChat[]>([]);
+  const [activeMessageText, setActiveMessageText] = useState('');
+  const [activeMessageImage, setActiveMessageImage] = useState<string | null>(null);
 
   useEffect(() => {
     const stopAuth = watchAuth((nextUser) => setUser(nextUser));
@@ -147,11 +189,16 @@ export function Main() {
 
   useEffect(() => {
     if (!user) {
-      setCredits(null);
+      setCreditInfo(null);
       return;
     }
-    return watchCredits(user.uid, (doc) => setCredits(doc.credits ?? 0));
+    return watchCredits(user.uid, (doc) => setCreditInfo(summarizeCredits(doc)));
   }, [user]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!quitConfirm) return;
@@ -163,9 +210,17 @@ export function Main() {
   const canUseBackend = Boolean(user && settings);
   const activeText = (prompt || clipboardText).trim();
   const hasInput = Boolean(activeText || clipboardImage);
+  const hasConversationContent = Boolean(activeMessageText || activeMessageImage || thinking || response);
+  const isEmptyChat = drawer === 'chat' && !hasConversationContent;
   const mode = settings?.mode ?? 'hat';
-  const conversationTitle = activeText ? activeText.slice(0, 44) : response ? response.slice(0, 44) : 'Nova conversa';
-  const inputSummary = clipboardImage ? 'Imagem anexada' : activeText ? `${activeText.length} caracteres` : 'Sem entrada';
+  const messageSummary = activeMessageImage ? 'Imagem' : activeMessageText ? `${activeMessageText.length} chars` : '';
+  const credits = creditInfo?.credits ?? null;
+  const creditExpiryTitle = creditInfo?.nextCreditExpiresAt
+    ? new Intl.DateTimeFormat('pt-BR', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }).format(new Date(creditInfo.nextCreditExpiresAt))
+    : undefined;
 
   const streamRequest = useMemo(() => {
     if (!settings) return null;
@@ -184,6 +239,41 @@ export function Main() {
     } satisfies ChatStreamRequest;
   }, [activeText, clipboardImage, mode, roomID, roomShare, settings, streamID]);
 
+  useEffect(() => {
+    if (!activeChatID || !response) return;
+    setChatHistory((entries) => entries.map((entry) => (
+      entry.id === activeChatID
+        ? { ...entry, response, title: entry.prompt.slice(0, 44) || response.slice(0, 44) || 'Chat' }
+        : entry
+    )));
+  }, [activeChatID, response]);
+
+  function upsertActiveChat(promptText: string) {
+    const cleanPrompt = promptText.trim();
+    if (!cleanPrompt) return;
+    const title = cleanPrompt.slice(0, 44);
+    setChatHistory((entries) => {
+      const nextEntry: SidebarChat = {
+        id: activeChatID,
+        title,
+        prompt: cleanPrompt,
+        response,
+      };
+      const existing = entries.filter((entry) => entry.id !== activeChatID);
+      return [nextEntry, ...existing].slice(0, 20);
+    });
+  }
+
+  function openHistoryChat(entry: SidebarChat) {
+    setActiveChatID(entry.id);
+    setPrompt(entry.prompt);
+    setActiveMessageText(entry.prompt);
+    setActiveMessageImage(null);
+    loadSnapshot(entry.prompt, entry.response);
+    setError('');
+    setDrawer('chat');
+  }
+
   async function runGuarded(actionLabel: string, action: () => Promise<void>) {
     setStatus('busy');
     setActiveAction(actionLabel);
@@ -201,6 +291,10 @@ export function Main() {
 
   async function sendChat() {
     if (!streamRequest || !canUseBackend || !hasInput) return;
+    const sentText = activeText || 'Analise o clipboard.';
+    setActiveMessageText(sentText);
+    setActiveMessageImage(clipboardImage);
+    upsertActiveChat(sentText);
     const nextStream = resetStream();
     await hat.chat.stream({ ...streamRequest, streamId: nextStream });
   }
@@ -291,9 +385,13 @@ export function Main() {
   }
 
   function newConversation() {
+    upsertActiveChat(activeMessageText);
+    setActiveChatID(crypto.randomUUID());
     resetStream();
     setPrompt('');
     setClipboard('', null);
+    setActiveMessageText('');
+    setActiveMessageImage(null);
     setError('');
     setDrawer('chat');
   }
@@ -301,79 +399,68 @@ export function Main() {
   return (
     <main className="hat-app">
       <aside className="hat-sidebar">
-        <div className="brand-row">
-          <div className="brand-symbol">H</div>
-          <div>
-            <h1>Hat</h1>
-            <span>Hat Flash</span>
-          </div>
-        </div>
-
         <nav className="main-nav" aria-label="Navegacao">
           <NavButton active={drawer === 'chat'} icon={MessageSquare} label="Chat" onClick={() => setDrawer('chat')} />
           <NavButton active={drawer === 'clipboard'} icon={Clipboard} label="Clipboard" onClick={() => setDrawer('clipboard')} />
           <NavButton active={drawer === 'rooms'} icon={RadioTower} label="Salas" onClick={() => setDrawer('rooms')} />
-          <NavButton active={drawer === 'system'} icon={Settings} label="Sistema" onClick={() => setDrawer('system')} />
+          <NavButton active={drawer === 'system'} icon={Settings} label="Ajustes" onClick={() => setDrawer('system')} />
         </nav>
 
-        <label className="search-box">
-          <Search size={14} />
-          <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar" />
-        </label>
-
-        <section className="history-list">
+        <section className="workspace-list" aria-label="Historico de chats">
           <header>
-            <span>Historico</span>
+            <span>Chats</span>
             <button onClick={newConversation} aria-label="Nova conversa">
               <MessageSquare size={14} />
             </button>
           </header>
-          <button className="history-entry active" onClick={() => setDrawer('chat')}>
-            <strong>{conversationTitle}</strong>
-            <span>{response ? 'Resposta pronta' : hasInput ? 'Rascunho' : 'Vazia'}</span>
-          </button>
-          <button className="history-entry" onClick={() => setDrawer('clipboard')}>
-            <strong>Clipboard</strong>
-            <span>{inputSummary}</span>
-          </button>
-          <button className="history-entry" onClick={() => setDrawer('rooms')}>
-            <strong>{roomTitle}</strong>
-            <span>{roomID ? 'Ativa' : 'Sem sala'}</span>
-          </button>
+          {chatHistory.map((entry) => (
+            <button
+              key={entry.id}
+              className={`workspace-card ${entry.id === activeChatID ? 'active' : ''}`}
+              onClick={() => openHistoryChat(entry)}
+            >
+              <MessageSquare size={16} />
+              <span>
+                <strong>{entry.title || 'Chat'}</strong>
+                <small>{entry.response ? 'Pronto' : 'Rascunho'}</small>
+              </span>
+            </button>
+          ))}
         </section>
 
         <footer className="sidebar-footer">
-          <div className={`live-status ${status}`}>
+          <div className={`live-status ${status}`} aria-live="polite">
             <span />
-            {isBusy ? activeAction : status === 'error' ? 'Atencao' : 'Pronto'}
+            {isBusy ? activeAction : status === 'error' ? 'Atencao' : user ? 'Pronto' : 'Faca login'}
           </div>
-          <button className="ghost-button" onClick={() => hat.popover.toggle()}>
-            <PanelRightOpen size={15} />
-            Popover
-          </button>
+          {user ? (
+            <button className="sidebar-profile" onClick={() => setDrawer('system')}>
+              <UserCircle size={15} />
+              Perfil
+            </button>
+          ) : (
+            <button className="sidebar-login" onClick={() => runGuarded('Abrindo Google...', async () => { await signInWithGoogle(); })} disabled={isBusy || !firebaseReady}>
+              <LogIn size={15} />
+              Entrar
+            </button>
+          )}
         </footer>
       </aside>
 
       <section className="chat-pane">
         <header className="top-bar">
-          <div>
-            <p>{drawer === 'chat' ? 'Chat' : drawer === 'clipboard' ? 'Clipboard' : drawer === 'rooms' ? 'Salas' : 'Sistema'}</p>
-            <h2>{drawer === 'chat' ? 'Conversa principal' : drawer === 'clipboard' ? 'Entrada do Windows' : drawer === 'rooms' ? 'Colaboracao' : 'Ajustes'}</h2>
-          </div>
           <div className="top-actions">
             <ModeSwitch mode={mode} disabled={!settings || isBusy} onChange={(next) => runGuarded('Salvando modo...', () => setMode(next))} />
-            <div className="account-pill">
-              <strong>{shortEmail(user?.email)}</strong>
-              <span>{credits ?? '--'} creditos</span>
-            </div>
-            {user ? (
+            {user && (
+              <div className="account-pill">
+                <strong>{shortEmail(user.email)}</strong>
+                {credits !== null && <span>{credits.toLocaleString('pt-BR')} cr</span>}
+                {creditInfo && <small title={creditExpiryTitle}>{creditValidityLabel(creditInfo, now)}</small>}
+              </div>
+            )}
+            {user && (
               <button className="icon-button" onClick={() => runGuarded('Saindo...', signOutGoogle)} aria-label="Sair">
                 <LogOut size={16} />
-              </button>
-            ) : (
-              <button className="solid-button" onClick={() => runGuarded('Abrindo Google...', async () => { await signInWithGoogle(); })} disabled={isBusy || !firebaseReady}>
-                <KeyRound size={15} />
-                Entrar
               </button>
             )}
           </div>
@@ -388,15 +475,33 @@ export function Main() {
         )}
 
         <div className="main-grid">
-          <section className="conversation">
-            {hasInput && (
+          <section className={`conversation ${isEmptyChat ? 'empty' : ''}`}>
+            {isEmptyChat && (
+              <div className="empty-start">
+                <h2>No que devemos trabalhar?</h2>
+                <ComposerBar
+                  prompt={prompt}
+                  setPrompt={setPrompt}
+                  isBusy={isBusy}
+                  activeAction={activeAction}
+                  canUseBackend={canUseBackend}
+                  hasInput={hasInput}
+                  streamID={streamID}
+                  onCapture={() => runGuarded('Lendo clipboard...', processClipboard)}
+                  onSend={() => runGuarded('Enviando ao Hat...', sendChat)}
+                  centered
+                />
+              </div>
+            )}
+
+            {!isEmptyChat && activeMessageText && (
               <article className="message user">
                 <header>
                   <span>Voce</span>
-                  <small>{inputSummary}</small>
+                  <small>{messageSummary}</small>
                 </header>
-                <pre>{activeText || 'Imagem anexada.'}</pre>
-                {clipboardImage && <img src={clipboardImage} alt="Clipboard" />}
+                <pre>{activeMessageText}</pre>
+                {activeMessageImage && <img src={activeMessageImage} alt="Clipboard" />}
               </article>
             )}
 
@@ -414,22 +519,16 @@ export function Main() {
               <article className="message assistant">
                 <header>
                   <span><Bot size={14} /> Hat</span>
-                  <small>{response.length} caracteres</small>
+                  <small>{response.length} chars</small>
                 </header>
                 <pre>{response}</pre>
               </article>
-            ) : !hasInput ? (
-              <div className="empty-chat">
-                <Wand2 size={30} />
-                <h3>Pronto para trabalhar</h3>
-                <p>Escreva, capture o clipboard ou abra um submenu. A tela principal fica limpa.</p>
-              </div>
             ) : null}
           </section>
 
           {drawer !== 'chat' && (
             <aside className="drawer-panel">
-              <DrawerHeader icon={drawer === 'clipboard' ? Clipboard : drawer === 'rooms' ? RadioTower : Settings} title={drawer === 'clipboard' ? 'Clipboard' : drawer === 'rooms' ? 'Salas' : 'Sistema'} onClose={() => setDrawer('chat')} />
+              <DrawerHeader icon={drawer === 'clipboard' ? Clipboard : drawer === 'rooms' ? RadioTower : Settings} title={drawer === 'clipboard' ? 'Clipboard' : drawer === 'rooms' ? 'Salas' : 'Ajustes'} onClose={() => setDrawer('chat')} />
               {drawer === 'clipboard' && (
                 <ClipboardDrawer
                   text={activeText}
@@ -478,22 +577,20 @@ export function Main() {
           )}
         </div>
 
-        <footer className="composer-bar">
-          <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Mensagem para o Hat..." rows={1} />
-          <button onClick={() => runGuarded('Lendo clipboard...', processClipboard)} disabled={isBusy} aria-label="Capturar clipboard">
-            {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
-          </button>
-          <button className="solid-button" onClick={() => runGuarded('Enviando ao Hat...', sendChat)} disabled={!canUseBackend || !hasInput || isBusy}>
-            {isBusy && activeAction.includes('Enviando') ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
-            Enviar
-          </button>
-          <button onClick={() => hat.chat.cancel(streamID)} disabled={!isBusy} aria-label="Parar">
-            <Square size={16} />
-          </button>
-          <button onClick={() => setDrawer(drawer === 'chat' ? 'clipboard' : 'chat')} aria-label="Mais">
-            <MoreHorizontal size={16} />
-          </button>
-        </footer>
+        {!isEmptyChat && (
+          <ComposerBar
+            prompt={prompt}
+            setPrompt={setPrompt}
+            isBusy={isBusy}
+            activeAction={activeAction}
+            canUseBackend={canUseBackend}
+            hasInput={hasInput}
+            streamID={streamID}
+            onCapture={() => runGuarded('Lendo clipboard...', processClipboard)}
+            onSend={() => runGuarded('Enviando ao Hat...', sendChat)}
+            onMore={() => setDrawer(drawer === 'chat' ? 'clipboard' : 'chat')}
+          />
+        )}
 
         {response && (
           <div className="result-actions">
@@ -513,6 +610,52 @@ export function Main() {
         )}
       </section>
     </main>
+  );
+}
+
+function ComposerBar({
+  prompt,
+  setPrompt,
+  isBusy,
+  activeAction,
+  canUseBackend,
+  hasInput,
+  streamID,
+  onCapture,
+  onSend,
+  onMore,
+  centered = false,
+}: {
+  prompt: string;
+  setPrompt: (value: string) => void;
+  isBusy: boolean;
+  activeAction: string;
+  canUseBackend: boolean;
+  hasInput: boolean;
+  streamID: number;
+  onCapture: () => void;
+  onSend: () => void;
+  onMore?: () => void;
+  centered?: boolean;
+}) {
+  return (
+    <footer className={`composer-bar ${centered ? 'center-composer' : ''}`}>
+      <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Mensagem..." rows={1} />
+      <button onClick={onCapture} disabled={isBusy} aria-label="Capturar clipboard">
+        {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
+      </button>
+      <button className="solid-button icon-only" onClick={onSend} disabled={!canUseBackend || !hasInput || isBusy} aria-label="Enviar">
+        {isBusy && activeAction.includes('Enviando') ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
+      </button>
+      <button onClick={() => hat.chat.cancel(streamID)} disabled={!isBusy} aria-label="Parar">
+        <Square size={16} />
+      </button>
+      {onMore && (
+        <button onClick={onMore} aria-label="Mais">
+          <MoreHorizontal size={16} />
+        </button>
+      )}
+    </footer>
   );
 }
 
@@ -603,13 +746,13 @@ function RoomsDrawer({ roomTitle, setRoomTitle, roomID, setRoomID, roomShare, se
     <div className="drawer-body">
       <div className="room-card">
         <Hash size={15} />
-        <span>{roomID || 'sem sala ativa'}</span>
+        <span>{roomID || 'sem sala'}</span>
       </div>
       <Field label="Nome" value={roomTitle} onChange={setRoomTitle} placeholder="Sala Hat" />
       <Field label="Codigo" value={roomID} onChange={setRoomID} placeholder="Cole o codigo" />
       <label className="check-row">
         <input type="checkbox" checked={roomShare} onChange={(e) => setRoomShare(e.target.checked)} />
-        Compartilhar respostas
+        Compartilhar
       </label>
       <div className="two-actions">
         <button onClick={onCreate} disabled={!canUse || busy}><RadioTower size={14} /> Criar</button>
@@ -637,9 +780,13 @@ function SystemDrawer({ settings, updateMessage, quitConfirm, busy, onShortcut, 
 
   return (
     <div className="drawer-body">
-      <details open>
-        <summary>Atalhos</summary>
-        {settings && shortcutEntries.map((key) => (
+      <section className="settings-section">
+        <header>
+          <div>
+            <strong>Atalhos globais</strong>
+          </div>
+        </header>
+        {settings ? shortcutEntries.map((key) => (
           <ShortcutEditor
             key={key}
             shortcutKey={key}
@@ -649,21 +796,39 @@ function SystemDrawer({ settings, updateMessage, quitConfirm, busy, onShortcut, 
             disabled={busy}
             onChange={(value) => onShortcut(key, value)}
           />
-        ))}
-      </details>
-      <details>
-        <summary>Atualizacao</summary>
-        <button className="full" onClick={onUpdate} disabled={busy}><RefreshCw size={14} /> Verificar</button>
+        )) : (
+          <p className="drawer-note">Carregando...</p>
+        )}
+      </section>
+      <section className="settings-section compact">
+        <header>
+          <div>
+            <strong>Update</strong>
+          </div>
+        </header>
+        <button className="full" onClick={onUpdate} disabled={busy}><RefreshCw size={14} /> Atualizar</button>
         {updateMessage && <p className="drawer-note">{updateMessage}</p>}
-        <button className="full" onClick={onAutostart} disabled={busy}><Power size={14} /> {settings?.autoLaunch ? 'Desligar inicio' : 'Iniciar com Windows'}</button>
-      </details>
-      <details>
-        <summary>Seguranca</summary>
+      </section>
+      <section className="settings-section compact">
+        <header>
+          <div>
+            <strong>Inicio</strong>
+            <span>{settings?.autoLaunch ? 'Ativo' : 'Desligado'}</span>
+          </div>
+        </header>
+        <button className="full" onClick={onAutostart} disabled={busy}><Power size={14} /> {settings?.autoLaunch ? 'Desligar' : 'Ligar'}</button>
+      </section>
+      <section className="settings-section compact danger-zone">
+        <header>
+          <div>
+            <strong>Sair</strong>
+          </div>
+        </header>
         <button className="danger-button full" onClick={onQuit} disabled={busy && quitConfirm}>
           <ShieldAlert size={14} />
-          {quitConfirm ? 'Clique de novo' : 'Sair do app'}
+          {quitConfirm ? 'Confirmar' : 'Sair'}
         </button>
-      </details>
+      </section>
     </div>
   );
 }
@@ -743,15 +908,6 @@ function ShortcutEditor({ shortcutKey, value, defaultValue, conflictLabel, disab
         <ShortcutValue value={value} recording={recording} saving={saving} />
       </button>
       <div className="shortcut-actions">
-        <button
-          type="button"
-          onClick={startRecording}
-          disabled={isBusy}
-          title="Gravar"
-          aria-label={`Gravar ${meta.label}`}
-        >
-          <Keyboard size={14} />
-        </button>
         <button
           type="button"
           onClick={() => void commitShortcut(defaultValue)}

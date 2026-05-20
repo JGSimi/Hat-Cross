@@ -53,6 +53,7 @@ interface HatStore {
   clipboardText: string;
   clipboardImage: string | null;
   setClipboard: (text: string, image: string | null) => void;
+  loadSnapshot: (text: string, response: string) => void;
   addStreamChunk: (chunk: StreamChunk) => void;
   resetStream: () => number;
   setFlashPayload: (payload: FlashPayload | null) => void;
@@ -70,6 +71,7 @@ export const useHatStore = create<HatStore>((set, get) => ({
   clipboardImage: null,
 
   setClipboard: (text, image) => set({ clipboardText: text, clipboardImage: image }),
+  loadSnapshot: (text, response) => set({ clipboardText: text, clipboardImage: null, response, thinking: '' }),
   addStreamChunk: (chunk) => {
     if (chunk.streamId !== get().streamID) return;
     if (chunk.contentType === 'thinking') {

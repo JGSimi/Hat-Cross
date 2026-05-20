@@ -60,5 +60,15 @@ describe('hatStore', () => {
     expect(useHatStore.getState().thinking).toBe('plan');
     expect(useHatStore.getState().response).toBe('');
   });
-});
 
+  it('loads a saved chat snapshot into the active view', () => {
+    useHatStore.setState({ thinking: 'old', clipboardImage: 'data:image/png;base64,old' });
+
+    useHatStore.getState().loadSnapshot('pergunta antiga', 'resposta antiga');
+
+    expect(useHatStore.getState().clipboardText).toBe('pergunta antiga');
+    expect(useHatStore.getState().clipboardImage).toBeNull();
+    expect(useHatStore.getState().response).toBe('resposta antiga');
+    expect(useHatStore.getState().thinking).toBe('');
+  });
+});

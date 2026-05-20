@@ -59,8 +59,7 @@ export function Popover() {
         <div className="popover-title">
           <Sparkles size={17} />
           <div>
-            <h1>Hat rapido</h1>
-            <p>Ctrl+Enter envia</p>
+            <h1>Hat</h1>
           </div>
         </div>
         <div className="popover-chrome">
@@ -79,7 +78,7 @@ export function Popover() {
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Pergunte sem sair da janela atual..."
+          placeholder="Pergunta..."
           autoFocus
         />
         <div className="popover-result">
@@ -90,8 +89,7 @@ export function Popover() {
           ) : (
             <div className="popover-empty">
               <Bot size={24} />
-              <strong>Pronto para responder</strong>
-              <span>Digite, envie, copie ou mande para flash sem trocar de janela.</span>
+              <strong>Vazio</strong>
             </div>
           )}
         </div>
