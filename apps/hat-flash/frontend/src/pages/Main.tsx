@@ -14,7 +14,6 @@ import {
   MessageSquare,
   MonitorUp,
   MoreHorizontal,
-  Power,
   RadioTower,
   RefreshCw,
   RotateCcw,
@@ -22,7 +21,6 @@ import {
   Settings,
   ShieldAlert,
   Sparkles,
-  Square,
   Trash2,
   UserCircle,
   X,
@@ -46,18 +44,12 @@ import { useHatStore } from '../stores/hatStore';
 type Status = 'idle' | 'busy' | 'error';
 type DrawerView = 'chat' | 'clipboard' | 'rooms' | 'system';
 type ShortcutKey = keyof HatSettings['shortcuts'];
-type SidebarChat = {
-  id: string;
-  title: string;
-  prompt: string;
-  response: string;
-};
 
 const shortcutLabels: Record<ShortcutKey, { label: string; hint: string }> = {
   clipboard: { label: 'Clipboard', hint: 'Texto/imagem' },
   floatingChat: { label: 'Mini', hint: 'Popover' },
-  adjustFlashPosition: { label: 'Flash', hint: 'Posicao' },
-  emergencyQuit: { label: 'Sair', hint: 'Fecha' },
+  adjustFlashPosition: { label: 'Flash', hint: 'Altera posicao da resposta na tela' },
+  emergencyQuit: { label: 'Sair', hint: 'Fecha o app em qualquer tela' },
 };
 
 const defaultShortcuts: Record<ShortcutKey, string> = {
@@ -76,10 +68,16 @@ function friendlyError(err: unknown) {
   return raw || 'Falhou.';
 }
 
-function shortEmail(email?: string | null) {
-  if (!email) return 'Offline';
-  const [name, domain] = email.split('@');
-  return `${name}@${domain?.split('.')[0] ?? ''}`;
+function profileName(user: User) {
+  return user.displayName?.trim() || user.email?.split('@')[0] || 'Perfil';
+}
+
+function compactCredits(value: number) {
+  if (value < 1_000_000) return value.toLocaleString('pt-BR');
+  return new Intl.NumberFormat('pt-BR', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
 function shortcutParts(shortcut: string) {
@@ -118,7 +116,7 @@ function creditValidityLabel(info: CreditValidityInfo | null, now: number) {
 
   const distance = formatExpiryDistance(info.nextCreditExpiresAt, now);
   if (!distance) return 'vence agora';
-  return `${info.creditsExpiringNext.toLocaleString('pt-BR')} vence ${distance}`;
+  return `${compactCredits(info.creditsExpiringNext)} vence ${distance}`;
 }
 
 function normalizeShortcutKey(key: string) {
@@ -159,12 +157,11 @@ export function Main() {
   const clipboardText = useHatStore((s) => s.clipboardText);
   const clipboardImage = useHatStore((s) => s.clipboardImage);
   const setClipboard = useHatStore((s) => s.setClipboard);
-  const loadSnapshot = useHatStore((s) => s.loadSnapshot);
   const resetStream = useHatStore((s) => s.resetStream);
   const saveSettings = useHatStore((s) => s.saveSettings);
   const loadSettings = useHatStore((s) => s.loadSettings);
 
-  const [drawer, setDrawer] = useState<DrawerView>('chat');
+  const [drawer, setDrawer] = useState<DrawerView>('clipboard');
   const [user, setUser] = useState<User | null>(firebaseAuth?.currentUser ?? null);
   const [creditInfo, setCreditInfo] = useState<CreditValidityInfo | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -177,8 +174,6 @@ export function Main() {
   const [roomShare, setRoomShare] = useState(false);
   const [updateMessage, setUpdateMessage] = useState('');
   const [quitConfirm, setQuitConfirm] = useState(false);
-  const [activeChatID, setActiveChatID] = useState<string>(() => crypto.randomUUID());
-  const [chatHistory, setChatHistory] = useState<SidebarChat[]>([]);
   const [activeMessageText, setActiveMessageText] = useState('');
   const [activeMessageImage, setActiveMessageImage] = useState<string | null>(null);
 
@@ -215,6 +210,9 @@ export function Main() {
   const mode = settings?.mode ?? 'hat';
   const messageSummary = activeMessageImage ? 'Imagem' : activeMessageText ? `${activeMessageText.length} chars` : '';
   const credits = creditInfo?.credits ?? null;
+  const userName = user ? profileName(user) : '';
+  const userEmail = user?.email ?? '';
+  const creditAmountLabel = credits === null ? '' : `${compactCredits(credits)} cr`;
   const creditExpiryTitle = creditInfo?.nextCreditExpiresAt
     ? new Intl.DateTimeFormat('pt-BR', {
         dateStyle: 'short',
@@ -239,41 +237,6 @@ export function Main() {
     } satisfies ChatStreamRequest;
   }, [activeText, clipboardImage, mode, roomID, roomShare, settings, streamID]);
 
-  useEffect(() => {
-    if (!activeChatID || !response) return;
-    setChatHistory((entries) => entries.map((entry) => (
-      entry.id === activeChatID
-        ? { ...entry, response, title: entry.prompt.slice(0, 44) || response.slice(0, 44) || 'Chat' }
-        : entry
-    )));
-  }, [activeChatID, response]);
-
-  function upsertActiveChat(promptText: string) {
-    const cleanPrompt = promptText.trim();
-    if (!cleanPrompt) return;
-    const title = cleanPrompt.slice(0, 44);
-    setChatHistory((entries) => {
-      const nextEntry: SidebarChat = {
-        id: activeChatID,
-        title,
-        prompt: cleanPrompt,
-        response,
-      };
-      const existing = entries.filter((entry) => entry.id !== activeChatID);
-      return [nextEntry, ...existing].slice(0, 20);
-    });
-  }
-
-  function openHistoryChat(entry: SidebarChat) {
-    setActiveChatID(entry.id);
-    setPrompt(entry.prompt);
-    setActiveMessageText(entry.prompt);
-    setActiveMessageImage(null);
-    loadSnapshot(entry.prompt, entry.response);
-    setError('');
-    setDrawer('chat');
-  }
-
   async function runGuarded(actionLabel: string, action: () => Promise<void>) {
     setStatus('busy');
     setActiveAction(actionLabel);
@@ -294,7 +257,6 @@ export function Main() {
     const sentText = activeText || 'Analise o clipboard.';
     setActiveMessageText(sentText);
     setActiveMessageImage(clipboardImage);
-    upsertActiveChat(sentText);
     const nextStream = resetStream();
     await hat.chat.stream({ ...streamRequest, streamId: nextStream });
   }
@@ -384,49 +346,15 @@ export function Main() {
     await hat.app.quit();
   }
 
-  function newConversation() {
-    upsertActiveChat(activeMessageText);
-    setActiveChatID(crypto.randomUUID());
-    resetStream();
-    setPrompt('');
-    setClipboard('', null);
-    setActiveMessageText('');
-    setActiveMessageImage(null);
-    setError('');
-    setDrawer('chat');
-  }
-
   return (
     <main className="hat-app">
       <aside className="hat-sidebar">
         <nav className="main-nav" aria-label="Navegacao">
-          <NavButton active={drawer === 'chat'} icon={MessageSquare} label="Chat" onClick={() => setDrawer('chat')} />
           <NavButton active={drawer === 'clipboard'} icon={Clipboard} label="Clipboard" onClick={() => setDrawer('clipboard')} />
+          <NavButton active={drawer === 'chat'} icon={MessageSquare} label="Chat" onClick={() => setDrawer('chat')} />
           <NavButton active={drawer === 'rooms'} icon={RadioTower} label="Salas" onClick={() => setDrawer('rooms')} />
           <NavButton active={drawer === 'system'} icon={Settings} label="Ajustes" onClick={() => setDrawer('system')} />
         </nav>
-
-        <section className="workspace-list" aria-label="Historico de chats">
-          <header>
-            <span>Chats</span>
-            <button onClick={newConversation} aria-label="Nova conversa">
-              <MessageSquare size={14} />
-            </button>
-          </header>
-          {chatHistory.map((entry) => (
-            <button
-              key={entry.id}
-              className={`workspace-card ${entry.id === activeChatID ? 'active' : ''}`}
-              onClick={() => openHistoryChat(entry)}
-            >
-              <MessageSquare size={16} />
-              <span>
-                <strong>{entry.title || 'Chat'}</strong>
-                <small>{entry.response ? 'Pronto' : 'Rascunho'}</small>
-              </span>
-            </button>
-          ))}
-        </section>
 
         <footer className="sidebar-footer">
           <div className={`live-status ${status}`} aria-live="polite">
@@ -435,8 +363,11 @@ export function Main() {
           </div>
           {user ? (
             <button className="sidebar-profile" onClick={() => setDrawer('system')}>
-              <UserCircle size={15} />
-              Perfil
+              <UserAvatar user={user} size={30} />
+              <span>
+                <strong>{userName}</strong>
+                <small>Perfil</small>
+              </span>
             </button>
           ) : (
             <button className="sidebar-login" onClick={() => runGuarded('Abrindo Google...', async () => { await signInWithGoogle(); })} disabled={isBusy || !firebaseReady}>
@@ -452,11 +383,17 @@ export function Main() {
           <div className="top-actions">
             <ModeSwitch mode={mode} disabled={!settings || isBusy} onChange={(next) => runGuarded('Salvando modo...', () => setMode(next))} />
             {user && (
-              <div className="account-pill">
-                <strong>{shortEmail(user.email)}</strong>
-                {credits !== null && <span>{credits.toLocaleString('pt-BR')} cr</span>}
-                {creditInfo && <small title={creditExpiryTitle}>{creditValidityLabel(creditInfo, now)}</small>}
-              </div>
+              <section className="account-pill" aria-label="Perfil">
+                <UserAvatar user={user} size={34} />
+                <div className="account-copy">
+                  <strong>{userName}</strong>
+                  <span>{userEmail}</span>
+                </div>
+                <div className="account-credit">
+                  {credits !== null && <strong>{creditAmountLabel}</strong>}
+                  {creditInfo && <small title={creditExpiryTitle}>{creditValidityLabel(creditInfo, now)}</small>}
+                </div>
+              </section>
             )}
             {user && (
               <button className="icon-button" onClick={() => runGuarded('Saindo...', signOutGoogle)} aria-label="Sair">
@@ -486,7 +423,6 @@ export function Main() {
                   activeAction={activeAction}
                   canUseBackend={canUseBackend}
                   hasInput={hasInput}
-                  streamID={streamID}
                   onCapture={() => runGuarded('Lendo clipboard...', processClipboard)}
                   onSend={() => runGuarded('Enviando ao Hat...', sendChat)}
                   centered
@@ -585,7 +521,6 @@ export function Main() {
             activeAction={activeAction}
             canUseBackend={canUseBackend}
             hasInput={hasInput}
-            streamID={streamID}
             onCapture={() => runGuarded('Lendo clipboard...', processClipboard)}
             onSend={() => runGuarded('Enviando ao Hat...', sendChat)}
             onMore={() => setDrawer(drawer === 'chat' ? 'clipboard' : 'chat')}
@@ -620,7 +555,6 @@ function ComposerBar({
   activeAction,
   canUseBackend,
   hasInput,
-  streamID,
   onCapture,
   onSend,
   onMore,
@@ -632,23 +566,30 @@ function ComposerBar({
   activeAction: string;
   canUseBackend: boolean;
   hasInput: boolean;
-  streamID: number;
   onCapture: () => void;
   onSend: () => void;
   onMore?: () => void;
   centered?: boolean;
 }) {
   return (
-    <footer className={`composer-bar ${centered ? 'center-composer' : ''}`}>
-      <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Mensagem..." rows={1} />
+    <footer className={`composer-bar ${centered ? 'center-composer' : ''} ${onMore ? 'has-more' : ''}`}>
+      <textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            if (canUseBackend && hasInput && !isBusy) onSend();
+          }
+        }}
+        placeholder="Mensagem..."
+        rows={1}
+      />
       <button onClick={onCapture} disabled={isBusy} aria-label="Capturar clipboard">
         {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
       </button>
       <button className="solid-button icon-only" onClick={onSend} disabled={!canUseBackend || !hasInput || isBusy} aria-label="Enviar">
         {isBusy && activeAction.includes('Enviando') ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
-      </button>
-      <button onClick={() => hat.chat.cancel(streamID)} disabled={!isBusy} aria-label="Parar">
-        <Square size={16} />
       </button>
       {onMore && (
         <button onClick={onMore} aria-label="Mais">
@@ -665,6 +606,14 @@ function NavButton({ active, icon: Icon, label, onClick }: { active: boolean; ic
       <Icon size={17} />
       <span>{label}</span>
     </button>
+  );
+}
+
+function UserAvatar({ user, size }: { user: User; size: number }) {
+  return (
+    <span className="user-avatar" style={{ width: size, height: size }}>
+      {user.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : <UserCircle size={Math.max(16, size - 12)} />}
+    </span>
   );
 }
 
@@ -779,7 +728,7 @@ function SystemDrawer({ settings, updateMessage, quitConfirm, busy, onShortcut, 
   const shortcutEntries = settings ? (Object.keys(settings.shortcuts) as ShortcutKey[]) : [];
 
   return (
-    <div className="drawer-body">
+    <div className="drawer-body system-drawer">
       <section className="settings-section">
         <header>
           <div>
@@ -801,33 +750,28 @@ function SystemDrawer({ settings, updateMessage, quitConfirm, busy, onShortcut, 
         )}
       </section>
       <section className="settings-section compact">
-        <header>
-          <div>
-            <strong>Update</strong>
-          </div>
-        </header>
-        <button className="full" onClick={onUpdate} disabled={busy}><RefreshCw size={14} /> Atualizar</button>
-        {updateMessage && <p className="drawer-note">{updateMessage}</p>}
+        <button
+          className={`toggle-setting ${settings?.autoLaunch ? 'active' : ''}`}
+          onClick={onAutostart}
+          disabled={busy}
+          aria-pressed={Boolean(settings?.autoLaunch)}
+        >
+          <span>
+            <strong>Iniciar ao ligar o computador</strong>
+            <small>{settings?.autoLaunch ? 'Ativado' : 'Desativado'}</small>
+          </span>
+          <span className="toggle-switch" aria-hidden="true">
+            <span />
+          </span>
+        </button>
       </section>
-      <section className="settings-section compact">
-        <header>
-          <div>
-            <strong>Inicio</strong>
-            <span>{settings?.autoLaunch ? 'Ativo' : 'Desligado'}</span>
-          </div>
-        </header>
-        <button className="full" onClick={onAutostart} disabled={busy}><Power size={14} /> {settings?.autoLaunch ? 'Desligar' : 'Ligar'}</button>
-      </section>
-      <section className="settings-section compact danger-zone">
-        <header>
-          <div>
-            <strong>Sair</strong>
-          </div>
-        </header>
-        <button className="danger-button full" onClick={onQuit} disabled={busy && quitConfirm}>
+      <section className="settings-actions">
+        <button onClick={onUpdate} disabled={busy}><RefreshCw size={14} /> Atualizar</button>
+        <button className="danger-button" onClick={onQuit} disabled={busy && quitConfirm}>
           <ShieldAlert size={14} />
           {quitConfirm ? 'Confirmar' : 'Sair'}
         </button>
+        {updateMessage && <p className="drawer-note">{updateMessage}</p>}
       </section>
     </div>
   );
