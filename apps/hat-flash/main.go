@@ -48,6 +48,7 @@ func main() {
 	_ = repositories.NewHistoryRepository(historyPath)
 
 	sessionService := services.NewSessionService(eventHub)
+	authService := services.NewAuthService()
 	settingsService := services.NewSettingsService(settingsRepo, eventHub)
 	clipboardService := services.NewClipboardService(nil, eventHub)
 	chatService := services.NewChatService(nil, sessionService, eventHub, "")
@@ -57,6 +58,7 @@ func main() {
 	appService := services.NewAppService(eventHub)
 
 	sessionController := controllers.NewSessionController(sessionService)
+	authController := controllers.NewAuthController(authService)
 	clipboardController := controllers.NewClipboardController(clipboardService)
 	chatController := controllers.NewChatController(chatService)
 	flashController := controllers.NewFlashController(windowService)
@@ -71,6 +73,7 @@ func main() {
 		Description: "Hat Flash",
 		Services: []application.Service{
 			application.NewService(sessionController),
+			application.NewService(authController),
 			application.NewService(clipboardController),
 			application.NewService(chatController),
 			application.NewService(flashController),

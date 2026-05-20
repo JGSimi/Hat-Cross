@@ -37,6 +37,8 @@ VITE_FIREBASE_API_KEY=
 VITE_FIREBASE_AUTH_DOMAIN=
 VITE_FIREBASE_PROJECT_ID=
 VITE_FIREBASE_APP_ID=
+VITE_GOOGLE_OAUTH_CLIENT_ID=
+VITE_GOOGLE_OAUTH_CLIENT_SECRET=
 ```
 
 ## Native Surface
@@ -44,6 +46,7 @@ VITE_FIREBASE_APP_ID=
 Implemented now:
 
 - Google/Firebase token handoff to Go session.
+- Google OAuth in desktop opens the system browser with a loopback callback.
 - Chat streaming through `hat-proxy`.
 - Text clipboard through Wails.
 - Windows image clipboard path through a small Win32 `CF_DIB` reader.

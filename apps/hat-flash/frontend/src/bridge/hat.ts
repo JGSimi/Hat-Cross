@@ -1,6 +1,7 @@
 import { Events } from '@wailsio/runtime';
 import {
   AppController,
+  AuthController,
   ChatController,
   ClipboardController,
   FlashController,
@@ -14,6 +15,7 @@ import type {
   ChatStreamRequest,
   ClipboardPayload,
   FlashPayload,
+  OAuthFlowResult,
   Settings,
   ShortcutSettings,
   StreamChunk,
@@ -24,6 +26,7 @@ export type {
   ChatStreamRequest,
   ClipboardPayload,
   FlashPayload,
+  OAuthFlowResult,
   Settings,
   ShortcutSettings,
   StreamChunk,
@@ -31,6 +34,17 @@ export type {
 };
 
 export const hat = {
+  auth: {
+    runGoogleLoopbackFlow: (
+      clientID: string,
+      state: string,
+      codeChallenge: string,
+    ): Promise<OAuthFlowResult> => AuthController.RunGoogleLoopbackFlow(
+      clientID,
+      state,
+      codeChallenge,
+    ),
+  },
   session: {
     setIDToken: (token: string) => SessionController.SetIDToken(token),
     clear: () => SessionController.Clear(),
@@ -72,4 +86,3 @@ export const hat = {
 export function onStreamChunk(cb: (chunk: StreamChunk) => void) {
   return Events.On('stream:chunk', (event) => cb(event.data));
 }
-

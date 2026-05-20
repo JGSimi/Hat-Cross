@@ -479,6 +479,31 @@ export class NotificationSettings {
     }
 }
 
+export class OAuthFlowResult {
+    "code": string;
+    "redirectUri": string;
+
+    /** Creates a new OAuthFlowResult instance. */
+    constructor($$source: Partial<OAuthFlowResult> = {}) {
+        if (!("code" in $$source)) {
+            this["code"] = "";
+        }
+        if (!("redirectUri" in $$source)) {
+            this["redirectUri"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new OAuthFlowResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): OAuthFlowResult {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new OAuthFlowResult($$parsedSource as Partial<OAuthFlowResult>);
+    }
+}
+
 export class PopoverSettings {
     "width": number;
     "height": number;

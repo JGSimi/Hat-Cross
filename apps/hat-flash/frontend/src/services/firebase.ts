@@ -8,6 +8,7 @@ import {
   indexedDBLocalPersistence,
   initializeAuth,
   onAuthStateChanged,
+  signInWithCredential,
   signInWithPopup,
   signOut,
   type User,
@@ -22,7 +23,16 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID as string,
 };
 
+const googleOAuthConfig = {
+  clientId: import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID as string | undefined,
+  clientSecret: import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_SECRET as string | undefined,
+};
+
+const OAUTH_CALLBACK_TIMEOUT_MS = 120_000;
+const OAUTH_STEP_TIMEOUT_MS = 20_000;
+
 export const firebaseReady = Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId);
+export const googleOAuthReady = Boolean(googleOAuthConfig.clientId && googleOAuthConfig.clientSecret);
 export const firebaseApp = firebaseReady ? initializeApp(firebaseConfig) : null;
 export const firebaseAuth: Auth | null = firebaseApp
   ? initializeAuth(firebaseApp, {
@@ -40,12 +50,118 @@ export interface HatUserDoc {
 
 export async function signInWithGoogle(): Promise<User> {
   if (!firebaseAuth) throw new Error('firebase env missing');
+  if (shouldUseLoopbackOAuth()) {
+    return signInWithGoogleLoopback();
+  }
+
+  return signInWithGooglePopup();
+}
+
+function shouldUseLoopbackOAuth() {
+  const wails = (window as unknown as { _wails?: { environment?: { OS?: string } } })._wails;
+  return Boolean(wails?.environment?.OS);
+}
+
+async function signInWithGooglePopup(): Promise<User> {
+  if (!firebaseAuth) throw new Error('firebase env missing');
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
-  const result = await signInWithPopup(firebaseAuth, provider);
+  const result = await withTimeout(
+    signInWithPopup(firebaseAuth, provider),
+    OAUTH_CALLBACK_TIMEOUT_MS,
+    'Google nao respondeu. Confirme se o popup abriu e tente de novo.',
+  );
   const token = await result.user.getIdToken();
   await hat.session.setIDToken(token);
   return result.user;
+}
+
+async function signInWithGoogleLoopback(): Promise<User> {
+  if (!firebaseAuth) throw new Error('firebase env missing');
+  if (!googleOAuthConfig.clientId || !googleOAuthConfig.clientSecret) {
+    throw new Error('Google OAuth desktop env missing');
+  }
+
+  const state = randomBase64Url(16);
+  const codeVerifier = randomBase64Url(32);
+  const codeChallenge = await sha256Base64Url(codeVerifier);
+  const flow = await withTimeout(
+    hat.auth.runGoogleLoopbackFlow(googleOAuthConfig.clientId, state, codeChallenge),
+    OAUTH_CALLBACK_TIMEOUT_MS + 10_000,
+    'Google nao respondeu. Confirme se o navegador abriu e tente de novo.',
+  );
+
+  const tokenRes = await withTimeout(
+    fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code: flow.code,
+        client_id: googleOAuthConfig.clientId,
+        client_secret: googleOAuthConfig.clientSecret,
+        redirect_uri: flow.redirectUri,
+        grant_type: 'authorization_code',
+        code_verifier: codeVerifier,
+      }).toString(),
+    }),
+    OAUTH_STEP_TIMEOUT_MS,
+    'Google demorou para trocar o codigo de login.',
+  );
+
+  if (!tokenRes.ok) {
+    const text = await tokenRes.text();
+    throw new Error(`Troca de codigo por token falhou (${tokenRes.status}): ${text}`);
+  }
+
+  const tokens = (await tokenRes.json()) as {
+    id_token?: string;
+    access_token?: string;
+  };
+  if (!tokens.id_token) {
+    throw new Error('Google nao retornou id_token');
+  }
+
+  const credential = GoogleAuthProvider.credential(tokens.id_token, tokens.access_token);
+  const result = await withTimeout(
+    signInWithCredential(firebaseAuth, credential),
+    OAUTH_STEP_TIMEOUT_MS,
+    'Firebase demorou para concluir o login.',
+  );
+  const token = await result.user.getIdToken();
+  await hat.session.setIDToken(token);
+  return result.user;
+}
+
+function randomBase64Url(bytes = 32): string {
+  const buf = new Uint8Array(bytes);
+  crypto.getRandomValues(buf);
+  return base64UrlEncode(buf);
+}
+
+function base64UrlEncode(buf: Uint8Array): string {
+  let binary = '';
+  for (const b of buf) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+async function sha256Base64Url(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return base64UrlEncode(new Uint8Array(digest));
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeoutID: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutID = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutID !== undefined) {
+      window.clearTimeout(timeoutID);
+    }
+  }
 }
 
 export async function signOutGoogle() {

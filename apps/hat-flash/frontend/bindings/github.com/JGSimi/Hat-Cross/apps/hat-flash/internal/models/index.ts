@@ -15,6 +15,7 @@ export {
     FlashSettings,
     FlashTiming,
     NotificationSettings,
+    OAuthFlowResult,
     PopoverSettings,
     Settings,
     ShortcutSettings,
