@@ -29,6 +29,11 @@ import { isTauriRuntime } from './utils/tauriRuntime';
 import { withTimeout } from './utils/async';
 import { logDiagnostic, withDiagnostic } from './services/diagnostics';
 import { checkForUpdates, installAvailableUpdate, startAutoUpdater } from './services/autoUpdater';
+import {
+  canProcessClipboardEvents,
+  canRegisterGlobalShortcuts,
+  isWindowsDesktopPlatform,
+} from './utils/desktopFeatureGates';
 
 const MainPage = lazy(() => import('./pages/MainPage'));
 const PopoverPage = lazy(() => import('./pages/PopoverPage'));
@@ -69,7 +74,7 @@ function App() {
   const location = useLocation();
   const isMainWindow = location.pathname === '/main' || location.pathname === '/';
   const isTauri = isTauriRuntime();
-  const isWindowsDesktop = typeof navigator !== 'undefined' && /win/i.test(navigator.platform);
+  const isWindowsDesktop = typeof navigator !== 'undefined' && isWindowsDesktopPlatform();
   const [showSplash, setShowSplash] = useState(isMainWindow);
 
   // Auto-dismiss splash after 2s (then 1s fade-out via AnimatePresence)
@@ -215,8 +220,7 @@ function App() {
   // call clobbers the first handler) and spawns duplicate listeners on macOS.
   const registeredShortcuts = useRef<{ clipboard: string; floatingChat: string; adjustFlashPosition: string; emergencyQuit: string }>({ clipboard: '', floatingChat: '', adjustFlashPosition: '', emergencyQuit: '' });
   useEffect(() => {
-    if (!isMainWindow || !isTauri) return;
-    if (isWindowsDesktop) return;
+    if (!canRegisterGlobalShortcuts({ isMainWindow, isTauri, isWindowsDesktop })) return;
     const prev = registeredShortcuts.current;
 
     async function registerShortcuts() {
@@ -320,14 +324,13 @@ function App() {
       if (prev.adjustFlashPosition) { unregister(prev.adjustFlashPosition).catch(() => {}); prev.adjustFlashPosition = ''; }
       if (prev.emergencyQuit) { unregister(prev.emergencyQuit).catch(() => {}); prev.emergencyQuit = ''; }
     };
-  }, [shortcuts.clipboard, shortcuts.floatingChat, shortcuts.adjustFlashPosition, shortcuts.emergencyQuit, isMainWindow, isTauri, isWindowsDesktop]);
+  }, [shortcuts.clipboard, shortcuts.floatingChat, shortcuts.adjustFlashPosition, shortcuts.emergencyQuit, isMainWindow, isTauri]);
 
   // Flash position persistence — listens for the save event emitted by the
   // /flash route in adjust mode. Global so it works whether the user triggered
   // adjust from Settings or via the global shortcut.
   useEffect(() => {
     if (!isMainWindow || !isTauri) return;
-    if (isWindowsDesktop) return;
     const unlisten = listen<{ x: number; y: number }>('flash-position-saved', (event) => {
       const current = useSettingsStore.getState().settings;
       useSettingsStore.getState().updateSettings({
@@ -345,7 +348,7 @@ function App() {
       });
     });
     return () => { unlisten.then((fn) => fn()); };
-  }, [isMainWindow, isTauri, isWindowsDesktop]);
+  }, [isMainWindow, isTauri]);
 
   // Tray menu events
   useEffect(() => {
@@ -469,8 +472,7 @@ function App() {
   // and without this gate the hidden analysis window also ran the full pipeline, producing
   // two "Processando" + two "Resposta" notifications per trigger on every OS.
   useEffect(() => {
-    if (!isMainWindow || !isTauri) return;
-    if (isWindowsDesktop) return;
+    if (!canProcessClipboardEvents({ isMainWindow, isTauri, isWindowsDesktop })) return;
     let isProcessing = false;
     const setProc = (v: boolean) => {
       isProcessing = v;
@@ -748,7 +750,7 @@ function App() {
       }
     });
     return () => { unlisten.then(fn => fn()); };
-  }, [isMainWindow, isTauri, isWindowsDesktop]);
+  }, [isMainWindow, isTauri]);
 
   return (
     <>
