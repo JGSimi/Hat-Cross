@@ -182,7 +182,9 @@ svg {
 .drawer-note,
 .info-line span,
 .field span,
-.shortcut-field small {
+.shortcut-meta small,
+.shortcut-status,
+.shortcut-warning {
   color: var(--muted);
   font-size: 12px;
 }
@@ -686,22 +688,116 @@ summary {
   font-weight: 750;
 }
 
-.shortcut-field {
+.shortcut-editor {
   display: grid;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
   padding: 0 10px 10px;
 }
 
-.shortcut-field span {
+.shortcut-meta {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.shortcut-meta span {
   color: #eee;
   font-size: 12px;
   font-weight: 700;
 }
 
-.shortcut-field input {
+.shortcut-capture {
   width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  justify-content: flex-start;
+  overflow: hidden;
+  padding: 7px 8px;
+  background: #050505;
+  border-color: #242424;
+}
+
+.shortcut-capture:hover:not(:disabled),
+.shortcut-capture:focus-visible,
+.shortcut-editor.recording .shortcut-capture {
+  border-color: #f4f4f4;
+  background: #0d0d0d;
+}
+
+.shortcut-keys {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.shortcut-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.shortcut-plus {
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.shortcut-token kbd {
+  min-width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  border: 1px solid #343434;
+  border-bottom-color: #555;
+  border-radius: 6px;
+  background: #111;
+  color: #f5f5f5;
   font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.shortcut-empty {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+}
+
+.shortcut-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.shortcut-actions button {
+  width: 32px;
+  min-width: 32px;
+  height: 40px;
+  padding: 0;
+}
+
+.shortcut-warning,
+.shortcut-status {
+  grid-column: 1 / -1;
+  min-height: 16px;
+  line-height: 1.35;
+}
+
+.shortcut-warning {
+  color: #f5f5f5;
 }
 
 .drawer-note {

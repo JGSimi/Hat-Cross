@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   AlertCircle,
@@ -9,6 +9,7 @@ import {
   DoorOpen,
   Hash,
   KeyRound,
+  Keyboard,
   Loader2,
   LogOut,
   MessageSquare,
@@ -18,12 +19,14 @@ import {
   Power,
   RadioTower,
   RefreshCw,
+  RotateCcw,
   Search,
   Send,
   Settings,
   ShieldAlert,
   Sparkles,
   Square,
+  Trash2,
   Wand2,
   X,
   Zap,
@@ -45,6 +48,13 @@ const shortcutLabels: Record<ShortcutKey, { label: string; hint: string }> = {
   emergencyQuit: { label: 'Sair', hint: 'Fecha o app imediatamente' },
 };
 
+const defaultShortcuts: Record<ShortcutKey, string> = {
+  clipboard: 'CommandOrControl+Shift+X',
+  floatingChat: 'CommandOrControl+Shift+C',
+  adjustFlashPosition: 'CommandOrControl+Shift+F',
+  emergencyQuit: 'CommandOrControl+Shift+Q',
+};
+
 function friendlyError(err: unknown) {
   const raw = err instanceof Error ? err.message : String(err);
   const text = raw.toLowerCase();
@@ -58,6 +68,50 @@ function shortEmail(email?: string | null) {
   if (!email) return 'Desconectado';
   const [name, domain] = email.split('@');
   return `${name}@${domain?.split('.')[0] ?? ''}`;
+}
+
+function shortcutParts(shortcut: string) {
+  return shortcut.split('+').map((part) => part.trim()).filter(Boolean);
+}
+
+function shortcutTokenLabel(token: string) {
+  const normalized = token.toLowerCase();
+  if (normalized === 'commandorcontrol') return 'Ctrl/Cmd';
+  if (normalized === 'control') return 'Ctrl';
+  if (normalized === 'command') return 'Cmd';
+  if (normalized === 'option') return 'Alt';
+  if (normalized === 'escape') return 'Esc';
+  return token.length === 1 ? token.toUpperCase() : token;
+}
+
+function normalizeShortcutKey(key: string) {
+  if (key.length === 1) {
+    if (key === ' ') return 'Space';
+    if (/^[a-z0-9]$/i.test(key)) return key.toUpperCase();
+    return null;
+  }
+
+  const lower = key.toLowerCase();
+  if (lower === 'control' || lower === 'shift' || lower === 'alt' || lower === 'meta') return null;
+  if (lower === ' ') return 'Space';
+  if (/^f([1-9]|1[0-9]|2[0-4])$/i.test(key)) return key.toUpperCase();
+  return null;
+}
+
+function shortcutFromEvent(event: ReactKeyboardEvent) {
+  if (event.key === 'Escape') return { cancelled: true };
+  if (event.key === 'Backspace' || event.key === 'Delete') return { value: '' };
+
+  const key = normalizeShortcutKey(event.key);
+  if (!key) return { error: 'Tecla nao suportada.' };
+
+  const modifiers: string[] = [];
+  if (event.metaKey || event.ctrlKey) modifiers.push('CommandOrControl');
+  if (event.altKey) modifiers.push('Alt');
+  if (event.shiftKey) modifiers.push('Shift');
+  if (modifiers.length === 0) return { error: 'Use Ctrl, Cmd, Alt ou Shift.' };
+
+  return { value: [...modifiers, key].join('+') };
 }
 
 export function Main() {
@@ -574,21 +628,27 @@ function SystemDrawer({ settings, updateMessage, quitConfirm, busy, onShortcut, 
   updateMessage: string;
   quitConfirm: boolean;
   busy: boolean;
-  onShortcut: (key: ShortcutKey, value: string) => void;
+  onShortcut: (key: ShortcutKey, value: string) => Promise<void>;
   onAutostart: () => void;
   onUpdate: () => void;
   onQuit: () => void;
 }) {
+  const shortcutEntries = settings ? (Object.keys(settings.shortcuts) as ShortcutKey[]) : [];
+
   return (
     <div className="drawer-body">
       <details open>
         <summary>Atalhos</summary>
-        {settings && (Object.keys(settings.shortcuts) as ShortcutKey[]).map((key) => (
-          <label className="shortcut-field" key={key}>
-            <span>{shortcutLabels[key].label}</span>
-            <small>{shortcutLabels[key].hint}</small>
-            <input value={settings.shortcuts[key]} onChange={(e) => onShortcut(key, e.target.value)} />
-          </label>
+        {settings && shortcutEntries.map((key) => (
+          <ShortcutEditor
+            key={key}
+            shortcutKey={key}
+            value={settings.shortcuts[key]}
+            defaultValue={defaultShortcuts[key]}
+            conflictLabel={findShortcutConflict(key, settings.shortcuts)}
+            disabled={busy}
+            onChange={(value) => onShortcut(key, value)}
+          />
         ))}
       </details>
       <details>
@@ -606,6 +666,142 @@ function SystemDrawer({ settings, updateMessage, quitConfirm, busy, onShortcut, 
       </details>
     </div>
   );
+}
+
+function ShortcutEditor({ shortcutKey, value, defaultValue, conflictLabel, disabled, onChange }: {
+  shortcutKey: ShortcutKey;
+  value: string;
+  defaultValue: string;
+  conflictLabel?: string;
+  disabled: boolean;
+  onChange: (value: string) => Promise<void>;
+}) {
+  const captureRef = useRef<HTMLButtonElement>(null);
+  const [recording, setRecording] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState('');
+  const meta = shortcutLabels[shortcutKey];
+  const isBusy = disabled || saving;
+
+  useEffect(() => {
+    if (recording) captureRef.current?.focus();
+  }, [recording]);
+
+  async function commitShortcut(nextValue: string) {
+    setSaving(true);
+    setNotice('');
+    try {
+      await onChange(nextValue);
+      setNotice(nextValue ? 'Salvo' : 'Desativado');
+    } catch {
+      setNotice('Nao salvou');
+    } finally {
+      setSaving(false);
+      setRecording(false);
+    }
+  }
+
+  function startRecording() {
+    if (isBusy) return;
+    setNotice('');
+    setRecording(true);
+  }
+
+  function handleCaptureKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
+    if (!recording) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const result = shortcutFromEvent(event);
+    if ('cancelled' in result) {
+      setRecording(false);
+      setNotice('');
+      return;
+    }
+    if ('error' in result) {
+      setNotice(result.error ?? '');
+      return;
+    }
+    void commitShortcut(result.value ?? '');
+  }
+
+  return (
+    <div className={`shortcut-editor ${recording ? 'recording' : ''}`}>
+      <div className="shortcut-meta">
+        <span>{meta.label}</span>
+        <small>{meta.hint}</small>
+      </div>
+      <button
+        ref={captureRef}
+        type="button"
+        className="shortcut-capture"
+        onClick={startRecording}
+        onKeyDown={handleCaptureKeyDown}
+        disabled={isBusy}
+        aria-label={`Editar ${meta.label}`}
+      >
+        <ShortcutValue value={value} recording={recording} saving={saving} />
+      </button>
+      <div className="shortcut-actions">
+        <button
+          type="button"
+          onClick={startRecording}
+          disabled={isBusy}
+          title="Gravar"
+          aria-label={`Gravar ${meta.label}`}
+        >
+          <Keyboard size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={() => void commitShortcut(defaultValue)}
+          disabled={isBusy || value === defaultValue}
+          title="Padrao"
+          aria-label={`Padrao ${meta.label}`}
+        >
+          <RotateCcw size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={() => void commitShortcut('')}
+          disabled={isBusy || !value}
+          title="Limpar"
+          aria-label={`Limpar ${meta.label}`}
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+      {(notice || conflictLabel) && (
+        <small className={conflictLabel ? 'shortcut-warning' : 'shortcut-status'}>
+          {conflictLabel ? `Conflito: ${conflictLabel}` : notice}
+        </small>
+      )}
+    </div>
+  );
+}
+
+function ShortcutValue({ value, recording, saving }: { value: string; recording: boolean; saving: boolean }) {
+  if (saving) return <span className="shortcut-empty">Salvando...</span>;
+  if (recording) return <span className="shortcut-empty">Gravando...</span>;
+  const parts = shortcutParts(value);
+  if (!parts.length) return <span className="shortcut-empty">Desativado</span>;
+  return (
+    <span className="shortcut-keys">
+      {parts.map((part, index) => (
+        <span className="shortcut-token" key={`${part}-${index}`}>
+          {index > 0 && <span className="shortcut-plus">+</span>}
+          <kbd>{shortcutTokenLabel(part)}</kbd>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function findShortcutConflict(key: ShortcutKey, shortcuts: HatSettings['shortcuts']) {
+  const value = shortcuts[key]?.trim();
+  if (!value) return undefined;
+  const conflict = (Object.keys(shortcuts) as ShortcutKey[]).find((candidate) => candidate !== key && shortcuts[candidate] === value);
+  return conflict ? shortcutLabels[conflict].label : undefined;
 }
 
 function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) {
