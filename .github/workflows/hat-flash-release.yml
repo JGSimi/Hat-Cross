@@ -56,6 +56,15 @@ jobs:
           cache: npm
           cache-dependency-path: apps/hat-flash/frontend/package-lock.json
 
+      - name: Set Hat Flash version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_NAME" == hat-flash-v* ]]; then
+            echo "APP_VERSION=${GITHUB_REF_NAME#hat-flash-v}" >> "$GITHUB_ENV"
+          else
+            echo "APP_VERSION=0.1.0-dev" >> "$GITHUB_ENV"
+          fi
+
       - name: Install Wails v3 on Windows
         if: runner.os == 'Windows'
         shell: pwsh

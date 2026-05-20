@@ -740,7 +740,11 @@ export class TokenUsage {
 export class UpdateStatus {
     "available": boolean;
     "version"?: string;
+    "currentVersion"?: string;
     "message": string;
+    "releaseUrl"?: string;
+    "downloadUrl"?: string;
+    "assetName"?: string;
 
     /** Creates a new UpdateStatus instance. */
     constructor($$source: Partial<UpdateStatus> = {}) {

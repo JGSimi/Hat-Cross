@@ -2,6 +2,7 @@ version: '3'
 
 vars:
   APP_NAME: "HatFlash"
+  APP_VERSION: '{{.APP_VERSION | default "0.1.0-dev"}}'
   BIN_DIR: "bin"
   PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "npm"}}'
   VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
