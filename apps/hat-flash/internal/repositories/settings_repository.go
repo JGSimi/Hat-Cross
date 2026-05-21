@@ -81,6 +81,15 @@ func normalizeSettings(settings models.Settings) models.Settings {
 	if settings.Shortcuts.EmergencyQuit == "" {
 		settings.Shortcuts.EmergencyQuit = defaults.Shortcuts.EmergencyQuit
 	}
+	if settings.Shortcuts.ProcessClipboardFlash == "CommandOrControl+Shift+X" &&
+		settings.Shortcuts.AdjustFlashPosition == defaults.Shortcuts.ProcessClipboardFlash {
+		settings.Shortcuts.ProcessClipboardFlash = defaults.Shortcuts.ProcessClipboardFlash
+		settings.Shortcuts.AdjustFlashPosition = defaults.Shortcuts.AdjustFlashPosition
+	}
+	if settings.Shortcuts.AdjustFlashPosition == settings.Shortcuts.ProcessClipboardFlash ||
+		settings.Shortcuts.AdjustFlashPosition == defaults.Shortcuts.ProcessClipboardFlash {
+		settings.Shortcuts.AdjustFlashPosition = defaults.Shortcuts.AdjustFlashPosition
+	}
 	if settings.Clipboard.MaxResponseLength == 0 {
 		settings.Clipboard.MaxResponseLength = defaults.Clipboard.MaxResponseLength
 	}

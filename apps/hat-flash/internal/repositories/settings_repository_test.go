@@ -67,3 +67,23 @@ func TestSettingsRepositoryMigratesLegacyShortcut(t *testing.T) {
 		t.Fatalf("adjust shortcut = %q", got.Shortcuts.AdjustFlashPosition)
 	}
 }
+
+func TestSettingsRepositoryRepairsLegacyFlashShortcutConflict(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	raw := `{"shortcuts":{"processClipboardFlash":"CommandOrControl+Shift+X","adjustFlashPosition":"CommandOrControl+Shift+F","emergencyQuit":"CommandOrControl+Shift+B"}}`
+	if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+	repo := NewSettingsRepository(path)
+
+	got, err := repo.Get()
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.Shortcuts.ProcessClipboardFlash != "CommandOrControl+Shift+F" {
+		t.Fatalf("process shortcut = %q", got.Shortcuts.ProcessClipboardFlash)
+	}
+	if got.Shortcuts.AdjustFlashPosition != "CommandOrControl+Alt+F" {
+		t.Fatalf("adjust shortcut = %q", got.Shortcuts.AdjustFlashPosition)
+	}
+}

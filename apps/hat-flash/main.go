@@ -9,6 +9,7 @@ import (
 	"github.com/JGSimi/Hat-Cross/apps/hat-flash/internal/repositories"
 	"github.com/JGSimi/Hat-Cross/apps/hat-flash/internal/services"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -141,9 +142,16 @@ func main() {
 	windowService.SetWindow("flash", flashWindow)
 
 	setupTray(app, mainWindow, appService)
-	if settings, err := settingsService.Get(); err == nil {
-		_ = shortcutService.Register(settings.Shortcuts)
-	}
+	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
+		settings, err := settingsService.Get()
+		if err != nil {
+			log.Printf("load settings for shortcuts failed: %v", err)
+			return
+		}
+		if err := shortcutService.Register(settings.Shortcuts); err != nil {
+			log.Printf("shortcut register failed: %v", err)
+		}
+	})
 
 	if err := app.Run(); err != nil {
 		log.Fatal(err)

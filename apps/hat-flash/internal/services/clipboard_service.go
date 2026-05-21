@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/JGSimi/Hat-Cross/apps/hat-flash/internal/models"
@@ -17,10 +18,11 @@ type TextClipboard interface {
 type ClipboardService struct {
 	clipboard TextClipboard
 	events    EventBus
+	readImage func() (*models.ClipboardImage, error)
 }
 
 func NewClipboardService(clipboard TextClipboard, events EventBus) *ClipboardService {
-	return &ClipboardService{clipboard: clipboard, events: events}
+	return &ClipboardService{clipboard: clipboard, events: events, readImage: readClipboardImageNative}
 }
 
 func (s *ClipboardService) SetTextClipboard(clipboard TextClipboard) {
@@ -33,14 +35,24 @@ func (s *ClipboardService) Process() (models.ClipboardPayload, error) {
 	}
 
 	text, textErr := s.ReadText()
-	image, imageErr := s.ReadImage()
-	if textErr != nil && imageErr != nil {
-		if s.events != nil {
-			s.events.Emit(models.EventClipboardFailed, textErr.Error())
-		}
-		return models.ClipboardPayload{}, textErr
+	if strings.TrimSpace(text) != "" {
+		return models.ClipboardPayload{Text: text}, nil
 	}
-	if strings.TrimSpace(text) == "" && image == nil {
+
+	image, imageErr := s.ReadImage()
+	if imageErr != nil {
+		err := imageErr
+		if textErr != nil {
+			err = textErr
+		} else if errors.Is(imageErr, ErrClipboardImageUnsupported) {
+			err = errors.New("clipboard empty")
+		}
+		if s.events != nil {
+			s.events.Emit(models.EventClipboardFailed, err.Error())
+		}
+		return models.ClipboardPayload{}, err
+	}
+	if image == nil {
 		err := errors.New("clipboard empty")
 		if s.events != nil {
 			s.events.Emit(models.EventClipboardFailed, err.Error())
@@ -51,7 +63,12 @@ func (s *ClipboardService) Process() (models.ClipboardPayload, error) {
 	return models.ClipboardPayload{Text: text, Image: image}, nil
 }
 
-func (s *ClipboardService) ReadText() (string, error) {
+func (s *ClipboardService) ReadText() (text string, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("clipboard text read failed: %v", recovered)
+		}
+	}()
 	if s.clipboard == nil {
 		return "", errors.New("clipboard not ready")
 	}
@@ -62,7 +79,12 @@ func (s *ClipboardService) ReadText() (string, error) {
 	return text, nil
 }
 
-func (s *ClipboardService) WriteText(text string) error {
+func (s *ClipboardService) WriteText(text string) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("clipboard text write failed: %v", recovered)
+		}
+	}()
 	if s.clipboard == nil {
 		return errors.New("clipboard not ready")
 	}
@@ -73,9 +95,22 @@ func (s *ClipboardService) WriteText(text string) error {
 }
 
 func (s *ClipboardService) ReadImage() (*models.ClipboardImage, error) {
-	image, err := readClipboardImageNative()
+	reader := s.readImage
+	if reader == nil {
+		reader = readClipboardImageNative
+	}
+	image, err := safeReadClipboardImage(reader)
 	if err != nil {
 		return nil, err
 	}
 	return image, nil
+}
+
+func safeReadClipboardImage(reader func() (*models.ClipboardImage, error)) (image *models.ClipboardImage, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("clipboard image read failed: %v", recovered)
+		}
+	}()
+	return reader()
 }

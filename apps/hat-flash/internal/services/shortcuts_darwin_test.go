@@ -42,6 +42,32 @@ func TestRegisterNativeShortcutsDarwin(t *testing.T) {
 	})
 }
 
+func TestRegisterNativeShortcutsDarwinKeepsValidShortcutWhenAnotherConflicts(t *testing.T) {
+	events := &MemoryEventBus{}
+	err := registerNativeShortcuts(models.ShortcutSettings{
+		ProcessClipboardFlash: "CommandOrControl+Shift+F16",
+		AdjustFlashPosition:   "CommandOrControl+Shift+F16",
+	}, events, ShortcutHandlers{})
+	if err == nil {
+		t.Fatalf("expected duplicate shortcut error")
+	}
+	t.Cleanup(func() {
+		_ = registerNativeShortcuts(models.ShortcutSettings{}, nil, ShortcutHandlers{})
+	})
+
+	darwinShortcutsMu.Lock()
+	action := darwinShortcutsActions[darwinHotkeyBaseID+1]
+	darwinShortcutsMu.Unlock()
+	if action != "processClipboardFlash" {
+		t.Fatalf("process shortcut action = %q", action)
+	}
+
+	fireNativeShortcut("processClipboardFlash", events, ShortcutHandlers{})
+	if len(events.Events) != 1 || events.Events[0].Name != models.EventShortcutPressed {
+		t.Fatalf("valid shortcut was not retained, events = %#v", events.Events)
+	}
+}
+
 func TestFireNativeShortcutEmitsAndRunsHandler(t *testing.T) {
 	events := &MemoryEventBus{}
 	done := make(chan struct{}, 1)

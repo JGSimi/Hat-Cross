@@ -59,7 +59,9 @@ static OSStatus unregisterHatFlashHotKey(EventHotKeyRef ref) {
 import "C"
 
 import (
+	"errors"
 	"fmt"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -80,6 +82,9 @@ var (
 )
 
 func registerNativeShortcuts(settings models.ShortcutSettings, events EventBus, handlers ShortcutHandlers) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	darwinShortcutsMu.Lock()
 	defer darwinShortcutsMu.Unlock()
 
@@ -110,22 +115,25 @@ func registerNativeShortcuts(settings models.ShortcutSettings, events EventBus, 
 		{darwinHotkeyBaseID + 3, "emergencyQuit", settings.EmergencyQuit},
 	}
 
+	var registrationErrors []error
 	for _, registration := range registrations {
 		if strings.TrimSpace(registration.shortcut) == "" {
 			continue
 		}
 		modifiers, keyCode, err := parseDarwinShortcut(registration.shortcut)
 		if err != nil {
-			return err
+			registrationErrors = append(registrationErrors, fmt.Errorf("%s: %w", registration.action, err))
+			continue
 		}
 		var ref C.EventHotKeyRef
 		if status := C.registerHatFlashHotKey(C.UInt32(keyCode), C.UInt32(modifiers), C.UInt32(registration.id), &ref); status != C.noErr {
-			return fmt.Errorf("register macOS hotkey %s: status %d", registration.shortcut, int(status))
+			registrationErrors = append(registrationErrors, fmt.Errorf("%s: register macOS hotkey %s: %s", registration.action, registration.shortcut, darwinHotKeyStatus(status)))
+			continue
 		}
 		darwinShortcutsRefs = append(darwinShortcutsRefs, ref)
 		darwinShortcutsActions[registration.id] = registration.action
 	}
-	return nil
+	return errors.Join(registrationErrors...)
 }
 
 //export goHatFlashHotKeyPressed
@@ -199,6 +207,17 @@ func parseDarwinShortcut(shortcut string) (uint, uint, error) {
 		}
 	}
 	return 0, 0, fmt.Errorf("unsupported shortcut key %q", key)
+}
+
+func darwinHotKeyStatus(status C.OSStatus) string {
+	switch status {
+	case C.eventHotKeyExistsErr:
+		return "shortcut already in use"
+	case C.eventHotKeyInvalidErr:
+		return "invalid shortcut"
+	default:
+		return fmt.Sprintf("status %d", int(status))
+	}
 }
 
 var darwinKeyCodes = map[string]uint{

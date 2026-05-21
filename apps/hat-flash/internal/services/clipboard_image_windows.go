@@ -17,9 +17,11 @@ import (
 )
 
 const (
-	cfDIB       = 8
-	biRGB       = 0
-	biBitFields = 3
+	cfDIB                = 8
+	biRGB                = 0
+	biBitFields          = 3
+	maxClipboardDIBBytes = 25 * 1024 * 1024
+	maxClipboardPixels   = 20_000_000
 )
 
 var (
@@ -61,6 +63,9 @@ func readClipboardImageNative() (*models.ClipboardImage, error) {
 	if size == 0 {
 		return nil, errorsNew("clipboard image has zero bytes")
 	}
+	if size > maxClipboardDIBBytes {
+		return nil, fmt.Errorf("clipboard image too large: %d bytes", size)
+	}
 	data := unsafe.Slice((*byte)(unsafe.Pointer(ptr)), int(size))
 	return dibToPNGDataURL(data)
 }
@@ -85,6 +90,9 @@ func dibToPNGDataURL(data []byte) (*models.ClipboardImage, error) {
 	if height < 0 {
 		height = -height
 	}
+	if int64(width)*int64(height) > maxClipboardPixels {
+		return nil, fmt.Errorf("clipboard image too large: %dx%d", width, height)
+	}
 	if compression != biRGB && compression != biBitFields {
 		return nil, fmt.Errorf("unsupported DIB compression %d", compression)
 	}
@@ -96,10 +104,12 @@ func dibToPNGDataURL(data []byte) (*models.ClipboardImage, error) {
 	if compression == biBitFields && headerSize == 40 {
 		offset += 12
 	}
-	stride := ((width*bitCount + 31) / 32) * 4
-	if len(data) < offset+stride*height {
+	stride64 := ((int64(width)*int64(bitCount) + 31) / 32) * 4
+	required64 := int64(offset) + stride64*int64(height)
+	if stride64 <= 0 || required64 > int64(len(data)) || required64 > maxClipboardDIBBytes {
 		return nil, errorsNew("clipboard DIB pixel data truncated")
 	}
+	stride := int(stride64)
 
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
 	for y := 0; y < height; y++ {
