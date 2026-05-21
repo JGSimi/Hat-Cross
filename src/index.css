@@ -1194,7 +1194,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Every internal scroll container (MessageList, Sidebar list, Settings, etc.)
+/* Every internal scroll container (rooms list, clipboard list, Settings, etc.)
    gets `overscroll-behavior: contain` so its scroll stays inside — no
    chain-scroll propagating up to the window when you hit top/bottom. This
    is what eliminates the ghost-drift bug where the whole UI slides a few
@@ -1374,11 +1374,6 @@ code {
 .stealth-hover {
   opacity: var(--stealth-hover-opacity, 0.4);
   filter: saturate(0.3);
-  transition: opacity 0.3s ease-in-out, filter 0.3s ease-in-out;
-}
-
-/* Popover ghost transition */
-.popover-ghost {
   transition: opacity 0.3s ease-in-out, filter 0.3s ease-in-out;
 }
 
@@ -3049,9 +3044,60 @@ html[data-theme="noir"] .glass-subtle {
 
 .rooms-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
   min-height: 0;
   flex: 1;
+}
+
+.rooms-feed-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.rooms-feed-empty {
+  min-height: 190px;
+  border-radius: 8px;
+  border: 1px dashed var(--border-subtle);
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 18px;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 12px;
+}
+
+.rooms-feed-empty strong {
+  color: var(--text-strong);
+  font-size: 12px;
+}
+
+.rooms-feed-list {
+  display: grid;
+  gap: 10px;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 4px;
+}
+
+.rooms-feed-entry {
+  border: 1px solid var(--border-subtle);
+  background: var(--glass-secondary);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.rooms-feed-chip {
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--bg-primary) 55%, transparent);
+  font-size: 10px;
 }
 
 .rooms-consensus-panel {

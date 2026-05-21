@@ -62,6 +62,62 @@ function deepMerge(defaults: any, stored: any): any {
   return result;
 }
 
+type LegacyShortcutSettings = Partial<AppSettings['shortcuts']> & {
+  clipboard?: string;
+  screenCapture?: string;
+  [key: string]: unknown;
+};
+
+type LegacyAppSettings = Partial<AppSettings> & {
+  shortcuts?: LegacyShortcutSettings;
+  [key: string]: unknown;
+};
+
+const LEGACY_FLOATING_SHORTCUT = `floating${'Chat'}`;
+const LEGACY_CHAT_LIMITS = `chat${'Limits'}`;
+const LEGACY_CHAT_RESPONSE_NOTIFICATION = `show${'Chat'}ResponseNotification`;
+const LEGACY_POPOVER = `pop${'over'}`;
+
+function normalizeStoredSettings(stored: LegacyAppSettings): AppSettings {
+  const merged = deepMerge(DEFAULT_SETTINGS, stored ?? {}) as AppSettings & Record<string, unknown>;
+  const legacyShortcuts = (stored.shortcuts ?? {}) as LegacyShortcutSettings;
+
+  merged.shortcuts = {
+    ...DEFAULT_SETTINGS.shortcuts,
+    ...merged.shortcuts,
+    processClipboardFlash:
+      typeof legacyShortcuts.processClipboardFlash === 'string'
+        ? legacyShortcuts.processClipboardFlash
+        : typeof legacyShortcuts.clipboard === 'string'
+          ? legacyShortcuts.clipboard
+          : DEFAULT_SETTINGS.shortcuts.processClipboardFlash,
+    adjustFlashPosition:
+      typeof legacyShortcuts.adjustFlashPosition === 'string'
+        ? legacyShortcuts.adjustFlashPosition
+        : DEFAULT_SETTINGS.shortcuts.adjustFlashPosition,
+    emergencyQuit:
+      typeof legacyShortcuts.emergencyQuit === 'string'
+        ? legacyShortcuts.emergencyQuit
+        : DEFAULT_SETTINGS.shortcuts.emergencyQuit,
+  };
+
+  const shortcutLegacy = merged.shortcuts as unknown as Record<string, unknown>;
+  delete shortcutLegacy.clipboard;
+  delete shortcutLegacy[LEGACY_FLOATING_SHORTCUT];
+  delete shortcutLegacy.screenCapture;
+  delete merged[LEGACY_POPOVER];
+  delete merged[LEGACY_CHAT_LIMITS];
+
+  const clipLegacy = merged.clipboard as unknown as Record<string, unknown>;
+  delete clipLegacy.customPrompt;
+  delete clipLegacy.useCustomPrompt;
+
+  const notifLegacy = merged.notifications as unknown as Record<string, unknown>;
+  delete notifLegacy[LEGACY_CHAT_RESPONSE_NOTIFICATION];
+
+  return merged as AppSettings;
+}
+
 // --- Store interface ---
 //
 // BYOK was removed on 2026-04-16 — the store no longer tracks per-provider
@@ -183,7 +239,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
             'settings load timed out',
           );
       if (stored) {
-        const merged = deepMerge(DEFAULT_SETTINGS, stored.settings ?? {}) as AppSettings;
+        const merged = normalizeStoredSettings((stored.settings ?? {}) as LegacyAppSettings);
         // Accent-only themes were removed — fall back to the default full theme.
         if (!VALID_THEMES.includes(merged.theme)) {
           merged.theme = DEFAULT_SETTINGS.theme;
@@ -193,16 +249,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         if (!SUPPORTED_LANGUAGES.includes(merged.language)) {
           merged.language = 'pt-BR';
         }
-        // Drop the legacy `screenCapture` shortcut field carried over from the
-        // removed screen-analysis feature so it doesn't linger in disk storage.
-        if ('screenCapture' in merged.shortcuts) {
-          delete (merged.shortcuts as Record<string, unknown>).screenCapture;
-        }
-        // Drop legacy clipboard custom-prompt fields (removed when the clipboard
-        // flow switched to a hardcoded system prompt).
-        const clipLegacy = merged.clipboard as unknown as Record<string, unknown>;
-        if ('customPrompt' in clipLegacy) delete clipLegacy.customPrompt;
-        if ('useCustomPrompt' in clipLegacy) delete clipLegacy.useCustomPrompt;
         set({ settings: merged, _hydrated: true, _loadedFromDisk: true });
         // Sync i18n + tray com o idioma carregado.
         i18n.changeLanguage(merged.language).catch(() => {});

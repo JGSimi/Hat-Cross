@@ -46,7 +46,6 @@ describe("i18n: ClipboardHistory has no hard-coded toast strings (MC7)", () => {
     "nothingToCopy",
     "originalCopied",
     "originalAndResponseCopied",
-    "newConversation",
     "pinned",
     "unpinned",
     "removed",

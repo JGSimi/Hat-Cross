@@ -2,7 +2,7 @@ import { check, type Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../stores/settingsStore';
-import { useConversationStore } from '../stores/conversationStore';
+import { useClipboardStore } from '../stores/clipboardStore';
 import { useToastStore } from '../stores/toastStore';
 import { withTimeout } from '../utils/async';
 import { logDiagnostic, withDiagnostic } from './diagnostics';
@@ -34,9 +34,9 @@ async function flushBeforeInstall(source: UpdateSource): Promise<void> {
         'settings save timed out before update',
       ),
       withTimeout(
-        useConversationStore.getState().saveConversations(),
+        useClipboardStore.getState().saveEntries(),
         5_000,
-        'conversations save timed out before update',
+        'clipboard save timed out before update',
       ),
     ]);
   });

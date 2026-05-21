@@ -3,13 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useClipboardStore } from '../../stores/clipboardStore';
-import { useConversationStore } from '../../stores/conversationStore';
-import { useChatStore } from '../../stores/chatStore';
 import { useToastStore } from '../../stores/toastStore';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { groupByDate, type DateGroup } from '../../utils/dateGroups';
 import { matchesSearch } from '../../utils/clipboardSearch';
-import type { ClipboardEntry, Message } from '../../types';
+import type { ClipboardEntry } from '../../types';
 import ClipboardToolbar, { type SortMode } from './ClipboardToolbar';
 import ClipboardCard from './ClipboardCard';
 import ClipboardGroup from './ClipboardGroup';
@@ -36,8 +34,6 @@ export default function ClipboardHistory({ onBack }: Props) {
   const deleteEntry = useClipboardStore((s) => s.deleteEntry);
   const togglePin = useClipboardStore((s) => s.togglePin);
   const clearAll = useClipboardStore((s) => s.clearAll);
-  const createConversation = useConversationStore((s) => s.createConversation);
-  const addMessageToConversation = useConversationStore((s) => s.addMessageToConversation);
   const showToast = useToastStore((s) => s.showToast);
   const reduceMotion = useReducedMotion();
 
@@ -164,30 +160,6 @@ export default function ClipboardHistory({ onBack }: Props) {
       showToast(t('toasts.originalAndResponseCopied'), 'success');
     },
     [showToast],
-  );
-
-  const handleOpenInChat = useCallback(
-    (entry: ClipboardEntry) => {
-      const userMsg: Message = {
-        id: crypto.randomUUID(),
-        content: entry.originalText,
-        isUser: true,
-        timestamp: entry.timestamp,
-        source: 'clipboard',
-      };
-      const aiMsg: Message = {
-        id: crypto.randomUUID(),
-        content: entry.response,
-        isUser: false,
-        timestamp: entry.timestamp + 1,
-        source: 'clipboard',
-      };
-      const conv = createConversation(userMsg);
-      addMessageToConversation(conv.id, aiMsg);
-      useChatStore.getState().loadFromConversation(conv.id);
-      showToast(t('toasts.newConversation'), 'info');
-    },
-    [createConversation, addMessageToConversation, showToast],
   );
 
   const handleTogglePin = useCallback(
@@ -438,7 +410,6 @@ export default function ClipboardHistory({ onBack }: Props) {
                         }}
                         onCopyResponse={() => handleCopyResponse(entry)}
                         onCopyOriginal={() => handleCopyOriginal(entry)}
-                        onOpenInChat={() => handleOpenInChat(entry)}
                         onTogglePin={() => handleTogglePin(entry)}
                         onRequestDelete={() => requestDelete(entry)}
                         onContextMenu={(x, y) => {
@@ -476,7 +447,6 @@ export default function ClipboardHistory({ onBack }: Props) {
                             }}
                             onCopyResponse={() => handleCopyResponse(entry)}
                             onCopyOriginal={() => handleCopyOriginal(entry)}
-                            onOpenInChat={() => handleOpenInChat(entry)}
                             onTogglePin={() => handleTogglePin(entry)}
                             onRequestDelete={() => requestDelete(entry)}
                             onContextMenu={(x, y) => {
@@ -515,7 +485,6 @@ export default function ClipboardHistory({ onBack }: Props) {
                           }}
                           onCopyResponse={() => handleCopyResponse(entry)}
                           onCopyOriginal={() => handleCopyOriginal(entry)}
-                          onOpenInChat={() => handleOpenInChat(entry)}
                           onTogglePin={() => handleTogglePin(entry)}
                           onRequestDelete={() => requestDelete(entry)}
                           onContextMenu={(x, y) => {
@@ -544,7 +513,6 @@ export default function ClipboardHistory({ onBack }: Props) {
             onCopyResponse={() => handleCopyResponse(contextMenuEntry)}
             onCopyOriginal={() => handleCopyOriginal(contextMenuEntry)}
             onCopyBoth={() => handleCopyBoth(contextMenuEntry)}
-            onOpenInChat={() => handleOpenInChat(contextMenuEntry)}
             onTogglePin={() => handleTogglePin(contextMenuEntry)}
             onDelete={() => {
               // Skip confirm for context-menu delete to feel snappy

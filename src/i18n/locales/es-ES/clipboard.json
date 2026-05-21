@@ -8,7 +8,7 @@
   "empty": {
     "title": "Sin historial todavía",
     "body": "Cada portapapeles procesado aparece aquí. Copia un texto y usa el atajo.",
-    "back": "Volver al chat"
+    "back": "Volver a la sala"
   },
   "noResults": {
     "title": "Nada encontrado",
@@ -36,7 +36,6 @@
     "nothingToCopy": "Nada para copiar",
     "originalCopied": "Texto original copiado",
     "originalAndResponseCopied": "Original + respuesta copiados",
-    "newConversation": "Nueva conversación creada",
     "pinned": "Elemento fijado",
     "unpinned": "Elemento desfijado",
     "removed": "Elemento eliminado",

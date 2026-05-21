@@ -37,21 +37,20 @@
     "copied": "Codigo de sala copiado",
     "leave": "Salir de la sala"
   },
-  "waiting": {
-    "title": "Esperando otro miembro",
-    "body": "El portapapeles sigue respondiendo para ti, pero la clave de la sala empieza solo con 2+ miembros."
-  },
   "notifications": {
     "title": "Alertas",
     "default": "Tu respuesta divergio del consenso de la sala."
   },
-  "chat": {
-    "disclaimer": "La pregunta y respuesta final entran a la sala. Adjuntos y razonamiento no entran en la V1."
+  "feed": {
+    "title": "Portapapeles de la sala",
+    "subtitle": "Todo lo procesado por Flash aparece aqui.",
+    "emptyTitle": "Nada compartido aun",
+    "emptyBody": "Copia una pregunta y usa Cmd/Ctrl+Shift+F."
   },
   "consensus": {
     "title": "Clave comparada",
     "emptyTitle": "Aun sin comparacion",
-    "emptyBody": "Copia preguntas con 2+ miembros en la sala para armar la clave.",
+    "emptyBody": "Copia preguntas en la sala para armar la clave.",
     "answer": "Respuesta",
     "question": "Pregunta",
     "aiAnswer": "IA",

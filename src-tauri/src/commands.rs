@@ -275,15 +275,6 @@ pub fn open_main_window(app: AppHandle) {
 }
 
 #[tauri::command]
-pub fn toggle_popover_window(app: AppHandle) {
-    if windows::is_window_visible(&app, "popover") {
-        windows::hide_window(&app, "popover");
-    } else {
-        windows::show_window(&app, "popover");
-    }
-}
-
-#[tauri::command]
 pub fn close_window(app: AppHandle, label: String) {
     windows::hide_window(&app, &label);
 }
@@ -370,8 +361,8 @@ pub fn flash_exit_adjust_mode(app: AppHandle) -> Result<(), String> {
         let _ = window.set_ignore_cursor_events(true);
         let _ = window.hide();
     }
-    // On macOS, hiding our window surfaces whichever Hat window was next in
-    // the z-order (main/popover), pulling the user out of their workflow.
+    // On macOS, hiding our window can surface whichever Hat window was next in
+    // the z-order, pulling the user out of their workflow.
     // Asking the app to step back into the background restores whichever
     // external app was frontmost before adjust mode started.
     #[cfg(target_os = "macos")]

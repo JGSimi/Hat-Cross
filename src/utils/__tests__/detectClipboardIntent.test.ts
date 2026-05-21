@@ -74,7 +74,7 @@ describe('maxTokensForIntent', () => {
   it('returns the product ceiling for open-ended (no artificial cap)', () => {
     // 2026-04-23 regression: user explicitly asked not to cap
     // dissertative answers. 2048 still truncated real prompts. The
-    // ceiling must match or exceed the maxTokens slider top in AICard
+    // ceiling must match or exceed the clipboard budget top
     // so the clipboard flow can't be the weakest link anymore.
     expect(maxTokensForIntent('open')).toBeGreaterThanOrEqual(32768);
   });

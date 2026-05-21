@@ -15,39 +15,6 @@ export enum AIMode {
     AIModeHatPro = "hat-pro",
 };
 
-export class ChatLimits {
-    "maxContextMessages": number;
-    "maxConversations": number;
-    "maxMessagesPerConversation": number;
-    "autoNewChatOnLimit": boolean;
-
-    /** Creates a new ChatLimits instance. */
-    constructor($$source: Partial<ChatLimits> = {}) {
-        if (!("maxContextMessages" in $$source)) {
-            this["maxContextMessages"] = 0;
-        }
-        if (!("maxConversations" in $$source)) {
-            this["maxConversations"] = 0;
-        }
-        if (!("maxMessagesPerConversation" in $$source)) {
-            this["maxMessagesPerConversation"] = 0;
-        }
-        if (!("autoNewChatOnLimit" in $$source)) {
-            this["autoNewChatOnLimit"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new ChatLimits instance from a string or object.
-     */
-    static createFrom($$source: any = {}): ChatLimits {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new ChatLimits($$parsedSource as Partial<ChatLimits>);
-    }
-}
-
 export class ChatStreamRequest {
     "streamId": number;
     "messages": ConversationTurn[];
@@ -439,7 +406,6 @@ export class NotificationSettings {
     "showProcessingNotification": boolean;
     "showResponseNotification": boolean;
     "showErrorNotification": boolean;
-    "showChatResponseNotification": boolean;
     "showUpdateNotification": boolean;
     "showClipboardEmptyNotification": boolean;
 
@@ -456,9 +422,6 @@ export class NotificationSettings {
         }
         if (!("showErrorNotification" in $$source)) {
             this["showErrorNotification"] = false;
-        }
-        if (!("showChatResponseNotification" in $$source)) {
-            this["showChatResponseNotification"] = false;
         }
         if (!("showUpdateNotification" in $$source)) {
             this["showUpdateNotification"] = false;
@@ -504,43 +467,6 @@ export class OAuthFlowResult {
     }
 }
 
-export class PopoverSettings {
-    "width": number;
-    "height": number;
-    "stealthMode": boolean;
-    "stealthHoverOpacity": number;
-    "disguiseMode": boolean;
-
-    /** Creates a new PopoverSettings instance. */
-    constructor($$source: Partial<PopoverSettings> = {}) {
-        if (!("width" in $$source)) {
-            this["width"] = 0;
-        }
-        if (!("height" in $$source)) {
-            this["height"] = 0;
-        }
-        if (!("stealthMode" in $$source)) {
-            this["stealthMode"] = false;
-        }
-        if (!("stealthHoverOpacity" in $$source)) {
-            this["stealthHoverOpacity"] = 0;
-        }
-        if (!("disguiseMode" in $$source)) {
-            this["disguiseMode"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new PopoverSettings instance from a string or object.
-     */
-    static createFrom($$source: any = {}): PopoverSettings {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new PopoverSettings($$parsedSource as Partial<PopoverSettings>);
-    }
-}
-
 export class Settings {
     "autoLaunch": boolean;
     "mode": AIMode;
@@ -551,9 +477,7 @@ export class Settings {
     "shortcuts": ShortcutSettings;
     "tokenStats": TokenUsage;
     "clipboard": ClipboardSettings;
-    "popover": PopoverSettings;
     "notifications": NotificationSettings;
-    "chatLimits": ChatLimits;
     "onboardingCompleted": boolean;
 
     /** Creates a new Settings instance. */
@@ -585,14 +509,8 @@ export class Settings {
         if (!("clipboard" in $$source)) {
             this["clipboard"] = (new ClipboardSettings());
         }
-        if (!("popover" in $$source)) {
-            this["popover"] = (new PopoverSettings());
-        }
         if (!("notifications" in $$source)) {
             this["notifications"] = (new NotificationSettings());
-        }
-        if (!("chatLimits" in $$source)) {
-            this["chatLimits"] = (new ChatLimits());
         }
         if (!("onboardingCompleted" in $$source)) {
             this["onboardingCompleted"] = false;
@@ -609,8 +527,6 @@ export class Settings {
         const $$createField7_0 = $$createType10;
         const $$createField8_0 = $$createType11;
         const $$createField9_0 = $$createType12;
-        const $$createField10_0 = $$createType13;
-        const $$createField11_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("shortcuts" in $$parsedSource) {
             $$parsedSource["shortcuts"] = $$createField6_0($$parsedSource["shortcuts"]);
@@ -621,32 +537,22 @@ export class Settings {
         if ("clipboard" in $$parsedSource) {
             $$parsedSource["clipboard"] = $$createField8_0($$parsedSource["clipboard"]);
         }
-        if ("popover" in $$parsedSource) {
-            $$parsedSource["popover"] = $$createField9_0($$parsedSource["popover"]);
-        }
         if ("notifications" in $$parsedSource) {
-            $$parsedSource["notifications"] = $$createField10_0($$parsedSource["notifications"]);
-        }
-        if ("chatLimits" in $$parsedSource) {
-            $$parsedSource["chatLimits"] = $$createField11_0($$parsedSource["chatLimits"]);
+            $$parsedSource["notifications"] = $$createField9_0($$parsedSource["notifications"]);
         }
         return new Settings($$parsedSource as Partial<Settings>);
     }
 }
 
 export class ShortcutSettings {
-    "clipboard": string;
-    "floatingChat": string;
+    "processClipboardFlash": string;
     "adjustFlashPosition": string;
     "emergencyQuit": string;
 
     /** Creates a new ShortcutSettings instance. */
     constructor($$source: Partial<ShortcutSettings> = {}) {
-        if (!("clipboard" in $$source)) {
-            this["clipboard"] = "";
-        }
-        if (!("floatingChat" in $$source)) {
-            this["floatingChat"] = "";
+        if (!("processClipboardFlash" in $$source)) {
+            this["processClipboardFlash"] = "";
         }
         if (!("adjustFlashPosition" in $$source)) {
             this["adjustFlashPosition"] = "";
@@ -780,6 +686,4 @@ const $$createType8 = FlashAppearance.createFrom;
 const $$createType9 = ShortcutSettings.createFrom;
 const $$createType10 = TokenUsage.createFrom;
 const $$createType11 = ClipboardSettings.createFrom;
-const $$createType12 = PopoverSettings.createFrom;
-const $$createType13 = NotificationSettings.createFrom;
-const $$createType14 = ChatLimits.createFrom;
+const $$createType12 = NotificationSettings.createFrom;

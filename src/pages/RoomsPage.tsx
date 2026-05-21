@@ -3,6 +3,7 @@ import { DoorOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import RoomConsensusPanel from '../components/Rooms/RoomConsensusPanel';
+import RoomFeedPanel from '../components/Rooms/RoomFeedPanel';
 import RoomHeader from '../components/Rooms/RoomHeader';
 import RoomJoinModal from '../components/Rooms/RoomJoinModal';
 import RoomList from '../components/Rooms/RoomList';
@@ -40,7 +41,6 @@ export default function RoomsPage() {
     [activeRoomId, rooms],
   );
   const visibleMemberCount = members.length || activeRoom?.memberCount || 0;
-  const roomReady = visibleMemberCount > 1;
   const openJoin = () => {
     if (activeRoom) {
       useToastStore.getState().showToast(t('toast.errors.activeRoom'), 'error');
@@ -52,7 +52,7 @@ export default function RoomsPage() {
   const handleCreate = async (title: string) => {
     setBusy(true);
     try {
-      const result = await apiCreateRoom(title);
+      const result = await apiCreateRoom(title.trim());
       setActiveRoom(result.roomId);
       setJoinOpen(false);
       useToastStore.getState().showToast(t('toast.created'), 'success');
@@ -154,14 +154,9 @@ export default function RoomsPage() {
               onLeave={handleLeave}
             />
             <div className="rooms-workspace">
+              <RoomFeedPanel entries={entries} />
               <section className="rooms-consensus-panel rooms-consensus-panel--wide">
                 <RoomNotifications notifications={notifications} onRead={markNotificationRead} />
-                {!roomReady && (
-                  <div className="rooms-waiting-banner">
-                    <strong>{t('waiting.title')}</strong>
-                    <span>{t('waiting.body')}</span>
-                  </div>
-                )}
                 <RoomConsensusPanel clusters={clusters} entries={entries} />
               </section>
             </div>

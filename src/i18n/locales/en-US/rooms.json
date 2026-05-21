@@ -37,21 +37,20 @@
     "copied": "Room code copied",
     "leave": "Leave room"
   },
-  "waiting": {
-    "title": "Waiting for another member",
-    "body": "Clipboard still answers for you, but the room answer key starts only with 2+ members."
-  },
   "notifications": {
     "title": "Alerts",
     "default": "Your answer diverged from the room consensus."
   },
-  "chat": {
-    "disclaimer": "The final question and answer enter the room. Attachments and thinking are not shared in V1."
+  "feed": {
+    "title": "Room clipboard",
+    "subtitle": "Everything processed by Flash lands here.",
+    "emptyTitle": "Nothing shared yet",
+    "emptyBody": "Copy a question and use Cmd/Ctrl+Shift+F."
   },
   "consensus": {
     "title": "Compared answer key",
     "emptyTitle": "No comparison yet",
-    "emptyBody": "Copy questions with 2+ members in the room to build the answer key.",
+    "emptyBody": "Copy questions in the room to build the answer key.",
     "answer": "Answer",
     "question": "Question",
     "aiAnswer": "AI",

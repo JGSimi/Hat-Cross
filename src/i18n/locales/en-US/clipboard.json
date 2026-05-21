@@ -8,7 +8,7 @@
   "empty": {
     "title": "No history yet",
     "body": "Every processed clipboard shows up here. Copy some text and use the shortcut.",
-    "back": "Back to chat"
+    "back": "Back to room"
   },
   "noResults": {
     "title": "Nothing found",
@@ -36,7 +36,6 @@
     "nothingToCopy": "Nothing to copy",
     "originalCopied": "Original text copied",
     "originalAndResponseCopied": "Original + response copied",
-    "newConversation": "New chat created",
     "pinned": "Item pinned",
     "unpinned": "Item unpinned",
     "removed": "Item removed",

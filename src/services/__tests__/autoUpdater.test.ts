@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
   saveSettings: vi.fn(),
-  saveConversations: vi.fn(),
+  saveEntries: vi.fn(),
   showToast: vi.fn(),
 }));
 const mockCheck = vi.mocked(check);
@@ -43,10 +43,10 @@ vi.mock('../../stores/settingsStore', () => ({
   },
 }));
 
-vi.mock('../../stores/conversationStore', () => ({
-  useConversationStore: {
+vi.mock('../../stores/clipboardStore', () => ({
+  useClipboardStore: {
     getState: () => ({
-      saveConversations: hoisted.saveConversations,
+      saveEntries: hoisted.saveEntries,
     }),
   },
 }));
@@ -82,7 +82,7 @@ describe('autoUpdater', () => {
     vi.clearAllMocks();
     vi.useRealTimers();
     hoisted.saveSettings.mockResolvedValue(undefined);
-    hoisted.saveConversations.mockResolvedValue(undefined);
+    hoisted.saveEntries.mockResolvedValue(undefined);
     mockRelaunch.mockResolvedValue(undefined);
   });
 
@@ -133,7 +133,7 @@ describe('autoUpdater', () => {
     await installAvailableUpdate('settings');
 
     expect(hoisted.saveSettings).toHaveBeenCalledTimes(1);
-    expect(hoisted.saveConversations).toHaveBeenCalledTimes(1);
+    expect(hoisted.saveEntries).toHaveBeenCalledTimes(1);
     expect(update.downloadAndInstall).toHaveBeenCalledTimes(1);
     expect(mockRelaunch).toHaveBeenCalledTimes(1);
   });

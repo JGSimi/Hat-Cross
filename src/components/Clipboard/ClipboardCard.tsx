@@ -3,7 +3,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import MarkdownRenderer from '../Shared/MarkdownRenderer';
 import {
   Clipboard, ImageIcon, Clock, Cpu, Pin, ChevronRight,
-  Copy, Check, Trash2, MessageSquarePlus, FileText, Sparkles, X,
+  Copy, Check, Trash2, FileText, Sparkles, X, DoorOpen,
 } from 'lucide-react';
 import type { ClipboardEntry } from '../../types';
 import ClipboardImageThumb from './ClipboardImageThumb';
@@ -19,7 +19,6 @@ interface Props {
   onToggleExpand: () => void;
   onCopyResponse: () => void;
   onCopyOriginal: () => void;
-  onOpenInChat: () => void;
   onTogglePin: () => void;
   onRequestDelete: () => void;
   onContextMenu: (x: number, y: number) => void;
@@ -36,7 +35,6 @@ function ClipboardCardInner({
   onToggleExpand,
   onCopyResponse,
   onCopyOriginal,
-  onOpenInChat,
   onTogglePin,
   onRequestDelete,
   onContextMenu,
@@ -260,6 +258,30 @@ function ClipboardCardInner({
           <Cpu size={10} />
           {entry.model || entry.provider}
         </span>
+
+        {entry.sharedToRoom && entry.roomTitle && (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '2px 8px',
+              borderRadius: 999,
+              background: 'color-mix(in srgb, var(--success) 10%, transparent)',
+              border: '0.5px solid color-mix(in srgb, var(--success) 20%, transparent)',
+              fontSize: 10.5,
+              color: 'var(--success)',
+              maxWidth: 180,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flexShrink: 1,
+            }}
+          >
+            <DoorOpen size={10} />
+            {entry.roomTitle}
+          </span>
+        )}
 
         <motion.button
           whileHover={reduceMotion ? undefined : { scale: 1.15 }}
@@ -550,15 +572,6 @@ function ClipboardCardInner({
                   active={copied}
                 />
                 <ActionButton
-                  icon={<MessageSquarePlus size={13} />}
-                  label="Abrir no Chat"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenInChat();
-                  }}
-                  primary
-                />
-                <ActionButton
                   icon={confirmDelete ? <X size={13} /> : <Trash2 size={13} />}
                   label={confirmDelete ? 'Confirmar?' : 'Excluir'}
                   onClick={(e) => {
@@ -580,36 +593,28 @@ function ActionButton({
   icon,
   label,
   onClick,
-  primary,
   danger,
   active,
 }: {
   icon: React.ReactNode;
   label: string;
   onClick: (e: React.MouseEvent) => void;
-  primary?: boolean;
   danger?: boolean;
   active?: boolean;
 }) {
   const reduceMotion = useReducedMotion();
   const bg = danger
     ? 'color-mix(in srgb, var(--error) 15%, transparent)'
-    : primary
-    ? 'color-mix(in srgb, var(--color-accent) 15%, transparent)'
     : active
     ? 'color-mix(in srgb, var(--success) 14%, transparent)'
     : 'rgba(255,255,255,0.04)';
   const color = danger
     ? 'var(--error)'
-    : primary
-    ? 'var(--color-accent)'
     : active
     ? 'var(--success)'
     : 'var(--text-secondary)';
   const border = danger
     ? '0.5px solid color-mix(in srgb, var(--error) 28%, transparent)'
-    : primary
-    ? '0.5px solid color-mix(in srgb, var(--color-accent) 28%, transparent)'
     : active
     ? '0.5px solid color-mix(in srgb, var(--success) 25%, transparent)'
     : '0.5px solid rgba(255,255,255,0.06)';

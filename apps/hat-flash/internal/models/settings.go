@@ -1,18 +1,25 @@
 package models
 
+import "encoding/json"
+
 type ShortcutSettings struct {
-	Clipboard           string `json:"clipboard"`
-	FloatingChat        string `json:"floatingChat"`
-	AdjustFlashPosition string `json:"adjustFlashPosition"`
-	EmergencyQuit       string `json:"emergencyQuit"`
+	ProcessClipboardFlash string `json:"processClipboardFlash"`
+	AdjustFlashPosition   string `json:"adjustFlashPosition"`
+	EmergencyQuit          string `json:"emergencyQuit"`
 }
 
-type PopoverSettings struct {
-	Width               int     `json:"width"`
-	Height              int     `json:"height"`
-	StealthMode         bool    `json:"stealthMode"`
-	StealthHoverOpacity float64 `json:"stealthHoverOpacity"`
-	DisguiseMode        bool    `json:"disguiseMode"`
+func (s *ShortcutSettings) UnmarshalJSON(data []byte) error {
+	type alias ShortcutSettings
+	var parsed alias
+	var legacy map[string]string
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return err
+	}
+	if err := json.Unmarshal(data, &legacy); err == nil && parsed.ProcessClipboardFlash == "" {
+		parsed.ProcessClipboardFlash = legacy["clipboard"]
+	}
+	*s = ShortcutSettings(parsed)
+	return nil
 }
 
 type FlashPosition struct {
@@ -58,16 +65,8 @@ type NotificationSettings struct {
 	ShowProcessingNotification     bool `json:"showProcessingNotification"`
 	ShowResponseNotification       bool `json:"showResponseNotification"`
 	ShowErrorNotification          bool `json:"showErrorNotification"`
-	ShowChatResponseNotification   bool `json:"showChatResponseNotification"`
 	ShowUpdateNotification         bool `json:"showUpdateNotification"`
 	ShowClipboardEmptyNotification bool `json:"showClipboardEmptyNotification"`
-}
-
-type ChatLimits struct {
-	MaxContextMessages         int  `json:"maxContextMessages"`
-	MaxConversations           int  `json:"maxConversations"`
-	MaxMessagesPerConversation int  `json:"maxMessagesPerConversation"`
-	AutoNewChatOnLimit         bool `json:"autoNewChatOnLimit"`
 }
 
 type TokenUsage struct {
@@ -86,9 +85,7 @@ type Settings struct {
 	Shortcuts           ShortcutSettings     `json:"shortcuts"`
 	TokenStats          TokenUsage           `json:"tokenStats"`
 	Clipboard           ClipboardSettings    `json:"clipboard"`
-	Popover             PopoverSettings      `json:"popover"`
 	Notifications       NotificationSettings `json:"notifications"`
-	ChatLimits          ChatLimits           `json:"chatLimits"`
 	OnboardingCompleted bool                 `json:"onboardingCompleted"`
 }
 
@@ -101,10 +98,9 @@ func DefaultSettings() Settings {
 		Temperature:  0.7,
 		MaxTokens:    4096,
 		Shortcuts: ShortcutSettings{
-			Clipboard:           "CommandOrControl+Shift+X",
-			FloatingChat:        "CommandOrControl+Shift+C",
-			AdjustFlashPosition: "CommandOrControl+Shift+F",
-			EmergencyQuit:       "CommandOrControl+Shift+Q",
+			ProcessClipboardFlash: "CommandOrControl+Shift+F",
+			AdjustFlashPosition:   "CommandOrControl+Alt+F",
+			EmergencyQuit:          "CommandOrControl+Shift+Q",
 		},
 		Clipboard: ClipboardSettings{
 			Enabled:                 true,
@@ -114,34 +110,20 @@ func DefaultSettings() Settings {
 			SoundOnComplete:         true,
 			CaptureImages:           true,
 			Flash: FlashSettings{
-				Enabled:       false,
+				Enabled:       true,
 				PreviewLength: 200,
 				Position:      FlashPosition{X: 40, Y: 40},
-				Timing:        FlashTiming{Mode: "fade", FadeInMs: 300, FadeOutMs: 500},
+				Timing:        FlashTiming{Mode: "typewriter", FadeInMs: 300, FadeOutMs: 500},
 				Appearance:    FlashAppearance{Color: "", Opacity: 35, FontSizePx: 14, TextShadow: true},
 			},
-		},
-		Popover: PopoverSettings{
-			Width:               380,
-			Height:              480,
-			StealthMode:         false,
-			StealthHoverOpacity: 0.4,
-			DisguiseMode:        true,
 		},
 		Notifications: NotificationSettings{
 			Enabled:                        true,
 			ShowProcessingNotification:     true,
 			ShowResponseNotification:       true,
 			ShowErrorNotification:          true,
-			ShowChatResponseNotification:   true,
 			ShowUpdateNotification:         true,
 			ShowClipboardEmptyNotification: true,
-		},
-		ChatLimits: ChatLimits{
-			MaxContextMessages:         40,
-			MaxConversations:           50,
-			MaxMessagesPerConversation: 200,
-			AutoNewChatOnLimit:         true,
 		},
 	}
 }

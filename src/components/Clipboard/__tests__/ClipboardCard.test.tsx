@@ -43,7 +43,6 @@ function defaultProps(
     onToggleExpand: vi.fn(),
     onCopyResponse: vi.fn(),
     onCopyOriginal: vi.fn(),
-    onOpenInChat: vi.fn(),
     onTogglePin: vi.fn(),
     onRequestDelete: vi.fn(),
     onContextMenu: vi.fn(),

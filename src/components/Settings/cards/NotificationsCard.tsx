@@ -14,10 +14,9 @@ export default function NotificationsCard() {
   };
 
   const activeCount = notif.enabled
-    ? [
+      ? [
         notif.showProcessingNotification,
         notif.showResponseNotification,
-        notif.showChatResponseNotification,
         notif.showErrorNotification,
         notif.showClipboardEmptyNotification,
         notif.showUpdateNotification,
@@ -42,7 +41,7 @@ export default function NotificationsCard() {
 
       <Section
         title={t('notifications.types')}
-        meta={notif.enabled ? `${activeCount}/6` : undefined}
+        meta={notif.enabled ? `${activeCount}/5` : undefined}
       >
         <div
           style={{
@@ -62,13 +61,6 @@ export default function NotificationsCard() {
             <Toggle
               checked={notif.showResponseNotification}
               onChange={(v) => update({ showResponseNotification: v })}
-              disabled={!notif.enabled}
-            />
-          </Row>
-          <Row label={t('notifications.chatResponse')}>
-            <Toggle
-              checked={notif.showChatResponseNotification}
-              onChange={(v) => update({ showChatResponseNotification: v })}
               disabled={!notif.enabled}
             />
           </Row>

@@ -23,7 +23,7 @@ interface ZeroProps {
 export function ClipboardZeroState({ onSuggestionClick }: ZeroProps) {
   const reduceMotion = useReducedMotion();
   const platform = usePlatform();
-  const clipboardShortcut = useSettingsStore((s) => s.settings.shortcuts.clipboard);
+  const clipboardShortcut = useSettingsStore((s) => s.settings.shortcuts.processClipboardFlash);
   const formatted = formatShortcut(clipboardShortcut, platform);
 
   return (
@@ -145,7 +145,7 @@ export function ClipboardZeroState({ onSuggestionClick }: ZeroProps) {
           }}
         >
           <Sparkles size={13} />
-          Abrir Chat
+          Abrir sala
         </motion.button>
       )}
     </div>

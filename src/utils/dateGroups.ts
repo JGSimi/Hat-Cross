@@ -13,7 +13,7 @@ export const DATE_GROUP_ORDER = [
 export type DateGroup = (typeof DATE_GROUP_ORDER)[number];
 
 export function dateGroupLabel(group: DateGroup): string {
-  return i18n.t(`dateGroups.${group}`, { ns: 'chat' });
+  return i18n.t(`dateGroups.${group}`, { ns: 'common' });
 }
 
 export function getDateGroup(timestamp: number): DateGroup {

@@ -1,36 +1,3 @@
-// === Chat Models ===
-
-export interface Message {
-  id: string;
-  content: string;
-  isUser: boolean;
-  timestamp: number;
-  source: 'chat' | 'screenAnalysis' | 'clipboard';
-  thinking?: string;
-}
-
-export interface ChatAttachment {
-  id: string;
-  name: string;
-  data: string | null;      // base64 for images
-  content: string | null;    // text for files
-  isImage: boolean;
-}
-
-export interface Conversation {
-  id: string;
-  title: string;
-  messages: Message[];
-  isPinned: boolean;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface DraftEntry {
-  text: string;
-  updatedAt: number;
-}
-
 // === Clipboard History ===
 
 export interface ClipboardEntry {
@@ -42,6 +9,10 @@ export interface ClipboardEntry {
   model: string;
   images?: string[]; // base64 images captured from clipboard
   isPinned?: boolean;
+  roomId?: string;
+  roomTitle?: string;
+  sharedToRoom?: boolean;
+  flashShown?: boolean;
 }
 
 // === AI Models ===
@@ -625,18 +596,8 @@ export const FREE_THEMES: readonly AppTheme[] = THEME_PRESETS
 
 // === Settings ===
 
-export interface PopoverSettings {
-  width: number;
-  height: number;
-  stealthMode: boolean;
-  stealthHoverOpacity: number;
-  disguiseMode: boolean;
-  disguiseWidget: 'clock';
-}
-
 export interface ShortcutSettings {
-  clipboard: string;
-  floatingChat: string;
+  processClipboardFlash: string;
   adjustFlashPosition: string;
   emergencyQuit: string;
 }
@@ -686,23 +647,14 @@ export interface NotificationSettings {
   showProcessingNotification: boolean;
   showResponseNotification: boolean;
   showErrorNotification: boolean;
-  showChatResponseNotification: boolean;
   showUpdateNotification: boolean;
   showClipboardEmptyNotification: boolean;
-}
-
-export interface ChatLimits {
-  maxContextMessages: number;    // Max messages sent as context to AI (prevents context overflow)
-  maxConversations: number;      // Max conversations stored in history
-  maxMessagesPerConversation: number; // Max messages stored per conversation
-  autoNewChatOnLimit: boolean;   // Auto-create new chat when context limit reached
 }
 
 export interface AppSettings {
   autoLaunch: boolean;
   theme: AppTheme;
   language: AppLanguage;
-  popover: PopoverSettings;
   systemPrompt: string;
   temperature: number;
   maxTokens: number;
@@ -710,7 +662,6 @@ export interface AppSettings {
   tokenStats: TokenUsage;
   clipboard: ClipboardSettings;
   notifications: NotificationSettings;
-  chatLimits: ChatLimits;
   onboardingCompleted: boolean;
 }
 
@@ -724,21 +675,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoLaunch: false,
   theme: 'noir',
   language: INITIAL_LANGUAGE,
-  popover: {
-    width: 380,
-    height: 480,
-    stealthMode: false,
-    stealthHoverOpacity: 0.4,
-    disguiseMode: true,
-    disguiseWidget: 'clock',
-  },
   systemPrompt: DEFAULT_SYSTEM_PROMPTS[INITIAL_LANGUAGE],
   temperature: 0.7,
   maxTokens: 4096,
   shortcuts: {
-    clipboard: 'CommandOrControl+Shift+X',
-    floatingChat: 'CommandOrControl+Shift+C',
-    adjustFlashPosition: 'CommandOrControl+Shift+F',
+    processClipboardFlash: 'CommandOrControl+Shift+F',
+    adjustFlashPosition: 'CommandOrControl+Alt+F',
     emergencyQuit: 'CommandOrControl+Shift+Q',
   },
   tokenStats: {
@@ -754,11 +696,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
     soundOnComplete: true,
     captureImages: true,
     flash: {
-      enabled: false,
+      enabled: true,
       previewLength: 200,
       position: { x: 40, y: 40 },
       timing: {
-        mode: 'fade',
+        mode: 'typewriter',
         fadeInMs: 300,
         fadeOutMs: 500,
         holdMs: null,
@@ -776,15 +718,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     showProcessingNotification: true,
     showResponseNotification: true,
     showErrorNotification: true,
-    showChatResponseNotification: true,
     showUpdateNotification: true,
     showClipboardEmptyNotification: true,
-  },
-  chatLimits: {
-    maxContextMessages: 40,
-    maxConversations: 50,
-    maxMessagesPerConversation: 200,
-    autoNewChatOnLimit: true,
   },
   onboardingCompleted: false,
 };

@@ -66,10 +66,10 @@
     "secondary": "Tentar de novo"
   },
   "provider-context-exceeded": {
-    "title": "Conversa ficou grande demais",
-    "body": "O modelo não cabe mais nessa thread. Começa uma nova pra continuar o raciocínio.",
-    "primary": "Nova conversa",
-    "secondary": "Resumir thread"
+    "title": "Resposta ficou grande demais",
+    "body": "O modelo não cabe mais nesse pedido. Copie um trecho menor e tente de novo.",
+    "primary": "Tentar de novo",
+    "secondary": "Copiar trecho menor"
   },
   "provider-content-filter": {
     "title": "Bloqueado pelo filtro do provedor",

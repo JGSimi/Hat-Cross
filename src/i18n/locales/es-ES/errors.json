@@ -66,10 +66,10 @@
     "secondary": "Try again"
   },
   "provider-context-exceeded": {
-    "title": "Conversation is too long",
-    "body": "The model can't fit this thread anymore. Start a new one to keep going.",
-    "primary": "New chat",
-    "secondary": "Summarize thread"
+    "title": "La solicitud es demasiado larga",
+    "body": "El modelo ya no puede procesar este pedido. Copia una parte menor e intenta de nuevo.",
+    "primary": "Intentar de nuevo",
+    "secondary": "Copiar menos texto"
   },
   "provider-content-filter": {
     "title": "Blocked by content filter",

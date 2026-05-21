@@ -8,7 +8,7 @@
   "empty": {
     "title": "Sem histórico ainda",
     "body": "Cada clipboard processado aparece aqui. Copie um texto e use o atalho.",
-    "back": "Voltar ao chat"
+    "back": "Voltar à sala"
   },
   "noResults": {
     "title": "Nada encontrado",
@@ -36,7 +36,6 @@
     "nothingToCopy": "Nada para copiar",
     "originalCopied": "Texto original copiado",
     "originalAndResponseCopied": "Original + resposta copiados",
-    "newConversation": "Nova conversa criada",
     "pinned": "Item fixado",
     "unpinned": "Item desafixado",
     "removed": "Item removido",

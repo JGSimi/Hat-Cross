@@ -112,10 +112,9 @@ func (l *windowsShortcutLoop) apply(command shortcutCommand) error {
 		action   string
 		shortcut string
 	}{
-		{hotkeyBaseID + 1, "clipboard", command.settings.Clipboard},
-		{hotkeyBaseID + 2, "floatingChat", command.settings.FloatingChat},
-		{hotkeyBaseID + 3, "adjustFlashPosition", command.settings.AdjustFlashPosition},
-		{hotkeyBaseID + 4, "emergencyQuit", command.settings.EmergencyQuit},
+		{hotkeyBaseID + 1, "processClipboardFlash", command.settings.ProcessClipboardFlash},
+		{hotkeyBaseID + 2, "adjustFlashPosition", command.settings.AdjustFlashPosition},
+		{hotkeyBaseID + 3, "emergencyQuit", command.settings.EmergencyQuit},
 	}
 
 	for _, registration := range registrations {
@@ -158,16 +157,9 @@ func (l *windowsShortcutLoop) fire(action string) {
 		l.events.Emit(models.EventShortcutPressed, map[string]any{"action": action})
 	}
 	switch action {
-	case "clipboard":
-		if l.events != nil {
-			l.events.Emit("process-clipboard", nil)
-		}
+	case "processClipboardFlash":
 		if l.handlers.ProcessClipboard != nil {
 			go l.handlers.ProcessClipboard()
-		}
-	case "floatingChat":
-		if l.handlers.TogglePopover != nil {
-			go l.handlers.TogglePopover()
 		}
 	case "adjustFlashPosition":
 		if l.events != nil {

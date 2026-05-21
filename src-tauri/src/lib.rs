@@ -49,7 +49,6 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .invoke_handler(tauri::generate_handler![
             commands::open_main_window,
-            commands::toggle_popover_window,
             commands::close_window,
             commands::quit_app,
             commands::diagnostic_log,

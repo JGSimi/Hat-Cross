@@ -23,7 +23,7 @@ vi.mock('../../../hooks/usePlatform', () => ({
 
 vi.mock('../../../stores/settingsStore', () => ({
   useSettingsStore: (selector: (s: unknown) => unknown) =>
-    selector({ settings: { shortcuts: { clipboard: 'CommandOrControl+Shift+X' } } }),
+    selector({ settings: { shortcuts: { processClipboardFlash: 'CommandOrControl+Shift+X' } } }),
 }));
 
 describe('ClipboardZeroState', () => {
@@ -39,7 +39,7 @@ describe('ClipboardZeroState', () => {
     const onSuggestionClick = vi.fn();
     const user = userEvent.setup();
     render(<ClipboardZeroState onSuggestionClick={onSuggestionClick} />);
-    await user.click(screen.getByRole('button', { name: 'Abrir Chat' }));
+    await user.click(screen.getByRole('button', { name: 'Abrir sala' }));
     expect(onSuggestionClick).toHaveBeenCalledTimes(1);
   });
 

@@ -47,6 +47,13 @@
     "draftAgeYesterday": "draft from yesterday",
     "draftAgeDays": "{{count}}-day-old draft"
   },
+  "dateGroups": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "thisWeek": "This week",
+    "thisMonth": "This month",
+    "older": "Older"
+  },
   "placeholders": {
     "search": "Search…",
     "typeHere": "Type here…",

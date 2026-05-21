@@ -17,7 +17,6 @@ declare module "@wailsio/runtime" {
             "clipboard:started": any;
             "flash:hide": any;
             "flash:show": models$0.FlashPayload;
-            "popover:toggle": any;
             "settings:changed": models$0.Settings;
             "shortcut:pressed": { [_ in string]?: any };
             "stream:chunk": models$0.StreamChunk;

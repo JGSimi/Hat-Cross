@@ -47,6 +47,13 @@
     "draftAgeYesterday": "borrador de ayer",
     "draftAgeDays": "borrador de hace {{count}} días"
   },
+  "dateGroups": {
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "thisWeek": "Esta semana",
+    "thisMonth": "Este mes",
+    "older": "Más antiguo"
+  },
   "placeholders": {
     "search": "Buscar…",
     "typeHere": "Escribe aquí…",

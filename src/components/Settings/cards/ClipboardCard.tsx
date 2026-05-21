@@ -29,9 +29,9 @@ export default function ClipboardCard() {
       <Section title={t('clipboard.shortcut')}>
         <Row label={t('clipboard.shortcutProcess')}>
           <ShortcutRecorder
-            value={settings.shortcuts.clipboard}
+            value={settings.shortcuts.processClipboardFlash}
             onChange={(v) =>
-              updateSettings({ shortcuts: { ...settings.shortcuts, clipboard: v } })
+              updateSettings({ shortcuts: { ...settings.shortcuts, processClipboardFlash: v } })
             }
           />
         </Row>

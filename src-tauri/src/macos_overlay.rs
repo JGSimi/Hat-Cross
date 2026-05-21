@@ -1,4 +1,4 @@
-// Configura janelas (popover + flash) pra aparecerem sobre apps em tela
+// Configura a janela Flash pra aparecer sobre apps em tela
 // cheia no macOS. Sem isso, quando um outro app entra em fullscreen (cria
 // um Space dedicado), o Hat fica invisível — `always_on_top(true)` e
 // `visible_on_all_workspaces(true)` da Tauri só cobrem Spaces normais.
@@ -11,7 +11,6 @@ use tauri::WebviewWindow;
 
 pub enum OverlayLevel {
     /// NSFloatingWindowLevel (3) — acima de janelas normais, abaixo do menu.
-    /// Bom pro popover: continua respeitando Cmd+Tab sem virar um stalker.
     Floating,
     /// NSMainMenuWindowLevel - 1 (23) — o mais alto prático sem virar popup
     /// de sistema. Usado pelo flash, que precisa piscar mesmo sobre

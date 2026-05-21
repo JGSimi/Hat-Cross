@@ -2,12 +2,9 @@ use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder}
 
 use crate::macos_overlay::{apply_fullscreen_overlay, OverlayLevel};
 
-/// Decide o nível de overlay por label. `popover` fica em Floating pra não
-/// agredir o Cmd+Tab; `flash` fica em Top porque existe só por 1-2s e
-/// precisa ser visto mesmo sobre um Keynote.
+/// Decide o nível de overlay por label.
 fn overlay_level_for(label: &str) -> Option<OverlayLevel> {
     match label {
-        "popover" => Some(OverlayLevel::Floating),
         "flash" => Some(OverlayLevel::Top),
         _ => None,
     }
@@ -40,7 +37,6 @@ pub fn show_window(app: &AppHandle, label: &str) {
         }
     } else {
         let url = match label {
-            "popover" => "/popover",
             "main" => "/",
             "flash" => "/flash",
             _ => "/main",
@@ -49,24 +45,6 @@ pub fn show_window(app: &AppHandle, label: &str) {
         let builder = WebviewWindowBuilder::new(app, label, WebviewUrl::App(url.into()));
 
         let builder = match label {
-            "popover" => builder
-                .title("Hat")
-                .inner_size(380.0, 480.0)
-                .min_inner_size(300.0, 350.0)
-                .max_inner_size(800.0, 900.0)
-                .resizable(true)
-                .decorations(false)
-                .shadow(false)
-                .transparent(true)
-                .skip_taskbar(true)
-                .always_on_top(true)
-                // Defense-in-depth: blocks QuickTime classic, AirPlay, and
-                // Windows Graphics Capture. Stealth pillar targets *physical
-                // observers*, not screen recorders — macOS 15+ ScreenCaptureKit
-                // deliberately ignores this flag (tauri#14200), but we still
-                // want the free win on every other capture path.
-                // See docs/research/stealth-content-protection.md.
-                .content_protected(true),
             "main" => builder
                 .title("Hat")
                 .inner_size(820.0, 650.0)
@@ -88,9 +66,8 @@ pub fn show_window(app: &AppHandle, label: &str) {
                 // buttons without the OS first routing the click to "activate
                 // the app" — prevents a no-op first click when adjusting.
                 .accept_first_mouse(true)
-                // See popover branch: defense-in-depth content protection. Same
-                // macOS 15+ caveat applies; stealth pillar targets physical
-                // observers so this is a bonus, not a contract.
+                // Defense-in-depth: blocks some capture paths. macOS 15+
+                // ScreenCaptureKit may still ignore this flag.
                 .content_protected(true),
             _ => builder
                 .title("Hat")

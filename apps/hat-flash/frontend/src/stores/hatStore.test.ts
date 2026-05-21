@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../bridge/hat', () => ({
   hat: {
     settings: {
-      get: vi.fn(async () => ({ shortcuts: { clipboard: 'CommandOrControl+Shift+X' } })),
+      get: vi.fn(async () => ({ shortcuts: { processClipboardFlash: 'CommandOrControl+Shift+X' } })),
       save: vi.fn(async () => undefined),
     },
     shortcuts: {
@@ -61,4 +61,3 @@ describe('hatStore', () => {
     expect(useHatStore.getState().response).toBe('');
   });
 });
-

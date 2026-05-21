@@ -3,21 +3,6 @@
     "title": "Settings",
     "close": "Back"
   },
-  "sections": {
-    "nav": "Sections",
-    "appearance": {
-      "title": "Appearance & Themes",
-      "subtitle": "Color, font, and the theme catalog you unlock."
-    },
-    "flow": {
-      "title": "Flow & Shortcuts",
-      "subtitle": "The three shortcuts, notifications, and how Hat behaves when you're away."
-    },
-    "stealth": {
-      "title": "Stealth",
-      "subtitle": "Popover, Flash, and Clipboard. Where Hat stays low."
-    }
-  },
   "general": {
     "title": "General",
     "preview": "General",
@@ -45,28 +30,7 @@
     }
   },
   "ai": {
-    "title": "AI",
-    "previewTokens": "temp {{temp}} · {{tokens}} tokens",
-    "systemPrompt": "System prompt",
-    "parameters": "Parameters",
-    "temperature": "Temperature",
-    "maxTokens": "Max tokens",
-    "chatLimits": "Chat limits",
-    "context": "AI context",
-    "contextUnit": "{{count}} msgs",
-    "contextHint": "Number of messages sent as context. Lower values save tokens and keep responses more focused.",
-    "autoNewChat": "Auto-start new chat when limit is reached",
-    "maxConversations": "Max conversations",
-    "maxMessagesPerConversation": "Max msgs/conversation",
-    "maxMessagesHint": "Older (unpinned) conversations are removed when the limit is exceeded. High values can cause slowdowns.",
     "promptChangedToast": "Custom prompt kept — edit it manually if you want answers in {{language}}."
-  },
-  "appearance": {
-    "title": "Appearance",
-    "currentTheme": "Current theme",
-    "themes": "Themes",
-    "themesMetaNext": "{{unlocked}}/{{total}} · next in {{remaining}}",
-    "themesMetaComplete": "{{unlocked}}/{{total}} · complete collection"
   },
   "clipboard": {
     "title": "Clipboard",
@@ -119,23 +83,6 @@
     "textShadow": "Readability shadow",
     "textShadowHint": "Adds a subtle outline so the text doesn't vanish on bright backgrounds."
   },
-  "popover": {
-    "title": "Popover",
-    "shortcut": "Shortcut",
-    "shortcutOpen": "Open floating chat",
-    "stealth": "Stealth mode",
-    "stealthEnable": "Enable stealth mode",
-    "stealthHover": "Hover opacity",
-    "disguise": "Disguise",
-    "disguiseShow": "Show as clock disguise",
-    "disguiseHint": "The chat appears as a clock widget. Click the clock to reveal.",
-    "stealthOn": "Stealth on",
-    "stealthOff": "Stealth off",
-    "disguiseOn": "Disguise on",
-    "size": "Size",
-    "width": "Width",
-    "height": "Height"
-  },
   "notifications": {
     "title": "Notifications",
     "previewActive": "{{count}} active",
@@ -144,7 +91,6 @@
     "types": "Types",
     "processing": "Clipboard processing",
     "response": "Clipboard response",
-    "chatResponse": "Chat response (out of focus)",
     "errors": "Errors",
     "clipboardEmpty": "Clipboard empty",
     "updates": "Updates",

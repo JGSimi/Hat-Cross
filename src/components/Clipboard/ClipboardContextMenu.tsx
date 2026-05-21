@@ -1,12 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Copy, FileText, CopyCheck, MessageSquarePlus, Pin, PinOff, Trash2 } from 'lucide-react';
+import { Copy, FileText, CopyCheck, Pin, PinOff, Trash2 } from 'lucide-react';
 
 export interface ContextMenuActions {
   onCopyResponse: () => void;
   onCopyOriginal: () => void;
   onCopyBoth: () => void;
-  onOpenInChat: () => void;
   onTogglePin: () => void;
   onDelete: () => void;
 }
@@ -30,7 +29,6 @@ export default function ClipboardContextMenu({
   onCopyResponse,
   onCopyOriginal,
   onCopyBoth,
-  onOpenInChat,
   onTogglePin,
   onDelete,
 }: Props) {
@@ -83,12 +81,6 @@ export default function ClipboardContextMenu({
     { type: 'item', label: 'Copiar resposta', icon: <Copy size={14} />, onClick: onCopyResponse },
     { type: 'item', label: 'Copiar original', icon: <FileText size={14} />, onClick: onCopyOriginal },
     { type: 'item', label: 'Copiar ambos', icon: <CopyCheck size={14} />, onClick: onCopyBoth },
-    {
-      type: 'item',
-      label: 'Abrir no Chat',
-      icon: <MessageSquarePlus size={14} />,
-      onClick: onOpenInChat,
-    },
     {
       type: 'item',
       label: isPinned ? 'Desafixar' : 'Fixar',

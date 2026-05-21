@@ -84,8 +84,8 @@ describe("State primitive (DS6)", () => {
     const { container } = render(
       <State
         variant="empty"
-        title="Sem conversas salvas"
-        body="Quando você conversar, as threads aparecem aqui."
+        title="Sem salas abertas"
+        body="Crie ou entre em uma sala para compartilhar respostas."
       />,
     );
     expect(await axe(container)).toHaveNoViolations();
@@ -127,17 +127,16 @@ describe("State primitive (DS6)", () => {
   });
 
   it("suppresses the icon entirely when icon={null}", () => {
-    // Sidebar empty state passes icon={null} so the HorseLogo doesn't
-    // duplicate the primary chat mascot — this guards that behaviour.
+    // Some compact empty states pass icon={null}; this guards that behaviour.
     const { container } = render(
-      <State variant="empty" title="Sem conversas salvas" icon={null} />,
+      <State variant="empty" title="Sem salas abertas" icon={null} />,
     );
     // No mascot SVG mask-image element should render.
     expect(
       container.querySelector('[style*="mask-image"]'),
     ).toBeNull();
     // Title still renders.
-    expect(screen.getByText("Sem conversas salvas")).toBeInTheDocument();
+    expect(screen.getByText("Sem salas abertas")).toBeInTheDocument();
   });
 
   it("renders the default icon when icon prop is omitted", () => {

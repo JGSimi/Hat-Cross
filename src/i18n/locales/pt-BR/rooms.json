@@ -37,21 +37,20 @@
     "copied": "Codigo da sala copiado",
     "leave": "Sair da sala"
   },
-  "waiting": {
-    "title": "Esperando outro membro",
-    "body": "O clipboard continua respondendo pra voce, mas o gabarito da sala so comeca quando tiver 2+ membros."
-  },
   "notifications": {
     "title": "Alertas",
     "default": "Sua resposta divergiu do consenso da sala."
   },
-  "chat": {
-    "disclaimer": "Pergunta e resposta final entram na sala. Anexos e pensamento nao entram na V1."
+  "feed": {
+    "title": "Clipboard da sala",
+    "subtitle": "Tudo processado pelo Flash entra aqui.",
+    "emptyTitle": "Nada compartilhado ainda",
+    "emptyBody": "Copie uma pergunta e use Cmd/Ctrl+Shift+F."
   },
   "consensus": {
     "title": "Gabarito comparado",
     "emptyTitle": "Ainda sem comparacao",
-    "emptyBody": "Copie perguntas com 2+ membros na sala para montar o gabarito.",
+    "emptyBody": "Copie perguntas na sala para montar o gabarito.",
     "answer": "Resposta",
     "question": "Pergunta",
     "aiAnswer": "IA",

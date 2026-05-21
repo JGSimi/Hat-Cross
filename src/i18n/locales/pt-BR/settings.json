@@ -3,21 +3,6 @@
     "title": "Configurações",
     "close": "Voltar"
   },
-  "sections": {
-    "nav": "Seções",
-    "appearance": {
-      "title": "Aparência & Temas",
-      "subtitle": "Cor, fonte e o catálogo de temas que você destrava."
-    },
-    "flow": {
-      "title": "Fluxo & Atalhos",
-      "subtitle": "Os três atalhos, notificações e como o Hat se comporta quando você não tá olhando."
-    },
-    "stealth": {
-      "title": "Stealth",
-      "subtitle": "Popover, Flash e Clipboard. Onde o Hat fica discreto."
-    }
-  },
   "general": {
     "title": "Geral",
     "preview": "Geral",
@@ -45,28 +30,7 @@
     }
   },
   "ai": {
-    "title": "IA",
-    "previewTokens": "temp {{temp}} · {{tokens}} tokens",
-    "systemPrompt": "Prompt do sistema",
-    "parameters": "Parâmetros",
-    "temperature": "Temperatura",
-    "maxTokens": "Máximo de tokens",
-    "chatLimits": "Limites da conversa",
-    "context": "Contexto da IA",
-    "contextUnit": "{{count}} msgs",
-    "contextHint": "Quantidade de mensagens enviadas como contexto. Valores menores economizam tokens e mantêm respostas mais focadas.",
-    "autoNewChat": "Nova conversa automática ao atingir limite",
-    "maxConversations": "Máx. conversas",
-    "maxMessagesPerConversation": "Máx. msgs/conversa",
-    "maxMessagesHint": "Conversas antigas (não fixadas) são removidas ao ultrapassar o limite. Valores altos podem causar lentidão.",
     "promptChangedToast": "Prompt customizado mantido — edite manualmente se quiser respostas em {{language}}."
-  },
-  "appearance": {
-    "title": "Aparência",
-    "currentTheme": "Tema atual",
-    "themes": "Temas",
-    "themesMetaNext": "{{unlocked}}/{{total}} · próximo em {{remaining}}",
-    "themesMetaComplete": "{{unlocked}}/{{total}} · coleção completa"
   },
   "clipboard": {
     "title": "Clipboard",
@@ -119,23 +83,6 @@
     "textShadow": "Sombra para legibilidade",
     "textShadowHint": "Adiciona um contorno sutil para o texto não sumir em fundos claros."
   },
-  "popover": {
-    "title": "Popover",
-    "shortcut": "Atalho",
-    "shortcutOpen": "Abrir chat flutuante",
-    "stealth": "Modo furtivo",
-    "stealthEnable": "Ativar modo furtivo",
-    "stealthHover": "Opacidade ao passar o mouse",
-    "disguise": "Disfarce",
-    "disguiseShow": "Mostrar relógio como disfarce",
-    "disguiseHint": "O chat aparece como um widget de relógio. Clique no relógio para revelar.",
-    "stealthOn": "Stealth on",
-    "stealthOff": "Stealth off",
-    "disguiseOn": "Disfarce on",
-    "size": "Tamanho",
-    "width": "Largura",
-    "height": "Altura"
-  },
   "notifications": {
     "title": "Notificações",
     "previewActive": "{{count}} ativas",
@@ -144,7 +91,6 @@
     "types": "Tipos",
     "processing": "Processamento do clipboard",
     "response": "Resposta do clipboard",
-    "chatResponse": "Resposta de chat (sem foco)",
     "errors": "Erros",
     "clipboardEmpty": "Clipboard vazio",
     "updates": "Atualizações",
