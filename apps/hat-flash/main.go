@@ -28,7 +28,6 @@ func init() {
 	application.RegisterEvent[any](models.EventFlashHide)
 	application.RegisterEvent[map[string]any](models.EventAuthRequired)
 	application.RegisterEvent[models.Settings](models.EventSettingsChanged)
-	application.RegisterEvent[any](models.EventPopoverToggle)
 	application.RegisterEvent[map[string]any](models.EventShortcutPressed)
 }
 
@@ -62,7 +61,6 @@ func main() {
 	clipboardController := controllers.NewClipboardController(clipboardService)
 	chatController := controllers.NewChatController(chatService)
 	flashController := controllers.NewFlashController(windowService)
-	popoverController := controllers.NewPopoverController(windowService)
 	shortcutsController := controllers.NewShortcutsController(shortcutService)
 	settingsController := controllers.NewSettingsController(settingsService)
 	updaterController := controllers.NewUpdaterController(updaterService)
@@ -77,7 +75,6 @@ func main() {
 			application.NewService(clipboardController),
 			application.NewService(chatController),
 			application.NewService(flashController),
-			application.NewService(popoverController),
 			application.NewService(shortcutsController),
 			application.NewService(settingsController),
 			application.NewService(updaterController),
@@ -96,10 +93,6 @@ func main() {
 	appService.SetQuitter(app)
 	appService.SetAutostarter(app.Autostart)
 	shortcutService.SetHandlers(services.ShortcutHandlers{
-		ProcessClipboard: func() {
-			_, _ = clipboardService.Process()
-		},
-		TogglePopover: windowService.TogglePopover,
 		EmergencyQuit: appService.Quit,
 	})
 
@@ -126,28 +119,6 @@ func main() {
 			},
 		},
 	})
-	popoverWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Name:                     "popover",
-		Title:                    "Hat Flash Popover",
-		Width:                    380,
-		Height:                   480,
-		MinWidth:                 300,
-		MinHeight:                350,
-		Frameless:                true,
-		AlwaysOnTop:              true,
-		Hidden:                   true,
-		URL:                      "/popover",
-		BackgroundType:           application.BackgroundTypeTransparent,
-		ContentProtectionEnabled: true,
-		HideOnEscape:             true,
-		Windows: application.WindowsWindow{
-			Theme:           application.Dark,
-			HiddenOnTaskbar: true,
-			Permissions: map[application.CoreWebView2PermissionKind]application.CoreWebView2PermissionState{
-				application.CoreWebView2PermissionKindClipboardRead: application.CoreWebView2PermissionStateAllow,
-			},
-		},
-	})
 	flashWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:                     "flash",
 		Title:                    "Hat Flash",
@@ -167,10 +138,9 @@ func main() {
 		},
 	})
 	windowService.SetWindow("main", mainWindow)
-	windowService.SetWindow("popover", popoverWindow)
 	windowService.SetWindow("flash", flashWindow)
 
-	setupTray(app, mainWindow, windowService, appService)
+	setupTray(app, mainWindow, appService)
 	if settings, err := settingsService.Get(); err == nil {
 		_ = shortcutService.Register(settings.Shortcuts)
 	}
@@ -180,7 +150,7 @@ func main() {
 	}
 }
 
-func setupTray(app *application.App, mainWindow application.Window, windows *services.WindowService, appService *services.AppService) {
+func setupTray(app *application.App, mainWindow application.Window, appService *services.AppService) {
 	tray := app.SystemTray.New()
 	tray.SetTooltip("Hat Flash")
 	tray.OnClick(func() {
@@ -193,10 +163,6 @@ func setupTray(app *application.App, mainWindow application.Window, windows *ser
 		mainWindow.Show()
 		mainWindow.Focus()
 	})
-	menu.Add("Toggle Popover").OnClick(func(ctx *application.Context) {
-		windows.TogglePopover()
-	})
-	menu.AddSeparator()
 	menu.Add("Quit").OnClick(func(ctx *application.Context) {
 		appService.Quit()
 	})

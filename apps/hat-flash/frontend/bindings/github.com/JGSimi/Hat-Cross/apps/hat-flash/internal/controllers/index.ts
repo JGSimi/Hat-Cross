@@ -6,7 +6,6 @@ import * as AuthController from "./authcontroller.js";
 import * as ChatController from "./chatcontroller.js";
 import * as ClipboardController from "./clipboardcontroller.js";
 import * as FlashController from "./flashcontroller.js";
-import * as PopoverController from "./popovercontroller.js";
 import * as SessionController from "./sessioncontroller.js";
 import * as SettingsController from "./settingscontroller.js";
 import * as ShortcutsController from "./shortcutscontroller.js";
@@ -17,7 +16,6 @@ export {
     ChatController,
     ClipboardController,
     FlashController,
-    PopoverController,
     SessionController,
     SettingsController,
     ShortcutsController,

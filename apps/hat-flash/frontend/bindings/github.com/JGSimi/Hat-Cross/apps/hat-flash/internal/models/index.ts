@@ -3,7 +3,6 @@
 
 export {
     AIMode,
-    ChatLimits,
     ChatStreamRequest,
     ClipboardImage,
     ClipboardPayload,
@@ -16,7 +15,6 @@ export {
     FlashTiming,
     NotificationSettings,
     OAuthFlowResult,
-    PopoverSettings,
     Settings,
     ShortcutSettings,
     StreamChunk,

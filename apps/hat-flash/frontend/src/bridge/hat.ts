@@ -5,7 +5,6 @@ import {
   ChatController,
   ClipboardController,
   FlashController,
-  PopoverController,
   SessionController,
   SettingsController,
   ShortcutsController,
@@ -62,9 +61,6 @@ export const hat = {
   flash: {
     show: (payload: FlashPayload) => FlashController.Show(payload),
     hide: () => FlashController.Hide(),
-  },
-  popover: {
-    toggle: () => PopoverController.Toggle(),
   },
   shortcuts: {
     register: (settings: ShortcutSettings) => ShortcutsController.Register(settings),

@@ -14,7 +14,7 @@ func TestSettingsRepositoryRoundTrip(t *testing.T) {
 
 	settings := models.DefaultSettings()
 	settings.Mode = models.AIModeHatPro
-	settings.Shortcuts.Clipboard = "CommandOrControl+Shift+Y"
+	settings.Shortcuts.ProcessClipboardFlash = "CommandOrControl+Shift+Y"
 
 	if err := repo.Save(settings); err != nil {
 		t.Fatalf("save: %v", err)
@@ -26,8 +26,11 @@ func TestSettingsRepositoryRoundTrip(t *testing.T) {
 	if got.Mode != models.AIModeHatPro {
 		t.Fatalf("mode = %q", got.Mode)
 	}
-	if got.Shortcuts.Clipboard != "CommandOrControl+Shift+Y" {
-		t.Fatalf("clipboard shortcut = %q", got.Shortcuts.Clipboard)
+	if got.Shortcuts.ProcessClipboardFlash != "CommandOrControl+Shift+Y" {
+		t.Fatalf("clipboard shortcut = %q", got.Shortcuts.ProcessClipboardFlash)
+	}
+	if !got.Clipboard.Flash.Enabled {
+		t.Fatalf("flash should default enabled")
 	}
 }
 
@@ -43,5 +46,24 @@ func TestSettingsRepositoryMissingFileReturnsDefaults(t *testing.T) {
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("missing file was unexpectedly created")
+	}
+}
+
+func TestSettingsRepositoryMigratesLegacyShortcut(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"shortcuts":{"clipboard":"CommandOrControl+Shift+Y"}}`), 0o600); err != nil {
+		t.Fatalf("write legacy settings: %v", err)
+	}
+	repo := NewSettingsRepository(path)
+
+	got, err := repo.Get()
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.Shortcuts.ProcessClipboardFlash != "CommandOrControl+Shift+Y" {
+		t.Fatalf("migrated shortcut = %q", got.Shortcuts.ProcessClipboardFlash)
+	}
+	if got.Shortcuts.AdjustFlashPosition != "CommandOrControl+Alt+F" {
+		t.Fatalf("adjust shortcut = %q", got.Shortcuts.AdjustFlashPosition)
 	}
 }

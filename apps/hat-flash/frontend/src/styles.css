@@ -707,19 +707,6 @@ svg {
   width: 100%;
 }
 
-.check-row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: #e2dccf;
-  font-size: 13px;
-}
-
-.check-row input {
-  width: 16px;
-  height: 16px;
-}
-
 details {
   border: 0;
   border-radius: 8px;
@@ -973,10 +960,6 @@ summary {
   background: #100f0d;
 }
 
-.composer-bar.has-more {
-  grid-template-columns: minmax(0, 1fr) 38px 38px 38px;
-}
-
 .composer-bar textarea {
   min-height: 38px;
   max-height: 120px;
@@ -1007,106 +990,6 @@ summary {
 
 .spin {
   animation: spin 800ms linear infinite;
-}
-
-.popover {
-  width: 100vw;
-  height: 100vh;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 14px;
-  overflow: hidden;
-  background: var(--bg);
-}
-
-.popover-header,
-.popover-title,
-.popover-chrome,
-.popover-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.popover-header {
-  justify-content: space-between;
-}
-
-.popover-title h1 {
-  margin: 0;
-  font-size: 15px;
-}
-
-.popover-title p {
-  margin: 2px 0 0;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.popover-pill {
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0 9px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--text);
-  background: #151412;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.popover-body {
-  min-height: 0;
-  display: grid;
-  grid-template-rows: minmax(110px, auto) minmax(0, 1fr);
-  gap: 10px;
-}
-
-.popover textarea {
-  min-height: 96px;
-}
-
-.popover-result {
-  min-height: 0;
-  overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: #0d0c0a;
-  padding: 10px;
-  color: var(--text);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.popover-empty {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 7px;
-  color: var(--muted);
-  text-align: center;
-  font-size: 12px;
-}
-
-.popover-empty strong {
-  color: var(--text);
-}
-
-.popover-empty span {
-  max-width: 250px;
-  line-height: 1.45;
-}
-
-.popover-actions {
-  justify-content: flex-end;
-}
-
-.danger-copy {
-  color: var(--danger);
 }
 
 .flash {
@@ -1292,10 +1175,6 @@ summary {
 
   .composer-bar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .composer-bar.has-more {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .composer-bar textarea {

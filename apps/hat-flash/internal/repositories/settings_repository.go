@@ -72,26 +72,14 @@ func normalizeSettings(settings models.Settings) models.Settings {
 	if settings.MaxTokens == 0 {
 		settings.MaxTokens = defaults.MaxTokens
 	}
-	if settings.Shortcuts.Clipboard == "" {
-		settings.Shortcuts.Clipboard = defaults.Shortcuts.Clipboard
-	}
-	if settings.Shortcuts.FloatingChat == "" {
-		settings.Shortcuts.FloatingChat = defaults.Shortcuts.FloatingChat
+	if settings.Shortcuts.ProcessClipboardFlash == "" {
+		settings.Shortcuts.ProcessClipboardFlash = defaults.Shortcuts.ProcessClipboardFlash
 	}
 	if settings.Shortcuts.AdjustFlashPosition == "" {
 		settings.Shortcuts.AdjustFlashPosition = defaults.Shortcuts.AdjustFlashPosition
 	}
 	if settings.Shortcuts.EmergencyQuit == "" {
 		settings.Shortcuts.EmergencyQuit = defaults.Shortcuts.EmergencyQuit
-	}
-	if settings.Popover.Width == 0 {
-		settings.Popover.Width = defaults.Popover.Width
-	}
-	if settings.Popover.Height == 0 {
-		settings.Popover.Height = defaults.Popover.Height
-	}
-	if settings.Popover.StealthHoverOpacity == 0 {
-		settings.Popover.StealthHoverOpacity = defaults.Popover.StealthHoverOpacity
 	}
 	if settings.Clipboard.MaxResponseLength == 0 {
 		settings.Clipboard.MaxResponseLength = defaults.Clipboard.MaxResponseLength
@@ -105,9 +93,5 @@ func normalizeSettings(settings models.Settings) models.Settings {
 	if settings.Clipboard.Flash.Appearance.FontSizePx == 0 {
 		settings.Clipboard.Flash.Appearance = defaults.Clipboard.Flash.Appearance
 	}
-	if settings.ChatLimits.MaxContextMessages == 0 {
-		settings.ChatLimits = defaults.ChatLimits
-	}
-
 	return settings
 }

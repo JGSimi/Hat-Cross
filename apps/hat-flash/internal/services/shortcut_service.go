@@ -15,7 +15,6 @@ type ShortcutService struct {
 
 type ShortcutHandlers struct {
 	ProcessClipboard func()
-	TogglePopover    func()
 	AdjustFlash      func()
 	EmergencyQuit    func()
 }

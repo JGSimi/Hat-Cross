@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { Events, WML } from '@wailsio/runtime';
 import { Flash } from './pages/Flash';
 import { Main } from './pages/Main';
-import { Popover } from './pages/Popover';
 import { useHatStore } from './stores/hatStore';
 import './styles.css';
 
@@ -20,7 +19,5 @@ export default function App() {
 
   const path = window.location.pathname;
   if (path === '/flash') return <Flash />;
-  if (path === '/popover') return <Popover />;
   return <Main />;
 }
-
