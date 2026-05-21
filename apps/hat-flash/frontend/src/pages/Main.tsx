@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Events } from '@wailsio/runtime';
 import type { LucideIcon } from 'lucide-react';
 import {
   AlertCircle,
-  Bot,
   Check,
   Clipboard,
   Copy,
@@ -15,7 +14,6 @@ import {
   RadioTower,
   RefreshCw,
   RotateCcw,
-  Send,
   Settings,
   ShieldAlert,
   Sparkles,
@@ -40,6 +38,23 @@ import { useHatStore } from '../stores/hatStore';
 type Status = 'idle' | 'busy' | 'error';
 type DrawerView = 'rooms' | 'clipboard' | 'system';
 type ShortcutKey = keyof HatSettings['shortcuts'];
+type ClipboardHistoryStatus = 'processing' | 'done' | 'error';
+
+interface ClipboardHistoryEntry {
+  id: string;
+  createdAt: number;
+  text: string;
+  image: string | null;
+  response: string;
+  roomId: string | null;
+  roomTitle: string;
+  sharedToRoom?: boolean;
+  status: ClipboardHistoryStatus;
+  flashShown: boolean;
+}
+
+const MAX_CLIPBOARD_HISTORY = 10;
+const CLIPBOARD_HISTORY_STORAGE_KEY = 'hat-flash:clipboard-history:v1';
 
 const shortcutLabels: Record<ShortcutKey, { label: string; hint: string }> = {
   processClipboardFlash: { label: 'Clipboard + Flash', hint: 'Processa e mostra overlay' },
@@ -52,6 +67,38 @@ const defaultShortcuts: Record<ShortcutKey, string> = {
   adjustFlashPosition: 'CommandOrControl+Alt+F',
   emergencyQuit: 'CommandOrControl+Shift+Q',
 };
+
+function readClipboardHistory() {
+  try {
+    const raw = window.localStorage.getItem(CLIPBOARD_HISTORY_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((entry): entry is ClipboardHistoryEntry => Boolean(entry?.id && typeof entry.createdAt === 'number'))
+      .slice(0, MAX_CLIPBOARD_HISTORY);
+  } catch {
+    return [];
+  }
+}
+
+function persistClipboardHistory(entries: ClipboardHistoryEntry[]) {
+  try {
+    window.localStorage.setItem(CLIPBOARD_HISTORY_STORAGE_KEY, JSON.stringify(entries.slice(0, MAX_CLIPBOARD_HISTORY)));
+  } catch {
+    // Ignore private mode or quota failures. Runtime history still works.
+  }
+}
+
+function clipText(value: string, max = 140) {
+  const cleaned = value.replace(/\s+/g, ' ').trim();
+  if (!cleaned) return 'Imagem';
+  return cleaned.length > max ? `${cleaned.slice(0, max - 1)}...` : cleaned;
+}
+
+function formatEntryTime(createdAt: number) {
+  return new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date(createdAt));
+}
 
 function friendlyError(err: unknown) {
   const raw = err instanceof Error ? err.message : String(err);
@@ -148,8 +195,6 @@ export function Main() {
   const response = useHatStore((s) => s.response);
   const thinking = useHatStore((s) => s.thinking);
   const streamID = useHatStore((s) => s.streamID);
-  const clipboardText = useHatStore((s) => s.clipboardText);
-  const clipboardImage = useHatStore((s) => s.clipboardImage);
   const setClipboard = useHatStore((s) => s.setClipboard);
   const resetStream = useHatStore((s) => s.resetStream);
   const saveSettings = useHatStore((s) => s.saveSettings);
@@ -162,14 +207,14 @@ export function Main() {
   const [status, setStatus] = useState<Status>('idle');
   const [activeAction, setActiveAction] = useState('');
   const [error, setError] = useState('');
-  const [prompt, setPrompt] = useState('');
   const [roomID, setRoomID] = useState('');
   const [roomTitle, setRoomTitle] = useState('Sala Hat');
   const [updateMessage, setUpdateMessage] = useState('');
   const [quitConfirm, setQuitConfirm] = useState(false);
-  const [activeMessageText, setActiveMessageText] = useState('');
-  const [activeMessageImage, setActiveMessageImage] = useState<string | null>(null);
+  const [history, setHistory] = useState<ClipboardHistoryEntry[]>(readClipboardHistory);
+  const [activeHistoryID, setActiveHistoryID] = useState(() => history[0]?.id ?? '');
   const responseRef = useRef('');
+  const activeHistoryIDRef = useRef(activeHistoryID);
 
   useEffect(() => {
     const stopAuth = watchAuth((nextUser) => setUser(nextUser));
@@ -195,13 +240,17 @@ export function Main() {
     return () => window.clearTimeout(timer);
   }, [quitConfirm]);
 
+  useEffect(() => {
+    persistClipboardHistory(history);
+  }, [history]);
+
+  useEffect(() => {
+    activeHistoryIDRef.current = activeHistoryID;
+  }, [activeHistoryID]);
+
   const isBusy = status === 'busy';
   const canUseBackend = Boolean(user && settings);
-  const activeText = (prompt || clipboardText).trim();
-  const hasInput = Boolean(activeText || clipboardImage);
-  const hasWorkspaceContent = Boolean(activeMessageText || activeMessageImage || thinking || response);
   const mode = settings?.mode ?? 'hat';
-  const messageSummary = activeMessageImage ? 'Imagem' : activeMessageText ? 'Texto' : '';
   const credits = creditInfo?.credits ?? null;
   const userName = user ? profileName(user) : '';
   const userEmail = user?.email ?? '';
@@ -217,23 +266,6 @@ export function Main() {
       }).format(new Date(creditInfo.nextCreditExpiresAt))
     : undefined;
 
-  const streamRequest = useMemo(() => {
-    if (!settings) return null;
-    return {
-      streamId: streamID,
-      messages: [{ role: 'user', textContent: activeText || 'Analise o clipboard.' }],
-      systemPrompt: settings.systemPrompt,
-      mode: mode as ChatStreamRequest['mode'],
-      temperature: settings.temperature,
-      maxTokens: settings.maxTokens,
-      images: clipboardImage ? [clipboardImage] : [],
-      roomId: roomID || null,
-      roomShare: Boolean(roomID.trim()),
-      sourceMessageId: crypto.randomUUID(),
-      idempotencyKey: crypto.randomUUID(),
-    } satisfies ChatStreamRequest;
-  }, [activeText, clipboardImage, mode, roomID, settings, streamID]);
-
   useEffect(() => {
     responseRef.current = response;
   }, [response]);
@@ -244,6 +276,14 @@ export function Main() {
       if (doneStreamId !== streamID || !settings) return;
       const finalResponse = responseRef.current;
       if (!finalResponse) return;
+      const activeID = activeHistoryIDRef.current;
+      if (activeID) {
+        setHistory((entries) => entries.map((entry) => (
+          entry.id === activeID
+            ? { ...entry, response: finalResponse, status: 'done', flashShown: Boolean(settings.clipboard.flash.enabled) }
+            : entry
+        )));
+      }
       if (settings.clipboard.copyResponseToClipboard) {
         void hat.clipboard.writeText(finalResponse);
       }
@@ -283,65 +323,78 @@ export function Main() {
     }
   }
 
-  async function sendClipboard() {
-    if (!streamRequest || !canUseBackend || !hasInput) return;
-    const sentText = activeText || 'Analise o clipboard.';
-    setActiveMessageText(sentText);
-    setActiveMessageImage(clipboardImage);
-    const nextStream = resetStream();
-    await hat.chat.stream({ ...streamRequest, streamId: nextStream });
-  }
-
-  async function processClipboard() {
-    const payload = await hat.clipboard.process();
-    setClipboard(payload.text, payload.image?.dataUrl ?? null);
-    setPrompt(payload.text || 'Analise a imagem do clipboard.');
-    setDrawer('clipboard');
-  }
-
   async function processClipboardAndSend() {
     if (!settings || !canUseBackend) return;
     const payload = await hat.clipboard.process();
     const text = payload.text || 'Analise a imagem do clipboard.';
     const image = payload.image?.dataUrl ?? null;
-    setClipboard(payload.text, image);
-    setPrompt(text);
-    setActiveMessageText(text);
-    setActiveMessageImage(image);
-    setDrawer('clipboard');
-    const nextStream = resetStream();
-    await hat.chat.stream({
-      streamId: nextStream,
-      messages: [{ role: 'user', textContent: text }],
-      systemPrompt: settings.systemPrompt,
-      mode: mode as ChatStreamRequest['mode'],
-      temperature: settings.temperature,
-      maxTokens: settings.maxTokens,
-      images: image ? [image] : [],
+    const entryID = crypto.randomUUID();
+    const entry: ClipboardHistoryEntry = {
+      id: entryID,
+      createdAt: Date.now(),
+      text,
+      image,
+      response: '',
       roomId: roomID || null,
-      roomShare: Boolean(roomID.trim()),
-      sourceMessageId: crypto.randomUUID(),
-      idempotencyKey: crypto.randomUUID(),
-    });
+      roomTitle: roomTitle.trim() || 'Sala Hat',
+      sharedToRoom: Boolean(roomID.trim()),
+      status: 'processing',
+      flashShown: false,
+    };
+    setClipboard(payload.text, image);
+    setDrawer('clipboard');
+    setActiveHistoryID(entryID);
+    activeHistoryIDRef.current = entryID;
+    setHistory((entries) => [entry, ...entries.filter((item) => item.id !== entryID)].slice(0, MAX_CLIPBOARD_HISTORY));
+    const nextStream = resetStream();
+    try {
+      await hat.chat.stream({
+        streamId: nextStream,
+        messages: [{ role: 'user', textContent: text }],
+        systemPrompt: settings.systemPrompt,
+        mode: mode as ChatStreamRequest['mode'],
+        temperature: settings.temperature,
+        maxTokens: settings.maxTokens,
+        images: image ? [image] : [],
+        roomId: roomID || null,
+        roomShare: Boolean(roomID.trim()),
+        sourceMessageId: crypto.randomUUID(),
+        idempotencyKey: crypto.randomUUID(),
+      });
+    } catch (err) {
+      setHistory((entries) => entries.map((item) => (item.id === entryID ? { ...item, status: 'error' } : item)));
+      throw err;
+    }
   }
 
-  async function copyResponse() {
-    if (response) await hat.clipboard.writeText(response);
+  function responseForEntry(entry: ClipboardHistoryEntry) {
+    if (entry.id === activeHistoryID && response) return response;
+    return entry.response;
+  }
+
+  async function copyHistoryResponse(entryID: string) {
+    const entry = history.find((item) => item.id === entryID);
+    const text = entry ? responseForEntry(entry) : response;
+    if (text) await hat.clipboard.writeText(text);
   }
 
   async function copyRoomID() {
     if (roomID) await hat.clipboard.writeText(roomID);
   }
 
-  async function flashResponse() {
-    if (!settings || !response) return;
+  async function flashHistoryResponse(entryID: string) {
+    if (!settings) return;
+    const entry = history.find((item) => item.id === entryID);
+    const text = entry ? responseForEntry(entry) : response;
+    if (!text) return;
     await hat.flash.show({
-      text: response.slice(0, settings.clipboard.flash.previewLength),
+      text: text.slice(0, settings.clipboard.flash.previewLength),
       position: settings.clipboard.flash.position,
       timing: settings.clipboard.flash.timing,
       appearance: settings.clipboard.flash.appearance,
       streamId: streamID,
     });
+    setHistory((entries) => entries.map((item) => (item.id === entryID ? { ...item, flashShown: true } : item)));
   }
 
   async function createRoomFromTitle() {
@@ -486,41 +539,38 @@ export function Main() {
           </section>
         ) : (
           <>
-            <section className="clipboard-stage" aria-label="Clipboard">
-              <header className="stage-header">
+            <section className="clipboard-history-surface" aria-label="Clipboard">
+              <header className="history-header">
                 <div>
                   <Clipboard size={20} />
-                  <h2>Clipboard</h2>
+                  <span>
+                    <h2>Clipboard</h2>
+                    <small>{history.length}/{MAX_CLIPBOARD_HISTORY} recentes</small>
+                  </span>
                 </div>
-                <ShortcutInline value={processShortcut} />
+                <button
+                  className="solid-button process-button"
+                  onClick={() => runGuarded('Processando clipboard...', processClipboardAndSend)}
+                  disabled={!canUseBackend || isBusy}
+                >
+                  {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
+                  Capturar
+                </button>
               </header>
-              <ComposerBar
-                prompt={prompt}
-                setPrompt={setPrompt}
-                isBusy={isBusy}
-                activeAction={activeAction}
-                canUseBackend={canUseBackend}
-                hasInput={hasInput}
-                onCapture={() => runGuarded('Lendo clipboard...', processClipboard)}
-                onSend={() => runGuarded('Enviando ao Hat...', sendClipboard)}
-              />
-              <div className="stage-status">
+              <div className="history-meta">
+                <ShortcutInline value={processShortcut} />
                 <StatusChip tone={flashEnabled ? 'ok' : 'muted'} label="Flash" value={flashEnabled ? 'Ligado' : 'Off'} />
-                <StatusChip tone={roomID ? 'ok' : 'muted'} label="Sala" value={roomID || 'Local'} />
               </div>
+              <ClipboardHistoryPanel
+                entries={history}
+                activeEntryID={activeHistoryID}
+                thinking={thinking}
+                response={response}
+                onSelect={setActiveHistoryID}
+                onCopyResponse={(entryID) => runGuarded('Copiando resposta...', () => copyHistoryResponse(entryID))}
+                onFlashResponse={(entryID) => runGuarded('Mostrando flash...', () => flashHistoryResponse(entryID))}
+              />
             </section>
-
-            <WorkspaceFeed
-              hasContent={hasWorkspaceContent}
-              activeMessageText={activeMessageText}
-              activeMessageImage={activeMessageImage}
-              messageSummary={messageSummary}
-              thinking={thinking}
-              response={response}
-              roomID={roomID}
-              onCopyResponse={() => runGuarded('Copiando resposta...', copyResponse)}
-              onFlashResponse={() => runGuarded('Mostrando flash...', flashResponse)}
-            />
           </>
         )}
       </section>
@@ -555,17 +605,29 @@ function RoomRibbon({
 }) {
   return (
     <section className={`room-ribbon ${roomID ? 'active' : ''}`} aria-label="Sala">
-      <div className="room-identity">
-        <RadioTower size={18} />
-        <span>
-          <small>Sala</small>
-          <strong>{roomID ? roomTitle || 'Sala Hat' : 'Sem sala'}</strong>
-        </span>
+      <div className="room-hero">
+        <div className="room-identity">
+          <RadioTower size={22} />
+          <span>
+            <small>Sala ativa</small>
+            <strong>{roomID ? roomTitle || 'Sala Hat' : 'Sem sala'}</strong>
+          </span>
+        </div>
+        <div className="room-badges">
+          <StatusChip tone={roomID ? 'ok' : 'warn'} label="Estado" value={roomID ? 'Conectada' : 'Pendente'} />
+          <StatusChip tone={canUse ? 'ok' : 'warn'} label="Conta" value={canUse ? 'Autorizada' : 'Login'} />
+        </div>
       </div>
       {canUse ? (
         <div className="room-form">
-          <input value={roomTitle} onChange={(e) => setRoomTitle(e.target.value)} placeholder="Nome" aria-label="Nome da sala" />
-          <input value={roomID} onChange={(e) => setRoomID(e.target.value)} placeholder="Codigo" aria-label="Codigo da sala" />
+          <label>
+            <span>Nome</span>
+            <input value={roomTitle} onChange={(e) => setRoomTitle(e.target.value)} placeholder="Sala Hat" aria-label="Nome da sala" />
+          </label>
+          <label>
+            <span>Codigo</span>
+            <input value={roomID} onChange={(e) => setRoomID(e.target.value)} placeholder="Cole o codigo" aria-label="Codigo da sala" />
+          </label>
           <div className="room-buttons">
             <button onClick={onCreate} disabled={busy}><RadioTower size={14} /> Criar</button>
             <button onClick={onJoin} disabled={!roomID || busy}><DoorOpen size={14} /> Entrar</button>
@@ -574,55 +636,18 @@ function RoomRibbon({
           </div>
         </div>
       ) : (
-        <button className="solid-button room-login" onClick={onLogin} disabled={busy}>
-          <LogIn size={15} />
-          Entrar
-        </button>
+        <div className="room-login-panel">
+          <span>
+            <small>Conta</small>
+            <strong>Login</strong>
+          </span>
+          <button className="solid-button room-login" onClick={onLogin} disabled={busy}>
+            <LogIn size={15} />
+            Entrar
+          </button>
+        </div>
       )}
     </section>
-  );
-}
-
-function ComposerBar({
-  prompt,
-  setPrompt,
-  isBusy,
-  activeAction,
-  canUseBackend,
-  hasInput,
-  onCapture,
-  onSend,
-}: {
-  prompt: string;
-  setPrompt: (value: string) => void;
-  isBusy: boolean;
-  activeAction: string;
-  canUseBackend: boolean;
-  hasInput: boolean;
-  onCapture: () => void;
-  onSend: () => void;
-}) {
-  return (
-    <footer className="composer-bar">
-      <textarea
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            if (canUseBackend && hasInput && !isBusy) onSend();
-          }
-        }}
-        placeholder="Pergunta..."
-        rows={1}
-      />
-      <button onClick={onCapture} disabled={isBusy} aria-label="Capturar clipboard" title="Capturar clipboard">
-        {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
-      </button>
-      <button className="solid-button icon-only" onClick={onSend} disabled={!canUseBackend || !hasInput || isBusy} aria-label="Enviar" title="Enviar">
-        {isBusy && activeAction.includes('Enviando') ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
-      </button>
-    </footer>
   );
 }
 
@@ -651,75 +676,75 @@ function ShortcutInline({ value }: { value: string }) {
   );
 }
 
-function WorkspaceFeed({
-  hasContent,
-  activeMessageText,
-  activeMessageImage,
-  messageSummary,
+function ClipboardHistoryPanel({
+  entries,
+  activeEntryID,
   thinking,
   response,
-  roomID,
+  onSelect,
   onCopyResponse,
   onFlashResponse,
 }: {
-  hasContent: boolean;
-  activeMessageText: string;
-  activeMessageImage: string | null;
-  messageSummary: string;
+  entries: ClipboardHistoryEntry[];
+  activeEntryID: string;
   thinking: string;
   response: string;
-  roomID: string;
-  onCopyResponse: () => void;
-  onFlashResponse: () => void;
+  onSelect: (entryID: string) => void;
+  onCopyResponse: (entryID: string) => void;
+  onFlashResponse: (entryID: string) => void;
 }) {
+  if (!entries.length) {
+    return (
+      <section className="history-list empty" aria-label="Historico">
+        <Clipboard size={22} />
+        <strong>Nenhum clipboard</strong>
+      </section>
+    );
+  }
+
   return (
-    <section className={`feed-panel ${hasContent ? '' : 'empty'}`} aria-label="Historico">
-      {!hasContent && (
-        <div className="empty-feed">
-          <Clipboard size={20} />
-          <strong>Nenhuma entrada</strong>
-        </div>
-      )}
-
-      {activeMessageText && (
-        <article className="message user">
-          <header>
-            <span>Clipboard</span>
-            <small>{messageSummary}</small>
-          </header>
-          <pre>{activeMessageText}</pre>
-          {activeMessageImage && <img src={activeMessageImage} alt="Clipboard" />}
-        </article>
-      )}
-
-      {thinking && (
-        <article className="message thinking">
-          <header>
-            <span>Processando</span>
-          </header>
-          <pre>{thinking}</pre>
-        </article>
-      )}
-
-      {response && (
-        <article className="message assistant">
-          <header>
-            <span><Bot size={14} /> Resposta</span>
-            <small>{roomID ? 'Sala' : 'Local'}</small>
-          </header>
-          <pre>{response}</pre>
-          <div className="result-actions">
-            <button onClick={onCopyResponse}>
-              <Copy size={14} />
-              Copiar
-            </button>
-            <button onClick={onFlashResponse}>
-              <MonitorUp size={14} />
-              Flash
-            </button>
-          </div>
-        </article>
-      )}
+    <section className="history-list" aria-label="Historico">
+      {entries.slice(0, MAX_CLIPBOARD_HISTORY).map((entry, index) => {
+        const isActive = entry.id === activeEntryID;
+        const liveResponse = isActive && response ? response : entry.response;
+        const liveThinking = isActive ? thinking : '';
+        const canUseResponse = Boolean(liveResponse);
+        return (
+          <article
+            className={`history-entry ${isActive ? 'active' : ''} ${entry.status}`}
+            key={entry.id}
+            onClick={() => onSelect(entry.id)}
+          >
+            <header>
+              <span className="history-index">{String(index + 1).padStart(2, '0')}</span>
+              <div>
+                <strong>{clipText(entry.text, 96)}</strong>
+                <small>{entry.sharedToRoom && entry.roomId ? entry.roomTitle : 'Local'} · {formatEntryTime(entry.createdAt)}</small>
+              </div>
+              <span className={`history-state ${entry.status}`}>
+                {entry.status === 'processing' ? 'Processando' : entry.status === 'error' ? 'Falhou' : 'Pronto'}
+              </span>
+            </header>
+            {entry.image && <img src={entry.image} alt="Clipboard" />}
+            {(liveThinking || liveResponse) && (
+              <pre className="history-response">
+                {liveResponse || liveThinking}
+              </pre>
+            )}
+            <footer>
+              <button onClick={(event) => { event.stopPropagation(); onCopyResponse(entry.id); }} disabled={!canUseResponse}>
+                <Copy size={14} />
+                Copiar
+              </button>
+              <button onClick={(event) => { event.stopPropagation(); onFlashResponse(entry.id); }} disabled={!canUseResponse}>
+                <MonitorUp size={14} />
+                Flash
+              </button>
+              {entry.flashShown && <small>Flash</small>}
+            </footer>
+          </article>
+        );
+      })}
     </section>
   );
 }
