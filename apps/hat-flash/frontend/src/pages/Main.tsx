@@ -8,7 +8,6 @@ import {
   Clipboard,
   Copy,
   DoorOpen,
-  Hash,
   Loader2,
   LogIn,
   LogOut,
@@ -209,7 +208,8 @@ export function Main() {
   const creditAmountLabel = credits === null ? '' : `${compactCredits(credits)} cr`;
   const processShortcut = settings?.shortcuts.processClipboardFlash ?? defaultShortcuts.processClipboardFlash;
   const flashEnabled = settings?.clipboard.flash.enabled ?? true;
-  const roomLabel = roomID ? roomTitle || 'Sala Hat' : 'Sem sala';
+  const stateLabel = isBusy ? activeAction : status === 'error' ? 'Atencao' : user ? 'Pronto' : 'Login pendente';
+  const showingSettings = drawer === 'system';
   const creditExpiryTitle = creditInfo?.nextCreditExpiresAt
     ? new Intl.DateTimeFormat('pt-BR', {
         dateStyle: 'short',
@@ -329,10 +329,6 @@ export function Main() {
     if (response) await hat.clipboard.writeText(response);
   }
 
-  async function copyInput() {
-    if (activeText) await hat.clipboard.writeText(activeText);
-  }
-
   async function copyRoomID() {
     if (roomID) await hat.clipboard.writeText(roomID);
   }
@@ -405,46 +401,24 @@ export function Main() {
   }
 
   return (
-    <main className="hat-app">
-      <aside className="hat-sidebar">
-        <nav className="main-nav" aria-label="Navegacao">
-          <NavButton active={drawer === 'clipboard'} icon={Clipboard} label="Clipboard" onClick={() => setDrawer('clipboard')} />
-          <NavButton active={drawer === 'rooms'} icon={RadioTower} label="Salas" onClick={() => setDrawer('rooms')} />
-          <NavButton active={drawer === 'system'} icon={Settings} label="Ajustes" onClick={() => setDrawer('system')} />
-        </nav>
-
-        <footer className="sidebar-footer">
-          <div className={`live-status ${status}`} aria-live="polite">
-            <span />
-            {isBusy ? activeAction : status === 'error' ? 'Atencao' : user ? 'Pronto' : 'Faca login'}
-          </div>
-          {user ? (
-            <button className="sidebar-profile" onClick={() => setDrawer('system')}>
-              <UserAvatar user={user} size={30} />
-              <span>
-                <strong>{userName}</strong>
-                <small>Perfil</small>
+    <main className="hat-app focus-shell">
+      <section className="flash-workbench">
+        <header className="flash-topbar">
+          <div className="flash-brand">
+            <span className="brand-symbol">HF</span>
+            <div>
+              <h1>Hat Flash</h1>
+              <span className={`top-state ${status}`} aria-live="polite">
+                <i />
+                {stateLabel}
               </span>
-            </button>
-          ) : null}
-        </footer>
-      </aside>
-
-      <section className="workspace">
-        <header className="workspace-header">
-          <div className="workspace-title">
-            <h1>Hat Flash</h1>
-            <div className="status-strip" aria-label="Estado">
-              <StatusChip tone={user ? 'ok' : 'warn'} label={user ? 'Conta' : 'Login'} value={user ? userName : 'Pendente'} />
-              <StatusChip tone={roomID ? 'ok' : 'muted'} label="Sala" value={roomLabel} />
-              <StatusChip tone={flashEnabled ? 'ok' : 'muted'} label="Flash" value={flashEnabled ? 'Ligado' : 'Off'} />
             </div>
           </div>
-          <div className="workspace-actions">
+          <div className="flash-toolbar">
             <ModeSwitch mode={mode} disabled={!settings || isBusy} onChange={(next) => runGuarded('Salvando modo...', () => setMode(next))} />
             {user ? (
               <>
-                <section className="account-pill" aria-label="Perfil">
+                <section className="account-pill compact-account" aria-label="Perfil">
                   <UserAvatar user={user} size={34} />
                   <div className="account-copy">
                     <strong>{userName}</strong>
@@ -460,6 +434,14 @@ export function Main() {
                 </button>
               </>
             ) : null}
+            <button
+              className={`icon-button ${showingSettings ? 'active' : ''}`}
+              onClick={() => setDrawer(showingSettings ? 'rooms' : 'system')}
+              aria-label="Ajustes"
+              title="Ajustes"
+            >
+              <Settings size={16} />
+            </button>
           </div>
         </header>
 
@@ -471,20 +453,44 @@ export function Main() {
           </div>
         )}
 
-        <div className="workspace-grid">
-          <section className="primary-lane">
-            {!user && (
-              <AuthPrompt
-                busy={isBusy}
-                onLogin={() => runGuarded('Abrindo Google...', login)}
-              />
-            )}
+        <RoomRibbon
+          roomTitle={roomTitle}
+          setRoomTitle={setRoomTitle}
+          roomID={roomID}
+          setRoomID={setRoomID}
+          busy={isBusy}
+          canUse={Boolean(user)}
+          onCreate={() => runGuarded('Criando sala...', createRoomFromTitle)}
+          onJoin={() => runGuarded('Entrando na sala...', joinCurrentRoom)}
+          onLeave={() => runGuarded('Saindo da sala...', leaveCurrentRoom)}
+          onCopy={() => runGuarded('Copiando codigo...', copyRoomID)}
+          onLogin={() => runGuarded('Abrindo Google...', login)}
+        />
 
-            <section className="command-panel" aria-label="Clipboard">
-              <header className="section-header">
+        {showingSettings ? (
+          <section className="settings-surface">
+            <PanelHeader icon={Settings} title="Ajustes" />
+            <SystemDrawer
+              settings={settings}
+              updateMessage={updateMessage}
+              quitConfirm={quitConfirm}
+              busy={isBusy}
+              onShortcut={saveShortcut}
+              onAutostart={() => runGuarded('Salvando inicio...', toggleAutostart)}
+              onUpdate={() => runGuarded('Verificando update...', async () => {
+                const result = await hat.updater.check();
+                setUpdateMessage(result.message);
+              })}
+              onQuit={() => runGuarded(quitConfirm ? 'Fechando app...' : 'Confirme saida...', emergencyQuit)}
+            />
+          </section>
+        ) : (
+          <>
+            <section className="clipboard-stage" aria-label="Clipboard">
+              <header className="stage-header">
                 <div>
+                  <Clipboard size={20} />
                   <h2>Clipboard</h2>
-                  <span>{roomID ? roomTitle : 'Local'}</span>
                 </div>
                 <ShortcutInline value={processShortcut} />
               </header>
@@ -498,6 +504,10 @@ export function Main() {
                 onCapture={() => runGuarded('Lendo clipboard...', processClipboard)}
                 onSend={() => runGuarded('Enviando ao Hat...', sendClipboard)}
               />
+              <div className="stage-status">
+                <StatusChip tone={flashEnabled ? 'ok' : 'muted'} label="Flash" value={flashEnabled ? 'Ligado' : 'Off'} />
+                <StatusChip tone={roomID ? 'ok' : 'muted'} label="Sala" value={roomID || 'Local'} />
+              </div>
             </section>
 
             <WorkspaceFeed
@@ -510,58 +520,66 @@ export function Main() {
               roomID={roomID}
               onCopyResponse={() => runGuarded('Copiando resposta...', copyResponse)}
               onFlashResponse={() => runGuarded('Mostrando flash...', flashResponse)}
-              onOpenRoom={() => setDrawer('rooms')}
             />
-          </section>
-
-          <aside className="side-panel">
-            <PanelHeader icon={drawer === 'clipboard' ? Clipboard : drawer === 'rooms' ? RadioTower : Settings} title={drawer === 'clipboard' ? 'Entrada' : drawer === 'rooms' ? 'Sala ativa' : 'Ajustes'} />
-              {drawer === 'clipboard' && (
-                <ClipboardDrawer
-                  text={activeText}
-                  image={clipboardImage}
-                  shortcut={settings?.shortcuts.processClipboardFlash ?? ''}
-                  busy={isBusy}
-                  onCapture={() => runGuarded('Lendo clipboard...', processClipboard)}
-                  onCopy={() => runGuarded('Copiando entrada...', copyInput)}
-                  onSend={() => runGuarded('Enviando ao Hat...', sendClipboard)}
-                  prompt={prompt}
-                  setPrompt={setPrompt}
-                />
-              )}
-              {drawer === 'rooms' && (
-                <RoomsDrawer
-                  roomTitle={roomTitle}
-                  setRoomTitle={setRoomTitle}
-                  roomID={roomID}
-                  setRoomID={setRoomID}
-                  busy={isBusy}
-                  canUse={Boolean(user)}
-                  onCreate={() => runGuarded('Criando sala...', createRoomFromTitle)}
-                  onJoin={() => runGuarded('Entrando na sala...', joinCurrentRoom)}
-                  onLeave={() => runGuarded('Saindo da sala...', leaveCurrentRoom)}
-                  onCopy={() => runGuarded('Copiando codigo...', copyRoomID)}
-                />
-              )}
-              {drawer === 'system' && (
-                <SystemDrawer
-                  settings={settings}
-                  updateMessage={updateMessage}
-                  quitConfirm={quitConfirm}
-                  busy={isBusy}
-                  onShortcut={saveShortcut}
-                  onAutostart={() => runGuarded('Salvando inicio...', toggleAutostart)}
-                  onUpdate={() => runGuarded('Verificando update...', async () => {
-                    const result = await hat.updater.check();
-                    setUpdateMessage(result.message);
-                  })}
-                  onQuit={() => runGuarded(quitConfirm ? 'Fechando app...' : 'Confirme saida...', emergencyQuit)}
-                />
-              )}
-          </aside>
-        </div>
+          </>
+        )}
       </section>
     </main>
+  );
+}
+
+function RoomRibbon({
+  roomTitle,
+  setRoomTitle,
+  roomID,
+  setRoomID,
+  busy,
+  canUse,
+  onCreate,
+  onJoin,
+  onLeave,
+  onCopy,
+  onLogin,
+}: {
+  roomTitle: string;
+  setRoomTitle: (value: string) => void;
+  roomID: string;
+  setRoomID: (value: string) => void;
+  busy: boolean;
+  canUse: boolean;
+  onCreate: () => void;
+  onJoin: () => void;
+  onLeave: () => void;
+  onCopy: () => void;
+  onLogin: () => void;
+}) {
+  return (
+    <section className={`room-ribbon ${roomID ? 'active' : ''}`} aria-label="Sala">
+      <div className="room-identity">
+        <RadioTower size={18} />
+        <span>
+          <small>Sala</small>
+          <strong>{roomID ? roomTitle || 'Sala Hat' : 'Sem sala'}</strong>
+        </span>
+      </div>
+      {canUse ? (
+        <div className="room-form">
+          <input value={roomTitle} onChange={(e) => setRoomTitle(e.target.value)} placeholder="Nome" aria-label="Nome da sala" />
+          <input value={roomID} onChange={(e) => setRoomID(e.target.value)} placeholder="Codigo" aria-label="Codigo da sala" />
+          <div className="room-buttons">
+            <button onClick={onCreate} disabled={busy}><RadioTower size={14} /> Criar</button>
+            <button onClick={onJoin} disabled={!roomID || busy}><DoorOpen size={14} /> Entrar</button>
+            <button onClick={onCopy} disabled={!roomID || busy} aria-label="Copiar codigo" title="Copiar codigo"><Copy size={14} /></button>
+            <button onClick={onLeave} disabled={!roomID || busy} aria-label="Sair da sala" title="Sair da sala"><LogOut size={14} /></button>
+          </div>
+        </div>
+      ) : (
+        <button className="solid-button room-login" onClick={onLogin} disabled={busy}>
+          <LogIn size={15} />
+          Entrar
+        </button>
+      )}
+    </section>
   );
 }
 
@@ -633,21 +651,6 @@ function ShortcutInline({ value }: { value: string }) {
   );
 }
 
-function AuthPrompt({ busy, onLogin }: { busy: boolean; onLogin: () => void }) {
-  return (
-    <section className="auth-panel" aria-label="Login">
-      <div>
-        <strong>Conta</strong>
-        <span>Pendente</span>
-      </div>
-      <button className="solid-button" onClick={onLogin} disabled={busy}>
-        <LogIn size={15} />
-        Entrar
-      </button>
-    </section>
-  );
-}
-
 function WorkspaceFeed({
   hasContent,
   activeMessageText,
@@ -658,7 +661,6 @@ function WorkspaceFeed({
   roomID,
   onCopyResponse,
   onFlashResponse,
-  onOpenRoom,
 }: {
   hasContent: boolean;
   activeMessageText: string;
@@ -669,7 +671,6 @@ function WorkspaceFeed({
   roomID: string;
   onCopyResponse: () => void;
   onFlashResponse: () => void;
-  onOpenRoom: () => void;
 }) {
   return (
     <section className={`feed-panel ${hasContent ? '' : 'empty'}`} aria-label="Historico">
@@ -716,23 +717,10 @@ function WorkspaceFeed({
               <MonitorUp size={14} />
               Flash
             </button>
-            <button onClick={onOpenRoom}>
-              <RadioTower size={14} />
-              Sala
-            </button>
           </div>
         </article>
       )}
     </section>
-  );
-}
-
-function NavButton({ active, icon: Icon, label, onClick }: { active: boolean; icon: LucideIcon; label: string; onClick: () => void }) {
-  return (
-    <button className={`nav-button ${active ? 'active' : ''}`} onClick={onClick}>
-      <Icon size={17} />
-      <span>{label}</span>
-    </button>
   );
 }
 
@@ -767,81 +755,6 @@ function PanelHeader({ icon: Icon, title }: { icon: LucideIcon; title: string })
         <h3>{title}</h3>
       </div>
     </header>
-  );
-}
-
-function ClipboardDrawer({ text, image, shortcut, busy, onCapture, onCopy, onSend, prompt, setPrompt }: {
-  text: string;
-  image: string | null;
-  shortcut: string;
-  busy: boolean;
-  onCapture: () => void;
-  onCopy: () => void;
-  onSend: () => void;
-  prompt: string;
-  setPrompt: (value: string) => void;
-}) {
-  return (
-    <div className="drawer-body">
-      <button className="solid-button full" onClick={onCapture} disabled={busy}>
-        <Clipboard size={15} />
-        Capturar
-      </button>
-      <div className="drawer-preview">
-        {image && <img src={image} alt="Clipboard" />}
-        {text ? <pre>{text}</pre> : <span>Vazio</span>}
-      </div>
-      <textarea className="drawer-textarea" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Editar entrada..." />
-      <div className="two-actions">
-        <button onClick={onCopy} disabled={!text || busy}><Copy size={14} /> Copiar</button>
-        <button onClick={onSend} disabled={!text && !image || busy}><Send size={14} /> Enviar</button>
-      </div>
-      <InfoLine label="Atalho" value={shortcut || 'Nao definido'} />
-    </div>
-  );
-}
-
-function RoomsDrawer({ roomTitle, setRoomTitle, roomID, setRoomID, busy, canUse, onCreate, onJoin, onLeave, onCopy }: {
-  roomTitle: string;
-  setRoomTitle: (value: string) => void;
-  roomID: string;
-  setRoomID: (value: string) => void;
-  busy: boolean;
-  canUse: boolean;
-  onCreate: () => void;
-  onJoin: () => void;
-  onLeave: () => void;
-  onCopy: () => void;
-}) {
-  if (!canUse) {
-    return (
-      <div className="drawer-body">
-        <div className="room-card">
-          <Hash size={15} />
-          <span>Sem sala</span>
-        </div>
-        <InfoLine label="Conta" value="Pendente" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="drawer-body">
-      <div className="room-card">
-        <Hash size={15} />
-        <span>{roomID || 'Sem sala'}</span>
-      </div>
-      <Field label="Nome" value={roomTitle} onChange={setRoomTitle} placeholder="Sala Hat" />
-      <Field label="Codigo" value={roomID} onChange={setRoomID} placeholder="Cole o codigo" />
-      <div className="two-actions">
-        <button onClick={onCreate} disabled={!canUse || busy}><RadioTower size={14} /> Criar</button>
-        <button onClick={onJoin} disabled={!canUse || !roomID || busy}><DoorOpen size={14} /> Entrar</button>
-      </div>
-      <div className="two-actions">
-        <button onClick={onCopy} disabled={!roomID || busy}><Copy size={14} /> Copiar</button>
-        <button onClick={onLeave} disabled={!canUse || !roomID || busy}><LogOut size={14} /> Sair</button>
-      </div>
-    </div>
   );
 }
 
@@ -1032,22 +945,4 @@ function findShortcutConflict(key: ShortcutKey, shortcuts: HatSettings['shortcut
   if (!value) return undefined;
   const conflict = (Object.keys(shortcuts) as ShortcutKey[]).find((candidate) => candidate !== key && shortcuts[candidate] === value);
   return conflict ? shortcutLabels[conflict].label : undefined;
-}
-
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
-    </label>
-  );
-}
-
-function InfoLine({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="info-line">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
 }
