@@ -519,8 +519,8 @@ export function Main() {
     <main className="hat-app focus-shell">
       <section className="flash-workbench">
         <header className="flash-topbar">
-          <div className="topbar-room-target">
-            {roomID ? <span>Sala ativa</span> : <span>{user ? 'Sem sala' : 'Login pendente'}</span>}
+          <div className={`topbar-room-target ${roomID ? 'active' : user ? 'ready' : 'warn'}`}>
+            <span>{roomID ? roomTitle || 'Sala Hat' : user ? 'Escolha uma sala' : 'Conta desconectada'}</span>
           </div>
           <div className="flash-toolbar">
             <ModeSwitch mode={mode} disabled={!settings || isBusy} onChange={(next) => runGuarded('Salvando modo...', () => setMode(next))} />
@@ -675,7 +675,20 @@ function RoomCommandCenter({
   onFlashResponse: (entryID: string) => void;
 }) {
   const isActiveRoom = Boolean(roomID);
+  const heading = isActiveRoom ? roomTitle || 'Sala Hat' : canUse ? 'Escolher sala' : 'Entrar no Hat';
+  const eyebrow = isActiveRoom ? 'Sala ativa' : canUse ? 'Sala' : 'Conta';
   const destination = isActiveRoom ? roomTitle || 'Sala Hat' : 'Local';
+  const headerStatus: Array<{ tone: 'ok' | 'warn' | 'muted'; label: string; value: string }> = isActiveRoom
+    ? [
+      { tone: 'ok', label: 'Sala', value: 'Conectada' },
+      { tone: 'ok', label: 'Conta', value: 'Ok' },
+    ]
+    : canUse
+      ? [
+        { tone: 'warn', label: 'Sala', value: 'Sem sala' },
+        { tone: 'ok', label: 'Conta', value: 'Ok' },
+      ]
+      : [];
   const roomControls = canUse ? (
     <section className="room-command-panel" aria-label="Controle da sala">
       <label className="room-field name">
@@ -687,23 +700,21 @@ function RoomCommandCenter({
         <input
           value={roomID || roomCode}
           onChange={(event) => setRoomCode(event.target.value)}
-          placeholder="Cole o codigo"
+          placeholder="HF-..."
           aria-label="Codigo da sala"
           readOnly={Boolean(roomID)}
         />
       </label>
       <div className="room-command-actions">
-        <button className="solid-button" onClick={onCreate} disabled={busy}><RadioTower size={14} /> Criar</button>
+        <button className="solid-button" onClick={onCreate} disabled={busy}><RadioTower size={14} /> Criar sala</button>
         <button onClick={onJoin} disabled={Boolean(roomID) || !roomCode.trim() || busy}><DoorOpen size={14} /> Entrar</button>
-        <button onClick={onCopyRoom} disabled={!roomID || busy} aria-label="Copiar codigo" title="Copiar codigo"><Copy size={14} /></button>
-        <button onClick={onLeave} disabled={!roomID || busy} aria-label="Sair da sala" title="Sair da sala"><LogOut size={14} /></button>
       </div>
     </section>
   ) : (
     <section className="room-auth-card" aria-label="Login">
       <span>
-        <small>Conta</small>
-        <strong>Login</strong>
+        <small>Acesso</small>
+        <strong>Google</strong>
       </span>
       <button className="solid-button" onClick={onLogin} disabled={busy}>
         <LogIn size={15} />
@@ -718,14 +729,15 @@ function RoomCommandCenter({
         <div className="room-title-lockup">
           <RadioTower size={24} />
           <span>
-            <small>{isActiveRoom ? 'Sala ativa' : canUse ? 'Sala' : 'Conta'}</small>
-            <h2>{isActiveRoom ? roomTitle || 'Sala Hat' : canUse ? 'Criar ou entrar' : 'Entrar no Hat'}</h2>
+            <small>{eyebrow}</small>
+            <h2>{heading}</h2>
           </span>
         </div>
-        <div className="room-center-status">
-          <StatusChip tone={isActiveRoom ? 'ok' : 'warn'} label="Estado" value={isActiveRoom ? 'Conectada' : 'Pendente'} />
-          <StatusChip tone={canUse ? 'ok' : 'warn'} label="Conta" value={canUse ? 'Autorizada' : 'Login'} />
-        </div>
+        {headerStatus.length > 0 && (
+          <div className="room-center-status">
+            {headerStatus.map((chip) => <StatusChip key={`${chip.label}-${chip.value}`} {...chip} />)}
+          </div>
+        )}
       </header>
 
       {!isActiveRoom ? (
@@ -755,7 +767,7 @@ function RoomCommandCenter({
           <section className="room-activity-panel" aria-label="Atividade da sala">
             <header>
               <span>
-                <strong>Atividade</strong>
+                <strong>Atividade da sala</strong>
                 <small>{entries.length} envios</small>
               </span>
             </header>
@@ -865,7 +877,7 @@ function RoomActivityList({
     return (
       <div className="room-activity-empty">
         <RadioTower size={22} />
-        <strong>Nenhum envio</strong>
+        <strong>Sem envios</strong>
       </div>
     );
   }
@@ -954,7 +966,7 @@ function ClipboardHistoryPanel({
     return (
       <section className="history-list empty" aria-label="Historico">
         <Clipboard size={22} />
-        <strong>Nenhum clipboard</strong>
+        <strong>Sem capturas</strong>
       </section>
     );
   }

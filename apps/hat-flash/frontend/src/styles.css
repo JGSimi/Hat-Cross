@@ -1393,33 +1393,61 @@ summary {
 
 .focus-shell {
   grid-template-columns: minmax(0, 1fr);
-  background: #080807;
+  background:
+    linear-gradient(180deg, #0b0a08 0%, #050504 48%, #030303 100%),
+    var(--bg);
 }
 
 .flash-workbench {
-  width: min(1160px, 100%);
+  width: min(1180px, 100%);
   height: 100vh;
   min-width: 0;
   margin: 0 auto;
-  padding: 16px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   overflow: hidden;
 }
 
 .flash-topbar {
-  min-height: 34px;
+  min-height: 38px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  padding: 0 2px;
 }
 
 .topbar-room-target {
   min-width: 0;
-  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #d9d0c0;
   font-size: 12px;
+  font-weight: 650;
+}
+
+.topbar-room-target::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #6b6255;
+}
+
+.topbar-room-target.active::before {
+  background: #72c566;
+  box-shadow: 0 0 16px rgba(114, 197, 102, 0.42);
+}
+
+.topbar-room-target.ready::before {
+  background: var(--accent);
+}
+
+.topbar-room-target.warn::before {
+  background: #a06b3c;
 }
 
 .flash-toolbar {
@@ -1449,7 +1477,9 @@ summary {
   gap: 8px;
   padding: 3px 9px 3px 4px;
   border-radius: 8px;
-  background: #0e0d0b;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: #0f0e0c;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .compact-account-chip span {
@@ -1482,26 +1512,40 @@ summary {
   min-height: 0;
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 310px;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) 304px;
+  gap: 12px;
   overflow: hidden;
 }
 
 .room-command-center {
+  position: relative;
   min-height: 0;
   min-width: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 10px;
+  gap: 12px;
   padding: 16px;
   overflow: hidden;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: #0d0c0a;
+  background:
+    linear-gradient(180deg, rgba(255, 122, 26, 0.035), transparent 34%),
+    #0c0b09;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 18px 54px rgba(0, 0, 0, 0.24);
+}
+
+.room-command-center::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 122, 26, 0.55), transparent);
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 .room-command-center.active {
-  border-color: #3a4a32;
+  border-color: #34452d;
 }
 
 .room-command-center.idle {
@@ -1515,8 +1559,8 @@ summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  gap: 12px;
-  padding-bottom: 10px;
+  gap: 14px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--line-soft);
 }
 
@@ -1524,7 +1568,12 @@ summary {
   min-width: 0;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 11px;
+}
+
+.room-title-lockup > svg {
+  margin-top: 3px;
+  color: #efe5d3;
 }
 
 .room-title-lockup span {
@@ -1549,14 +1598,14 @@ summary {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text);
-  font-size: clamp(30px, 4.6vw, 54px);
-  line-height: 1;
+  font-size: clamp(30px, 3.55vw, 44px);
+  line-height: 0.96;
   letter-spacing: 0;
 }
 
 .room-center-status {
   display: grid;
-  grid-template-columns: repeat(2, minmax(94px, 1fr));
+  grid-template-columns: repeat(2, minmax(82px, 1fr));
   gap: 8px;
 }
 
@@ -1567,8 +1616,9 @@ summary {
   align-items: end;
   gap: 8px;
   padding: 12px;
+  border: 1px solid #24211c;
   border-radius: 8px;
-  background: #12100d;
+  background: linear-gradient(180deg, #14110e, #100e0b);
 }
 
 .room-command-panel label {
@@ -1579,14 +1629,8 @@ summary {
 
 .room-command-actions {
   display: grid;
-  grid-template-columns: minmax(78px, auto) minmax(78px, auto) 38px 38px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px;
-}
-
-.room-command-actions button[aria-label] {
-  width: 38px;
-  min-width: 38px;
-  padding: 0;
 }
 
 .room-setup-stage {
@@ -1604,11 +1648,12 @@ summary {
 }
 
 .room-setup-stage .room-command-panel {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .room-setup-stage .room-command-actions {
-  grid-template-columns: 1fr 1fr 44px 44px;
+  grid-column: 1 / -1;
+  grid-template-columns: 1fr 1fr;
 }
 
 .active-room-actions {
@@ -1618,8 +1663,9 @@ summary {
   align-items: center;
   gap: 8px;
   padding: 10px;
+  border: 1px solid #25211b;
   border-radius: 8px;
-  background: #12100d;
+  background: linear-gradient(180deg, #15120e, #100e0b);
 }
 
 .room-code-chip {
@@ -1632,6 +1678,11 @@ summary {
   color: #ddd6ca;
   font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 12px;
+}
+
+.room-code-chip:hover:not(:disabled) {
+  border-color: #6f624f;
+  background: #11100d;
 }
 
 .room-share-note {
@@ -1652,6 +1703,7 @@ summary {
 .room-capture-main {
   min-height: 38px;
   min-width: 170px;
+  box-shadow: 0 10px 24px rgba(255, 122, 26, 0.16);
 }
 
 .room-auth-card {
@@ -1661,8 +1713,9 @@ summary {
   align-items: center;
   gap: 12px;
   padding: 14px;
+  border: 1px solid #24211c;
   border-radius: 8px;
-  background: #12100d;
+  background: linear-gradient(180deg, #14110e, #100e0b);
 }
 
 .room-auth-card span {
@@ -1716,7 +1769,7 @@ summary {
   place-items: center;
   align-content: center;
   gap: 8px;
-  border: 1px solid #221f1a;
+  border: 1px dashed #2d2922;
   border-radius: 8px;
   color: var(--muted);
   background: #0b0a08;
@@ -1731,7 +1784,7 @@ summary {
   min-height: 0;
   display: grid;
   align-content: start;
-  gap: 10px;
+  gap: 9px;
   overflow: auto;
   padding-right: 2px;
 }
@@ -1739,26 +1792,30 @@ summary {
 .room-activity-item {
   min-width: 0;
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: 9px;
+  padding: 13px;
   border: 1px solid transparent;
   border-radius: 8px;
-  background: #14120f;
+  background: linear-gradient(180deg, #15130f, #100f0d);
   cursor: pointer;
+  box-shadow: inset 3px 0 0 transparent;
 }
 
 .room-activity-item:hover,
 .room-activity-item.active {
   border-color: #51483c;
   background: #181511;
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .room-activity-item.processing {
   border-color: #7c4a1d;
+  box-shadow: inset 3px 0 0 #d9822b;
 }
 
 .room-activity-item.error {
   border-color: #704135;
+  box-shadow: inset 3px 0 0 #d96d5f;
 }
 
 .room-activity-item header span {
@@ -1793,17 +1850,17 @@ summary {
 }
 
 .room-activity-item pre {
-  max-height: 160px;
+  max-height: 138px;
   overflow: hidden;
   color: #e8e0d4;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
 .room-activity-item footer {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 7px;
 }
 
 .clipboard-history-surface {
@@ -1814,7 +1871,10 @@ summary {
   padding: 12px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: #0b0a08;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 24%),
+    #0a0908;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   overflow: hidden;
 }
 
@@ -1862,9 +1922,13 @@ summary {
 }
 
 .history-meta {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
+}
+
+.history-meta .shortcut-inline {
+  grid-column: 1 / -1;
 }
 
 .history-list {
@@ -1879,8 +1943,13 @@ summary {
 .history-list.empty {
   place-items: start;
   align-content: start;
+  align-self: start;
   min-height: 0;
-  padding: 20px 4px;
+  gap: 8px;
+  padding: 14px 12px;
+  border: 1px dashed #2d2922;
+  border-radius: 8px;
+  background: #0d0c0a;
   color: var(--muted);
 }
 
@@ -1895,22 +1964,26 @@ summary {
   padding: 10px;
   border: 1px solid transparent;
   border-radius: 8px;
-  background: #100f0d;
+  background: linear-gradient(180deg, #12100d, #0f0e0c);
   cursor: pointer;
+  box-shadow: inset 2px 0 0 transparent;
 }
 
 .history-entry:hover,
 .history-entry.active {
   border-color: #51483c;
   background: #171410;
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .history-entry.processing {
   border-color: #7c4a1d;
+  box-shadow: inset 2px 0 0 #d9822b;
 }
 
 .history-entry.error {
   border-color: #704135;
+  box-shadow: inset 2px 0 0 #d96d5f;
 }
 
 .history-entry header {
@@ -2019,7 +2092,8 @@ summary {
 
   .room-main-layout,
   .room-center-header,
-  .room-command-panel {
+  .room-command-panel,
+  .room-setup-stage .room-command-panel {
     grid-template-columns: 1fr;
   }
 
@@ -2047,10 +2121,6 @@ summary {
 
   .active-room-actions .room-capture-main {
     grid-column: 1;
-  }
-
-  .room-command-actions {
-    grid-template-columns: 1fr 1fr 44px 44px;
   }
 
   .room-command-actions button {
