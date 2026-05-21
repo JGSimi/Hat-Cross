@@ -22,13 +22,11 @@ import {
   Sparkles,
   Trash2,
   UserCircle,
-  X,
   Zap,
 } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import {
   firebaseAuth,
-  firebaseReady,
   signInWithGoogle,
   signOutGoogle,
   summarizeCredits,
@@ -203,13 +201,15 @@ export function Main() {
   const activeText = (prompt || clipboardText).trim();
   const hasInput = Boolean(activeText || clipboardImage);
   const hasWorkspaceContent = Boolean(activeMessageText || activeMessageImage || thinking || response);
-  const isEmptyWorkspace = !hasWorkspaceContent;
   const mode = settings?.mode ?? 'hat';
   const messageSummary = activeMessageImage ? 'Imagem' : activeMessageText ? 'Texto' : '';
   const credits = creditInfo?.credits ?? null;
   const userName = user ? profileName(user) : '';
   const userEmail = user?.email ?? '';
   const creditAmountLabel = credits === null ? '' : `${compactCredits(credits)} cr`;
+  const processShortcut = settings?.shortcuts.processClipboardFlash ?? defaultShortcuts.processClipboardFlash;
+  const flashEnabled = settings?.clipboard.flash.enabled ?? true;
+  const roomLabel = roomID ? roomTitle || 'Sala Hat' : 'Sem sala';
   const creditExpiryTitle = creditInfo?.nextCreditExpiresAt
     ? new Intl.DateTimeFormat('pt-BR', {
         dateStyle: 'short',
@@ -400,6 +400,10 @@ export function Main() {
     await hat.app.quit();
   }
 
+  async function login() {
+    await signInWithGoogle();
+  }
+
   return (
     <main className="hat-app">
       <aside className="hat-sidebar">
@@ -422,37 +426,40 @@ export function Main() {
                 <small>Perfil</small>
               </span>
             </button>
-          ) : (
-            <button className="sidebar-login" onClick={() => runGuarded('Abrindo Google...', async () => { await signInWithGoogle(); })} disabled={isBusy || !firebaseReady}>
-              <LogIn size={15} />
-              Entrar
-            </button>
-          )}
+          ) : null}
         </footer>
       </aside>
 
-      <section className="chat-pane">
-        <header className="top-bar">
-          <div className="top-actions">
+      <section className="workspace">
+        <header className="workspace-header">
+          <div className="workspace-title">
+            <h1>Hat Flash</h1>
+            <div className="status-strip" aria-label="Estado">
+              <StatusChip tone={user ? 'ok' : 'warn'} label={user ? 'Conta' : 'Login'} value={user ? userName : 'Pendente'} />
+              <StatusChip tone={roomID ? 'ok' : 'muted'} label="Sala" value={roomLabel} />
+              <StatusChip tone={flashEnabled ? 'ok' : 'muted'} label="Flash" value={flashEnabled ? 'Ligado' : 'Off'} />
+            </div>
+          </div>
+          <div className="workspace-actions">
             <ModeSwitch mode={mode} disabled={!settings || isBusy} onChange={(next) => runGuarded('Salvando modo...', () => setMode(next))} />
-            {user && (
-              <section className="account-pill" aria-label="Perfil">
-                <UserAvatar user={user} size={34} />
-                <div className="account-copy">
-                  <strong>{userName}</strong>
-                  <span>{userEmail}</span>
-                </div>
-                <div className="account-credit">
-                  {credits !== null && <strong>{creditAmountLabel}</strong>}
-                  {creditInfo && <small title={creditExpiryTitle}>{creditValidityLabel(creditInfo, now)}</small>}
-                </div>
-              </section>
-            )}
-            {user && (
-              <button className="icon-button" onClick={() => runGuarded('Saindo...', signOutGoogle)} aria-label="Sair">
-                <LogOut size={16} />
-              </button>
-            )}
+            {user ? (
+              <>
+                <section className="account-pill" aria-label="Perfil">
+                  <UserAvatar user={user} size={34} />
+                  <div className="account-copy">
+                    <strong>{userName}</strong>
+                    <span>{userEmail}</span>
+                  </div>
+                  <div className="account-credit">
+                    {credits !== null && <strong>{creditAmountLabel}</strong>}
+                    {creditInfo && <small title={creditExpiryTitle}>{creditValidityLabel(creditInfo, now)}</small>}
+                  </div>
+                </section>
+                <button className="icon-button" onClick={() => runGuarded('Saindo...', signOutGoogle)} aria-label="Sair" title="Sair">
+                  <LogOut size={16} />
+                </button>
+              </>
+            ) : null}
           </div>
         </header>
 
@@ -464,57 +471,51 @@ export function Main() {
           </div>
         )}
 
-        <div className="main-grid">
-          <section className={`conversation ${isEmptyWorkspace ? 'empty' : ''}`}>
-            {isEmptyWorkspace && (
-              <div className="empty-start">
-                <h2>{roomID ? roomTitle : 'Entrada'}</h2>
-                <ComposerBar
-                  prompt={prompt}
-                  setPrompt={setPrompt}
-                  isBusy={isBusy}
-                  activeAction={activeAction}
-                  canUseBackend={canUseBackend}
-                  hasInput={hasInput}
-                  onCapture={() => runGuarded('Lendo clipboard...', processClipboard)}
-                  onSend={() => runGuarded('Enviando ao Hat...', sendClipboard)}
-                  centered
-                />
-              </div>
+        <div className="workspace-grid">
+          <section className="primary-lane">
+            {!user && (
+              <AuthPrompt
+                busy={isBusy}
+                onLogin={() => runGuarded('Abrindo Google...', login)}
+              />
             )}
 
-            {!isEmptyWorkspace && activeMessageText && (
-              <article className="message user">
-                <header>
-                  <span>Clipboard</span>
-                  <small>{messageSummary}</small>
-                </header>
-                <pre>{activeMessageText}</pre>
-                {activeMessageImage && <img src={activeMessageImage} alt="Clipboard" />}
-              </article>
-            )}
+            <section className="command-panel" aria-label="Clipboard">
+              <header className="section-header">
+                <div>
+                  <h2>Clipboard</h2>
+                  <span>{roomID ? roomTitle : 'Local'}</span>
+                </div>
+                <ShortcutInline value={processShortcut} />
+              </header>
+              <ComposerBar
+                prompt={prompt}
+                setPrompt={setPrompt}
+                isBusy={isBusy}
+                activeAction={activeAction}
+                canUseBackend={canUseBackend}
+                hasInput={hasInput}
+                onCapture={() => runGuarded('Lendo clipboard...', processClipboard)}
+                onSend={() => runGuarded('Enviando ao Hat...', sendClipboard)}
+              />
+            </section>
 
-            {thinking && (
-              <article className="message thinking">
-                <header>
-                  <span>Processando</span>
-                </header>
-                <pre>{thinking}</pre>
-              </article>
-            )}
-
-            {response ? (
-              <article className="message assistant">
-                <header>
-                  <span><Bot size={14} /> Resposta</span>
-                </header>
-                <pre>{response}</pre>
-              </article>
-            ) : null}
+            <WorkspaceFeed
+              hasContent={hasWorkspaceContent}
+              activeMessageText={activeMessageText}
+              activeMessageImage={activeMessageImage}
+              messageSummary={messageSummary}
+              thinking={thinking}
+              response={response}
+              roomID={roomID}
+              onCopyResponse={() => runGuarded('Copiando resposta...', copyResponse)}
+              onFlashResponse={() => runGuarded('Mostrando flash...', flashResponse)}
+              onOpenRoom={() => setDrawer('rooms')}
+            />
           </section>
 
-          <aside className="drawer-panel">
-            <DrawerHeader icon={drawer === 'clipboard' ? Clipboard : drawer === 'rooms' ? RadioTower : Settings} title={drawer === 'clipboard' ? 'Clipboard' : drawer === 'rooms' ? 'Salas' : 'Ajustes'} onClose={() => setDrawer('rooms')} />
+          <aside className="side-panel">
+            <PanelHeader icon={drawer === 'clipboard' ? Clipboard : drawer === 'rooms' ? RadioTower : Settings} title={drawer === 'clipboard' ? 'Entrada' : drawer === 'rooms' ? 'Sala ativa' : 'Ajustes'} />
               {drawer === 'clipboard' && (
                 <ClipboardDrawer
                   text={activeText}
@@ -559,36 +560,6 @@ export function Main() {
               )}
           </aside>
         </div>
-
-        {!isEmptyWorkspace && (
-          <ComposerBar
-            prompt={prompt}
-            setPrompt={setPrompt}
-            isBusy={isBusy}
-            activeAction={activeAction}
-            canUseBackend={canUseBackend}
-            hasInput={hasInput}
-            onCapture={() => runGuarded('Lendo clipboard...', processClipboard)}
-            onSend={() => runGuarded('Enviando ao Hat...', sendClipboard)}
-          />
-        )}
-
-        {response && (
-          <div className="result-actions">
-            <button onClick={() => runGuarded('Copiando resposta...', copyResponse)}>
-              <Copy size={14} />
-              Copiar
-            </button>
-            <button onClick={() => runGuarded('Mostrando flash...', flashResponse)}>
-              <MonitorUp size={14} />
-              Flash
-            </button>
-            <button onClick={() => setDrawer('rooms')}>
-              <RadioTower size={14} />
-              Sala
-            </button>
-          </div>
-        )}
       </section>
     </main>
   );
@@ -603,7 +574,6 @@ function ComposerBar({
   hasInput,
   onCapture,
   onSend,
-  centered = false,
 }: {
   prompt: string;
   setPrompt: (value: string) => void;
@@ -613,10 +583,9 @@ function ComposerBar({
   hasInput: boolean;
   onCapture: () => void;
   onSend: () => void;
-  centered?: boolean;
 }) {
   return (
-    <footer className={`composer-bar ${centered ? 'center-composer' : ''}`}>
+    <footer className="composer-bar">
       <textarea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
@@ -629,13 +598,132 @@ function ComposerBar({
         placeholder="Pergunta..."
         rows={1}
       />
-      <button onClick={onCapture} disabled={isBusy} aria-label="Capturar clipboard">
+      <button onClick={onCapture} disabled={isBusy} aria-label="Capturar clipboard" title="Capturar clipboard">
         {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
       </button>
-      <button className="solid-button icon-only" onClick={onSend} disabled={!canUseBackend || !hasInput || isBusy} aria-label="Enviar">
+      <button className="solid-button icon-only" onClick={onSend} disabled={!canUseBackend || !hasInput || isBusy} aria-label="Enviar" title="Enviar">
         {isBusy && activeAction.includes('Enviando') ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
       </button>
     </footer>
+  );
+}
+
+function StatusChip({ tone, label, value }: { tone: 'ok' | 'warn' | 'muted'; label: string; value: string }) {
+  return (
+    <span className={`status-chip ${tone}`}>
+      <small>{label}</small>
+      <strong>{value}</strong>
+    </span>
+  );
+}
+
+function ShortcutInline({ value }: { value: string }) {
+  const parts = shortcutParts(value);
+  if (!parts.length) return <span className="shortcut-inline">Sem atalho</span>;
+
+  return (
+    <span className="shortcut-inline" aria-label={value}>
+      {parts.map((part, index) => (
+        <span className="shortcut-token" key={`${part}-${index}`}>
+          {index > 0 && <span className="shortcut-plus">+</span>}
+          <kbd>{shortcutTokenLabel(part)}</kbd>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function AuthPrompt({ busy, onLogin }: { busy: boolean; onLogin: () => void }) {
+  return (
+    <section className="auth-panel" aria-label="Login">
+      <div>
+        <strong>Conta</strong>
+        <span>Pendente</span>
+      </div>
+      <button className="solid-button" onClick={onLogin} disabled={busy}>
+        <LogIn size={15} />
+        Entrar
+      </button>
+    </section>
+  );
+}
+
+function WorkspaceFeed({
+  hasContent,
+  activeMessageText,
+  activeMessageImage,
+  messageSummary,
+  thinking,
+  response,
+  roomID,
+  onCopyResponse,
+  onFlashResponse,
+  onOpenRoom,
+}: {
+  hasContent: boolean;
+  activeMessageText: string;
+  activeMessageImage: string | null;
+  messageSummary: string;
+  thinking: string;
+  response: string;
+  roomID: string;
+  onCopyResponse: () => void;
+  onFlashResponse: () => void;
+  onOpenRoom: () => void;
+}) {
+  return (
+    <section className={`feed-panel ${hasContent ? '' : 'empty'}`} aria-label="Historico">
+      {!hasContent && (
+        <div className="empty-feed">
+          <Clipboard size={20} />
+          <strong>Nenhuma entrada</strong>
+        </div>
+      )}
+
+      {activeMessageText && (
+        <article className="message user">
+          <header>
+            <span>Clipboard</span>
+            <small>{messageSummary}</small>
+          </header>
+          <pre>{activeMessageText}</pre>
+          {activeMessageImage && <img src={activeMessageImage} alt="Clipboard" />}
+        </article>
+      )}
+
+      {thinking && (
+        <article className="message thinking">
+          <header>
+            <span>Processando</span>
+          </header>
+          <pre>{thinking}</pre>
+        </article>
+      )}
+
+      {response && (
+        <article className="message assistant">
+          <header>
+            <span><Bot size={14} /> Resposta</span>
+            <small>{roomID ? 'Sala' : 'Local'}</small>
+          </header>
+          <pre>{response}</pre>
+          <div className="result-actions">
+            <button onClick={onCopyResponse}>
+              <Copy size={14} />
+              Copiar
+            </button>
+            <button onClick={onFlashResponse}>
+              <MonitorUp size={14} />
+              Flash
+            </button>
+            <button onClick={onOpenRoom}>
+              <RadioTower size={14} />
+              Sala
+            </button>
+          </div>
+        </article>
+      )}
+    </section>
   );
 }
 
@@ -671,16 +759,13 @@ function ModeSwitch({ mode, disabled, onChange }: { mode: string; disabled: bool
   );
 }
 
-function DrawerHeader({ icon: Icon, title, onClose }: { icon: LucideIcon; title: string; onClose: () => void }) {
+function PanelHeader({ icon: Icon, title }: { icon: LucideIcon; title: string }) {
   return (
-    <header className="drawer-header">
+    <header className="panel-header">
       <div>
         <Icon size={17} />
         <h3>{title}</h3>
       </div>
-      <button onClick={onClose} aria-label="Fechar">
-        <X size={16} />
-      </button>
     </header>
   );
 }
@@ -728,11 +813,23 @@ function RoomsDrawer({ roomTitle, setRoomTitle, roomID, setRoomID, busy, canUse,
   onLeave: () => void;
   onCopy: () => void;
 }) {
+  if (!canUse) {
+    return (
+      <div className="drawer-body">
+        <div className="room-card">
+          <Hash size={15} />
+          <span>Sem sala</span>
+        </div>
+        <InfoLine label="Conta" value="Pendente" />
+      </div>
+    );
+  }
+
   return (
     <div className="drawer-body">
       <div className="room-card">
         <Hash size={15} />
-        <span>{roomID || 'Nenhuma'}</span>
+        <span>{roomID || 'Sem sala'}</span>
       </div>
       <Field label="Nome" value={roomTitle} onChange={setRoomTitle} placeholder="Sala Hat" />
       <Field label="Codigo" value={roomID} onChange={setRoomID} placeholder="Cole o codigo" />
