@@ -208,6 +208,7 @@ export function Main() {
   const [activeAction, setActiveAction] = useState('');
   const [error, setError] = useState('');
   const [roomID, setRoomID] = useState('');
+  const [roomCode, setRoomCode] = useState('');
   const [roomTitle, setRoomTitle] = useState('Sala Hat');
   const [updateMessage, setUpdateMessage] = useState('');
   const [quitConfirm, setQuitConfirm] = useState(false);
@@ -259,6 +260,9 @@ export function Main() {
   const flashEnabled = settings?.clipboard.flash.enabled ?? true;
   const stateLabel = isBusy ? activeAction : status === 'error' ? 'Atencao' : user ? 'Pronto' : 'Login pendente';
   const showingSettings = drawer === 'system';
+  const roomEntries = roomID
+    ? history.filter((entry) => entry.sharedToRoom && entry.roomId === roomID)
+    : [];
   const creditExpiryTitle = creditInfo?.nextCreditExpiresAt
     ? new Intl.DateTimeFormat('pt-BR', {
         dateStyle: 'short',
@@ -402,13 +406,15 @@ export function Main() {
     if (!token) throw new Error('auth');
     const result = await createRoom(roomTitle.trim() || 'Sala Hat', token);
     setRoomID(result.roomId);
+    setRoomCode(result.roomId);
   }
 
   async function joinCurrentRoom() {
     const token = await firebaseAuth?.currentUser?.getIdToken();
     if (!token) throw new Error('auth');
-    const result = await joinRoom(roomID.trim(), token);
+    const result = await joinRoom(roomCode.trim(), token);
     setRoomID(result.roomId);
+    setRoomCode(result.roomId);
   }
 
   async function leaveCurrentRoom() {
@@ -416,6 +422,7 @@ export function Main() {
     if (!token || !roomID) throw new Error('auth');
     await leaveRoom(roomID, token);
     setRoomID('');
+    setRoomCode('');
   }
 
   async function saveShortcut(key: ShortcutKey, value: string) {
@@ -506,20 +513,6 @@ export function Main() {
           </div>
         )}
 
-        <RoomRibbon
-          roomTitle={roomTitle}
-          setRoomTitle={setRoomTitle}
-          roomID={roomID}
-          setRoomID={setRoomID}
-          busy={isBusy}
-          canUse={Boolean(user)}
-          onCreate={() => runGuarded('Criando sala...', createRoomFromTitle)}
-          onJoin={() => runGuarded('Entrando na sala...', joinCurrentRoom)}
-          onLeave={() => runGuarded('Saindo da sala...', leaveCurrentRoom)}
-          onCopy={() => runGuarded('Copiando codigo...', copyRoomID)}
-          onLogin={() => runGuarded('Abrindo Google...', login)}
-        />
-
         {showingSettings ? (
           <section className="settings-surface">
             <PanelHeader icon={Settings} title="Ajustes" />
@@ -538,116 +531,300 @@ export function Main() {
             />
           </section>
         ) : (
-          <>
-            <section className="clipboard-history-surface" aria-label="Clipboard">
-              <header className="history-header">
-                <div>
-                  <Clipboard size={20} />
-                  <span>
-                    <h2>Clipboard</h2>
-                    <small>{history.length}/{MAX_CLIPBOARD_HISTORY} recentes</small>
-                  </span>
-                </div>
-                <button
-                  className="solid-button process-button"
-                  onClick={() => runGuarded('Processando clipboard...', processClipboardAndSend)}
-                  disabled={!canUseBackend || isBusy}
-                >
-                  {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
-                  Capturar
-                </button>
-              </header>
-              <div className="history-meta">
-                <ShortcutInline value={processShortcut} />
-                <StatusChip tone={flashEnabled ? 'ok' : 'muted'} label="Flash" value={flashEnabled ? 'Ligado' : 'Off'} />
-              </div>
-              <ClipboardHistoryPanel
-                entries={history}
-                activeEntryID={activeHistoryID}
-                thinking={thinking}
-                response={response}
-                onSelect={setActiveHistoryID}
-                onCopyResponse={(entryID) => runGuarded('Copiando resposta...', () => copyHistoryResponse(entryID))}
-                onFlashResponse={(entryID) => runGuarded('Mostrando flash...', () => flashHistoryResponse(entryID))}
-              />
-            </section>
-          </>
+          <section className="room-main-layout">
+            <RoomWorkspace
+              roomTitle={roomTitle}
+              setRoomTitle={setRoomTitle}
+              roomID={roomID}
+              roomCode={roomCode}
+              setRoomCode={setRoomCode}
+              busy={isBusy}
+              canUse={Boolean(user)}
+              entries={roomEntries}
+              activeEntryID={activeHistoryID}
+              thinking={thinking}
+              response={response}
+              onCreate={() => runGuarded('Criando sala...', createRoomFromTitle)}
+              onJoin={() => runGuarded('Entrando na sala...', joinCurrentRoom)}
+              onLeave={() => runGuarded('Saindo da sala...', leaveCurrentRoom)}
+              onCopyRoom={() => runGuarded('Copiando codigo...', copyRoomID)}
+              onLogin={() => runGuarded('Abrindo Google...', login)}
+              onSelectEntry={setActiveHistoryID}
+              onCopyResponse={(entryID) => runGuarded('Copiando resposta...', () => copyHistoryResponse(entryID))}
+              onFlashResponse={(entryID) => runGuarded('Mostrando flash...', () => flashHistoryResponse(entryID))}
+            />
+            <ClipboardHistorySurface
+              entries={history}
+              activeEntryID={activeHistoryID}
+              thinking={thinking}
+              response={response}
+              processShortcut={processShortcut}
+              flashEnabled={flashEnabled}
+              canUseBackend={canUseBackend}
+              isBusy={isBusy}
+              activeAction={activeAction}
+              onCapture={() => runGuarded('Processando clipboard...', processClipboardAndSend)}
+              onSelect={setActiveHistoryID}
+              onCopyResponse={(entryID) => runGuarded('Copiando resposta...', () => copyHistoryResponse(entryID))}
+              onFlashResponse={(entryID) => runGuarded('Mostrando flash...', () => flashHistoryResponse(entryID))}
+            />
+          </section>
         )}
       </section>
     </main>
   );
 }
 
-function RoomRibbon({
+function RoomWorkspace({
   roomTitle,
   setRoomTitle,
   roomID,
-  setRoomID,
+  roomCode,
+  setRoomCode,
   busy,
   canUse,
+  entries,
+  activeEntryID,
+  thinking,
+  response,
   onCreate,
   onJoin,
   onLeave,
-  onCopy,
+  onCopyRoom,
   onLogin,
+  onSelectEntry,
+  onCopyResponse,
+  onFlashResponse,
 }: {
   roomTitle: string;
   setRoomTitle: (value: string) => void;
   roomID: string;
-  setRoomID: (value: string) => void;
+  roomCode: string;
+  setRoomCode: (value: string) => void;
   busy: boolean;
   canUse: boolean;
+  entries: ClipboardHistoryEntry[];
+  activeEntryID: string;
+  thinking: string;
+  response: string;
   onCreate: () => void;
   onJoin: () => void;
   onLeave: () => void;
-  onCopy: () => void;
+  onCopyRoom: () => void;
   onLogin: () => void;
+  onSelectEntry: (entryID: string) => void;
+  onCopyResponse: (entryID: string) => void;
+  onFlashResponse: (entryID: string) => void;
 }) {
+  const roomControls = canUse ? (
+    <section className="room-command-panel" aria-label="Controle da sala">
+      <label className="room-field name">
+        <span>Nome</span>
+        <input value={roomTitle} onChange={(event) => setRoomTitle(event.target.value)} placeholder="Sala Hat" aria-label="Nome da sala" />
+      </label>
+      <label className="room-field code">
+        <span>Codigo</span>
+        <input
+          value={roomID || roomCode}
+          onChange={(event) => setRoomCode(event.target.value)}
+          placeholder="Cole o codigo"
+          aria-label="Codigo da sala"
+          readOnly={Boolean(roomID)}
+        />
+      </label>
+      <div className="room-command-actions">
+        <button className="solid-button" onClick={onCreate} disabled={busy}><RadioTower size={14} /> Criar</button>
+        <button onClick={onJoin} disabled={Boolean(roomID) || !roomCode.trim() || busy}><DoorOpen size={14} /> Entrar</button>
+        <button onClick={onCopyRoom} disabled={!roomID || busy} aria-label="Copiar codigo" title="Copiar codigo"><Copy size={14} /></button>
+        <button onClick={onLeave} disabled={!roomID || busy} aria-label="Sair da sala" title="Sair da sala"><LogOut size={14} /></button>
+      </div>
+    </section>
+  ) : (
+    <section className="room-auth-card" aria-label="Login">
+      <span>
+        <small>Conta</small>
+        <strong>Login</strong>
+      </span>
+      <button className="solid-button" onClick={onLogin} disabled={busy}>
+        <LogIn size={15} />
+        Entrar
+      </button>
+    </section>
+  );
+
   return (
-    <section className={`room-ribbon ${roomID ? 'active' : ''}`} aria-label="Sala">
-      <div className="room-hero">
-        <div className="room-identity">
-          <RadioTower size={22} />
+    <section className={`room-workspace-card ${roomID ? 'active' : 'idle'}`} aria-label="Sala">
+      <header className="room-workspace-header">
+        <div className="room-title-lockup">
+          <RadioTower size={24} />
           <span>
             <small>Sala ativa</small>
-            <strong>{roomID ? roomTitle || 'Sala Hat' : 'Sem sala'}</strong>
+            <h2>{roomID ? roomTitle || 'Sala Hat' : 'Sala'}</h2>
           </span>
         </div>
-        <div className="room-badges">
+        <div className="room-workspace-status">
           <StatusChip tone={roomID ? 'ok' : 'warn'} label="Estado" value={roomID ? 'Conectada' : 'Pendente'} />
           <StatusChip tone={canUse ? 'ok' : 'warn'} label="Conta" value={canUse ? 'Autorizada' : 'Login'} />
         </div>
-      </div>
-      {canUse ? (
-        <div className="room-form">
-          <label>
-            <span>Nome</span>
-            <input value={roomTitle} onChange={(e) => setRoomTitle(e.target.value)} placeholder="Sala Hat" aria-label="Nome da sala" />
-          </label>
-          <label>
-            <span>Codigo</span>
-            <input value={roomID} onChange={(e) => setRoomID(e.target.value)} placeholder="Cole o codigo" aria-label="Codigo da sala" />
-          </label>
-          <div className="room-buttons">
-            <button onClick={onCreate} disabled={busy}><RadioTower size={14} /> Criar</button>
-            <button onClick={onJoin} disabled={!roomID || busy}><DoorOpen size={14} /> Entrar</button>
-            <button onClick={onCopy} disabled={!roomID || busy} aria-label="Copiar codigo" title="Copiar codigo"><Copy size={14} /></button>
-            <button onClick={onLeave} disabled={!roomID || busy} aria-label="Sair da sala" title="Sair da sala"><LogOut size={14} /></button>
-          </div>
-        </div>
+      </header>
+
+      {!roomID ? (
+        <section className="room-setup-stage">
+          {roomControls}
+        </section>
       ) : (
-        <div className="room-login-panel">
-          <span>
-            <small>Conta</small>
-            <strong>Login</strong>
-          </span>
-          <button className="solid-button room-login" onClick={onLogin} disabled={busy}>
-            <LogIn size={15} />
-            Entrar
-          </button>
-        </div>
+        <>
+          {roomControls}
+
+          <section className="room-activity-panel" aria-label="Atividade da sala">
+            <header>
+              <span>
+                <strong>Atividade</strong>
+                <small>{entries.length} envios</small>
+              </span>
+            </header>
+            <RoomActivityList
+              entries={entries}
+              activeEntryID={activeEntryID}
+              thinking={thinking}
+              response={response}
+              onSelect={onSelectEntry}
+              onCopyResponse={onCopyResponse}
+              onFlashResponse={onFlashResponse}
+            />
+          </section>
+        </>
       )}
     </section>
+  );
+}
+
+function ClipboardHistorySurface({
+  entries,
+  activeEntryID,
+  thinking,
+  response,
+  processShortcut,
+  flashEnabled,
+  canUseBackend,
+  isBusy,
+  activeAction,
+  onCapture,
+  onSelect,
+  onCopyResponse,
+  onFlashResponse,
+}: {
+  entries: ClipboardHistoryEntry[];
+  activeEntryID: string;
+  thinking: string;
+  response: string;
+  processShortcut: string;
+  flashEnabled: boolean;
+  canUseBackend: boolean;
+  isBusy: boolean;
+  activeAction: string;
+  onCapture: () => void;
+  onSelect: (entryID: string) => void;
+  onCopyResponse: (entryID: string) => void;
+  onFlashResponse: (entryID: string) => void;
+}) {
+  return (
+    <aside className="clipboard-history-surface" aria-label="Clipboard">
+      <header className="history-header">
+        <div>
+          <Clipboard size={19} />
+          <span>
+            <h2>Clipboard</h2>
+            <small>{entries.length}/{MAX_CLIPBOARD_HISTORY}</small>
+          </span>
+        </div>
+        <button
+          className="solid-button process-button"
+          onClick={onCapture}
+          disabled={!canUseBackend || isBusy}
+        >
+          {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
+          Capturar
+        </button>
+      </header>
+      <div className="history-meta">
+        <ShortcutInline value={processShortcut} />
+        <StatusChip tone={flashEnabled ? 'ok' : 'muted'} label="Flash" value={flashEnabled ? 'Ligado' : 'Off'} />
+      </div>
+      <ClipboardHistoryPanel
+        entries={entries}
+        activeEntryID={activeEntryID}
+        thinking={thinking}
+        response={response}
+        onSelect={onSelect}
+        onCopyResponse={onCopyResponse}
+        onFlashResponse={onFlashResponse}
+      />
+    </aside>
+  );
+}
+
+function RoomActivityList({
+  entries,
+  activeEntryID,
+  thinking,
+  response,
+  onSelect,
+  onCopyResponse,
+  onFlashResponse,
+}: {
+  entries: ClipboardHistoryEntry[];
+  activeEntryID: string;
+  thinking: string;
+  response: string;
+  onSelect: (entryID: string) => void;
+  onCopyResponse: (entryID: string) => void;
+  onFlashResponse: (entryID: string) => void;
+}) {
+  if (!entries.length) {
+    return (
+      <div className="room-activity-empty">
+        <RadioTower size={22} />
+        <strong>Nenhum envio</strong>
+      </div>
+    );
+  }
+
+  return (
+    <div className="room-activity-list">
+      {entries.slice(0, MAX_CLIPBOARD_HISTORY).map((entry) => {
+        const isActive = entry.id === activeEntryID;
+        const liveResponse = isActive && response ? response : entry.response;
+        const liveThinking = isActive ? thinking : '';
+        const canUseResponse = Boolean(liveResponse);
+        return (
+          <article
+            className={`room-activity-item ${isActive ? 'active' : ''} ${entry.status}`}
+            key={entry.id}
+            onClick={() => onSelect(entry.id)}
+          >
+            <header>
+              <span>
+                <strong>{clipText(entry.text, 112)}</strong>
+                <small>{formatEntryTime(entry.createdAt)} · {entry.status === 'processing' ? 'Processando' : entry.status === 'error' ? 'Falhou' : 'Pronto'}</small>
+              </span>
+            </header>
+            {entry.image && <img src={entry.image} alt="Clipboard" />}
+            {(liveThinking || liveResponse) && <pre>{liveResponse || liveThinking}</pre>}
+            <footer>
+              <button onClick={(event) => { event.stopPropagation(); onCopyResponse(entry.id); }} disabled={!canUseResponse}>
+                <Copy size={14} />
+                Copiar
+              </button>
+              <button onClick={(event) => { event.stopPropagation(); onFlashResponse(entry.id); }} disabled={!canUseResponse}>
+                <MonitorUp size={14} />
+                Flash
+              </button>
+            </footer>
+          </article>
+        );
+      })}
+    </div>
   );
 }
 

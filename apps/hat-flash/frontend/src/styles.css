@@ -1402,8 +1402,8 @@ summary {
   min-width: 0;
   margin: 0 auto;
   padding: 18px;
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   overflow: hidden;
 }
@@ -1476,6 +1476,288 @@ summary {
 .compact-account {
   width: min(360px, 34vw);
   min-width: 240px;
+}
+
+.room-main-layout {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 370px);
+  gap: 12px;
+  overflow: hidden;
+}
+
+.room-workspace-card {
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #0d0c0a;
+}
+
+.room-workspace-card.active {
+  border-color: #3a4a32;
+}
+
+.room-workspace-card.idle {
+  grid-template-rows: auto auto;
+  align-content: start;
+}
+
+.room-workspace-header {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.room-title-lockup {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.room-title-lockup span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.room-title-lockup small,
+.room-command-panel label span,
+.room-auth-card small,
+.room-activity-panel header small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.room-title-lockup h2 {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: clamp(28px, 4.4vw, 52px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.room-workspace-status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(94px, 1fr));
+  gap: 8px;
+}
+
+.room-command-panel {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(140px, 0.8fr) minmax(180px, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #12100d;
+}
+
+.room-command-panel label {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.room-command-actions {
+  display: grid;
+  grid-template-columns: minmax(78px, auto) minmax(78px, auto) 38px 38px;
+  gap: 8px;
+}
+
+.room-command-actions button[aria-label] {
+  width: 38px;
+  min-width: 38px;
+  padding: 0;
+}
+
+.room-setup-stage {
+  min-height: auto;
+  display: grid;
+  place-items: stretch;
+  padding: 0;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.room-setup-stage .room-command-panel,
+.room-setup-stage .room-auth-card {
+  width: 100%;
+}
+
+.room-setup-stage .room-command-panel {
+  grid-template-columns: 1fr;
+}
+
+.room-setup-stage .room-command-actions {
+  grid-template-columns: 1fr 1fr 44px 44px;
+}
+
+.room-auth-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #12100d;
+}
+
+.room-auth-card span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.room-auth-card strong {
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1.05;
+}
+
+.room-auth-card button {
+  min-width: 132px;
+  min-height: 44px;
+}
+
+.room-activity-panel {
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.room-activity-panel > header {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.room-activity-panel > header span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.room-activity-panel > header strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.room-activity-empty {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  border: 1px solid #221f1a;
+  border-radius: 8px;
+  color: var(--muted);
+  background: #0b0a08;
+}
+
+.room-activity-empty strong {
+  color: #d7d0c4;
+  font-size: 14px;
+}
+
+.room-activity-list {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.room-activity-item {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #14120f;
+  cursor: pointer;
+}
+
+.room-activity-item:hover,
+.room-activity-item.active {
+  border-color: #51483c;
+  background: #181511;
+}
+
+.room-activity-item.processing {
+  border-color: #7c4a1d;
+}
+
+.room-activity-item.error {
+  border-color: #704135;
+}
+
+.room-activity-item header span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.room-activity-item header strong,
+.room-activity-item header small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-activity-item header strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.room-activity-item header small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.room-activity-item img {
+  max-width: 220px;
+  max-height: 150px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.room-activity-item pre {
+  max-height: 160px;
+  overflow: hidden;
+  color: #e8e0d4;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.room-activity-item footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .room-ribbon {
@@ -1608,7 +1890,7 @@ summary {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: 12px;
-  padding: 16px;
+  padding: 14px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   background: #0d0c0a;
@@ -1847,6 +2129,7 @@ summary {
 
 .settings-surface {
   min-height: 0;
+  flex: 1 1 auto;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
@@ -1871,9 +2154,33 @@ summary {
   }
 
   .flash-topbar,
+  .room-main-layout,
+  .room-workspace-header,
+  .room-command-panel,
   .room-ribbon,
   .room-form {
     grid-template-columns: 1fr;
+  }
+
+  .room-main-layout {
+    overflow: visible;
+  }
+
+  .room-workspace-card,
+  .clipboard-history-surface {
+    min-height: 420px;
+  }
+
+  .room-workspace-status {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .room-command-actions {
+    grid-template-columns: 1fr 1fr 44px 44px;
+  }
+
+  .room-command-actions button {
+    min-height: 44px;
   }
 
   .flash-toolbar {
