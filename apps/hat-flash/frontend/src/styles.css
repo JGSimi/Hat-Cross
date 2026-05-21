@@ -1637,6 +1637,7 @@ summary {
   min-height: auto;
   display: grid;
   place-items: stretch;
+  gap: 10px;
   padding: 0;
   border-radius: 8px;
   background: transparent;
@@ -1654,6 +1655,114 @@ summary {
 .room-setup-stage .room-command-actions {
   grid-column: 1 / -1;
   grid-template-columns: 1fr 1fr;
+}
+
+.open-rooms-panel {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #24211c;
+  border-radius: 8px;
+  background: #0d0c0a;
+}
+
+.open-rooms-panel header,
+.open-rooms-panel > div {
+  min-width: 0;
+}
+
+.open-rooms-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.open-rooms-panel strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.open-rooms-panel small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.open-rooms-panel > div {
+  display: grid;
+  gap: 6px;
+}
+
+.open-rooms-panel button {
+  min-width: 0;
+  justify-content: space-between;
+  min-height: 42px;
+  border-color: #24211c;
+  background: #12100d;
+}
+
+.open-rooms-panel button span {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+}
+
+.open-rooms-panel button strong,
+.open-rooms-panel button small {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.open-rooms-panel.empty {
+  padding: 12px;
+  border-style: dashed;
+}
+
+.room-warning-line,
+.room-waiting-panel {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid #7c4a1d;
+  border-radius: 8px;
+  background: #15100b;
+  color: #f1d3ad;
+}
+
+.room-waiting-stack {
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.room-warning-line span,
+.room-waiting-panel span {
+  min-width: 0;
+}
+
+.room-waiting-panel span {
+  display: grid;
+  gap: 2px;
+}
+
+.room-waiting-panel strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.room-waiting-panel small {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .active-room-actions {
@@ -1740,6 +1849,19 @@ summary {
   min-width: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.room-activity-panel.compact {
+  min-height: 220px;
+}
+
+.room-live-grid {
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 230px;
   gap: 10px;
   overflow: hidden;
 }
@@ -1861,6 +1983,68 @@ summary {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
+}
+
+.room-consensus-summary {
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #24211c;
+  border-radius: 8px;
+  background: #0d0c0a;
+  overflow: hidden;
+}
+
+.room-consensus-summary header {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.room-consensus-summary header strong,
+.consensus-card strong,
+.consensus-empty strong,
+.consensus-metrics strong {
+  color: var(--text);
+}
+
+.room-consensus-summary small,
+.consensus-card span,
+.consensus-empty small,
+.consensus-metrics small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.consensus-card,
+.consensus-empty,
+.consensus-metrics span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 9px;
+  border: 1px solid #24211c;
+  border-radius: 8px;
+  background: #12100d;
+}
+
+.consensus-card strong,
+.consensus-card small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.consensus-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 
 .clipboard-history-surface {
@@ -2093,7 +2277,8 @@ summary {
   .room-main-layout,
   .room-center-header,
   .room-command-panel,
-  .room-setup-stage .room-command-panel {
+  .room-setup-stage .room-command-panel,
+  .room-live-grid {
     grid-template-columns: 1fr;
   }
 

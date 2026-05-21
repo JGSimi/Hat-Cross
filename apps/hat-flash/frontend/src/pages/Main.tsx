@@ -31,27 +31,26 @@ import {
   watchCredits,
   type CreditValidityInfo,
 } from '../services/firebase';
-import { createRoom, joinRoom, leaveRoom } from '../services/rooms';
+import { canShareClipboardToRoom, reconcileClipboardRoomShares, visibleMemberCount } from '../services/roomLogic';
+import {
+  createRoom,
+  joinRoom,
+  leaveRoom,
+  listenRoomData,
+  listenUserRoomState,
+  type Room,
+  type RoomCluster,
+  type RoomEntry,
+  type RoomMember,
+  type RoomNotification,
+} from '../services/rooms';
 import { hat, type ChatStreamRequest, type Settings as HatSettings } from '../bridge/hat';
 import { useHatStore } from '../stores/hatStore';
+import type { ClipboardHistoryEntry } from '../types/clipboard';
 
 type Status = 'idle' | 'busy' | 'error';
 type DrawerView = 'rooms' | 'clipboard' | 'system';
 type ShortcutKey = keyof HatSettings['shortcuts'];
-type ClipboardHistoryStatus = 'processing' | 'done' | 'error';
-
-interface ClipboardHistoryEntry {
-  id: string;
-  createdAt: number;
-  text: string;
-  image: string | null;
-  response: string;
-  roomId: string | null;
-  roomTitle: string;
-  sharedToRoom?: boolean;
-  status: ClipboardHistoryStatus;
-  flashShown: boolean;
-}
 
 const MAX_CLIPBOARD_HISTORY = 10;
 const CLIPBOARD_HISTORY_STORAGE_KEY = 'hat-flash:clipboard-history:v1';
@@ -101,6 +100,22 @@ function formatEntryTime(createdAt: number) {
   return new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date(createdAt));
 }
 
+function historyDestination(entry: ClipboardHistoryEntry) {
+  if (entry.sharedToRoom && entry.roomId) return entry.roomTitle || 'Sala';
+  if (entry.roomSharePending) return 'Sala pendente';
+  if (entry.roomShareError) return 'Share recusado';
+  return 'Local';
+}
+
+function divergenceFlashText(notification: RoomNotification) {
+  if (notification.message.trim().startsWith('Resposta correta é')) return notification.message.trim();
+  const answer = notification.suggestedCorrectOptionLabel
+    ? `(${notification.suggestedCorrectOptionLabel})`
+    : notification.suggestedCorrectAnswer || 'revise';
+  const preview = clipText(notification.questionPreview || 'Pergunta', 112);
+  return `Resposta correta é ${answer} para pergunta: ${preview}`;
+}
+
 function devSearchParams() {
   if (!import.meta.env.DEV) return null;
   return new URLSearchParams(window.location.search);
@@ -108,6 +123,103 @@ function devSearchParams() {
 
 function devMockRoomID() {
   return devSearchParams()?.has('mockRoom') ? DEV_ROOM_ID : '';
+}
+
+function devMockMemberCount() {
+  const raw = devSearchParams()?.get('mockMembers');
+  const parsed = raw ? Number.parseInt(raw, 10) : 2;
+  return Number.isFinite(parsed) ? Math.max(1, parsed) : 2;
+}
+
+function devMockRoom(): Room | null {
+  if (!devMockRoomID()) return null;
+  const now = Date.now();
+  return {
+    id: DEV_ROOM_ID,
+    title: 'Sala Hat',
+    ownerUid: 'dev-preview-user',
+    status: 'open',
+    joinCost: 800,
+    createdAt: now - 60 * 60_000,
+    updatedAt: now,
+    memberCount: devMockMemberCount(),
+  };
+}
+
+function devMockRooms(): Room[] {
+  const active = devMockRoom();
+  if (active) return [active];
+  if (!devSearchParams()?.has('mockLogin')) return [];
+  const now = Date.now();
+  return [
+    {
+      id: 'HF-ABRIR-1',
+      title: 'Sala revisão',
+      ownerUid: 'dev-preview-user',
+      status: 'open',
+      joinCost: 800,
+      createdAt: now - 2 * 60 * 60_000,
+      updatedAt: now - 18 * 60_000,
+      memberCount: 1,
+    },
+  ];
+}
+
+function devMockMembers(): RoomMember[] {
+  if (!devMockRoomID()) return [];
+  return Array.from({ length: devMockMemberCount() }, (_, index) => ({
+    uid: index === 0 ? 'dev-preview-user' : `dev-member-${index}`,
+    role: index === 0 ? 'owner' : 'member',
+    displayName: index === 0 ? 'Joao Gabriel' : `Membro ${index + 1}`,
+    photoURL: null,
+    paidAt: Date.now() - 50 * 60_000,
+    lastSeenAt: Date.now() - index * 2 * 60_000,
+    creditsCharged: 800,
+  }));
+}
+
+function devMockRoomEntries(): RoomEntry[] {
+  if (!devMockRoomID() || devMockMemberCount() < 2) return [];
+  return Array.from({ length: 5 }, (_, index) => ({
+    id: `dev-room-entry-${index}`,
+    uid: index % 2 === 0 ? 'dev-preview-user' : 'dev-member-1',
+    questionText: index === 0
+      ? 'Resuma os pontos principais desta reuniao e destaque divergencias.'
+      : `Pergunta compartilhada ${index + 1}`,
+    aiAnswer: `Resposta real da sala ${index + 1}.`,
+    extractedAnswer: index === 4 ? 'Divergente' : 'Consenso',
+    normalizedQuestion: index === 0
+      ? 'resuma os pontos principais desta reuniao e destaque divergencias'
+      : `pergunta compartilhada ${index + 1}`,
+    answerOptions: [],
+    selectedOptionLabel: null,
+    selectedOptionText: null,
+    canonicalAnswerText: index === 4 ? 'Divergente' : 'Consenso',
+    questionPreview: index === 0
+      ? 'Resuma os pontos principais desta reuniao e destaque divergencias.'
+      : `Pergunta compartilhada ${index + 1}`,
+    answerType: 'short_text',
+    confidence: index === 4 ? 0.61 : 0.86,
+    mode: 'hat',
+    createdAt: Date.now() - index * 4 * 60_000,
+    sourceMessageId: `dev-history-${index}`,
+    clusterId: 'dev-cluster-1',
+  } satisfies RoomEntry));
+}
+
+function devMockClusters(): RoomCluster[] {
+  if (!devMockRoomID() || devMockMemberCount() < 2) return [];
+  return [{
+    id: 'dev-cluster-1',
+    canonicalQuestion: 'Resuma os pontos principais desta reuniao.',
+    answerType: 'short_text',
+    consensusAnswer: 'Consenso',
+    consensusAnswerText: 'Consenso',
+    consensusConfidence: 0.8,
+    entryIds: ['dev-room-entry-0', 'dev-room-entry-1', 'dev-room-entry-2'],
+    divergentEntryIds: ['dev-room-entry-4'],
+    updatedAt: Date.now(),
+  }];
 }
 
 function devMockHistory() {
@@ -124,7 +236,10 @@ function devMockHistory() {
     response: index === 2 ? '' : `Resposta pronta ${index + 1} para compartilhar na sala.`,
     roomId: index < 6 ? DEV_ROOM_ID : null,
     roomTitle: 'Sala Hat',
-    sharedToRoom: index < 6,
+    sourceMessageId: `dev-history-${index}`,
+    sharedToRoom: index < 5,
+    roomSharePending: false,
+    roomShareError: false,
     status: index === 2 ? 'processing' : index === 4 ? 'error' : 'done',
     flashShown: index === 0,
   } satisfies ClipboardHistoryEntry));
@@ -253,12 +368,22 @@ export function Main() {
   const [roomID, setRoomID] = useState(previewRoomID);
   const [roomCode, setRoomCode] = useState(previewRoomID);
   const [roomTitle, setRoomTitle] = useState('Sala Hat');
+  const [rooms, setRooms] = useState<Room[]>(() => devMockRooms());
+  const [activeRoom, setActiveRoom] = useState<Room | null>(() => devMockRoom());
+  const [roomMembers, setRoomMembers] = useState<RoomMember[]>(() => devMockMembers());
+  const [roomEntries, setRoomEntries] = useState<RoomEntry[]>(() => devMockRoomEntries());
+  const [roomClusters, setRoomClusters] = useState<RoomCluster[]>(() => devMockClusters());
+  const [roomNotifications, setRoomNotifications] = useState<RoomNotification[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
+  const [roomError, setRoomError] = useState('');
   const [updateMessage, setUpdateMessage] = useState('');
   const [quitConfirm, setQuitConfirm] = useState(false);
   const [history, setHistory] = useState<ClipboardHistoryEntry[]>(() => devMockHistory() ?? readClipboardHistory());
   const [activeHistoryID, setActiveHistoryID] = useState(() => history[0]?.id ?? '');
   const responseRef = useRef('');
   const activeHistoryIDRef = useRef(activeHistoryID);
+  const roomShareTimersRef = useRef<Map<string, number>>(new Map());
+  const shownNotificationIDsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (previewUser) {
@@ -298,12 +423,131 @@ export function Main() {
   }, [quitConfirm]);
 
   useEffect(() => {
+    if (previewUser) return undefined;
+    if (!user) {
+      setRooms([]);
+      setActiveRoom(null);
+      setRoomMembers([]);
+      setRoomEntries([]);
+      setRoomClusters([]);
+      setRoomNotifications([]);
+      setRoomID('');
+      setRoomCode('');
+      setRoomsLoading(false);
+      setRoomError('');
+      return undefined;
+    }
+
+    setRoomsLoading(true);
+    return listenUserRoomState(
+      user.uid,
+      ({ activeRoomId, rooms: nextRooms }) => {
+        const nextActiveRoom = activeRoomId
+          ? nextRooms.find((room) => room.id === activeRoomId) ?? null
+          : null;
+        setRooms(nextRooms);
+        setRoomID(activeRoomId ?? '');
+        setRoomCode(activeRoomId ?? '');
+        if (nextActiveRoom) {
+          setActiveRoom(nextActiveRoom);
+          setRoomTitle(nextActiveRoom.title);
+        } else if (!activeRoomId) {
+          setActiveRoom(null);
+          setRoomMembers([]);
+          setRoomEntries([]);
+          setRoomClusters([]);
+          setRoomNotifications([]);
+        }
+        setRoomsLoading(false);
+        setRoomError('');
+      },
+      (err) => {
+        setRoomsLoading(false);
+        setRoomError(friendlyError(err));
+      },
+    );
+  }, [previewUser, user]);
+
+  useEffect(() => {
+    if (previewUser) return undefined;
+    if (!user || !roomID) {
+      setActiveRoom(null);
+      setRoomMembers([]);
+      setRoomEntries([]);
+      setRoomClusters([]);
+      setRoomNotifications([]);
+      return undefined;
+    }
+
+    return listenRoomData(roomID, user.uid, {
+      onRoom: (room) => {
+        setActiveRoom(room);
+        if (room) {
+          setRoomTitle(room.title);
+          setRoomCode(room.id);
+          setRoomError('');
+        }
+      },
+      onMembers: setRoomMembers,
+      onEntries: setRoomEntries,
+      onClusters: setRoomClusters,
+      onNotifications: setRoomNotifications,
+      onError: (err) => setRoomError(friendlyError(err)),
+    });
+  }, [previewUser, roomID, user]);
+
+  useEffect(() => {
     persistClipboardHistory(history);
   }, [history]);
 
   useEffect(() => {
     activeHistoryIDRef.current = activeHistoryID;
   }, [activeHistoryID]);
+
+  useEffect(() => {
+    setHistory((entries) => reconcileClipboardRoomShares(entries, roomEntries));
+  }, [roomEntries]);
+
+  useEffect(() => {
+    if (!settings || !roomNotifications.length) return;
+    const next = roomNotifications
+      .filter((notification) => (
+        notification.kind === 'divergence' &&
+        notification.severity === 'error' &&
+        !notification.readAt &&
+        !notification.seenAt &&
+        !shownNotificationIDsRef.current.has(notification.id)
+      ))
+      .sort((a, b) => a.createdAt - b.createdAt);
+    if (!next.length) return;
+    for (const notification of next) {
+      shownNotificationIDsRef.current.add(notification.id);
+    }
+    const latest = next[next.length - 1];
+    void hat.flash.show({
+      text: divergenceFlashText(latest),
+      position: settings.clipboard.flash.position,
+      timing: {
+        ...settings.clipboard.flash.timing,
+        mode: 'fade',
+        holdMs: Math.max(settings.clipboard.flash.timing.holdMs ?? 0, 3600),
+      },
+      appearance: {
+        ...settings.clipboard.flash.appearance,
+        color: '#ff4d5d',
+        opacity: 100,
+        textShadow: true,
+      },
+      streamId: streamID,
+    });
+  }, [roomNotifications, settings, streamID]);
+
+  useEffect(() => () => {
+    for (const timer of roomShareTimersRef.current.values()) {
+      window.clearTimeout(timer);
+    }
+    roomShareTimersRef.current.clear();
+  }, []);
 
   const isBusy = status === 'busy';
   const canUseBackend = Boolean(user && settings);
@@ -315,9 +559,9 @@ export function Main() {
   const processShortcut = settings?.shortcuts.processClipboardFlash ?? defaultShortcuts.processClipboardFlash;
   const flashEnabled = settings?.clipboard.flash.enabled ?? true;
   const showingSettings = drawer === 'system';
-  const roomEntries = roomID
-    ? history.filter((entry) => entry.sharedToRoom && entry.roomId === roomID)
-    : [];
+  const activeMemberCount = visibleMemberCount(activeRoom, roomMembers.length);
+  const canShareActiveRoom = canShareClipboardToRoom(activeRoom, activeMemberCount);
+  const isWaitingForRoomMember = Boolean(activeRoom && activeMemberCount < 2);
   const creditExpiryTitle = creditInfo?.nextCreditExpiresAt
     ? new Intl.DateTimeFormat('pt-BR', {
         dateStyle: 'short',
@@ -382,21 +626,40 @@ export function Main() {
     }
   }
 
+  function watchRoomShareConfirmation(entryID: string) {
+    const existing = roomShareTimersRef.current.get(entryID);
+    if (existing) window.clearTimeout(existing);
+    const timer = window.setTimeout(() => {
+      roomShareTimersRef.current.delete(entryID);
+      setHistory((entries) => entries.map((entry) => (
+        entry.id === entryID && entry.roomSharePending
+          ? { ...entry, sharedToRoom: false, roomSharePending: false, roomShareError: true }
+          : entry
+      )));
+    }, 18_000);
+    roomShareTimersRef.current.set(entryID, timer);
+  }
+
   async function processClipboardAndSend() {
     if (!settings || !canUseBackend) return;
     const payload = await hat.clipboard.process();
     const text = payload.text || 'Analise a imagem do clipboard.';
     const image = payload.image?.dataUrl ?? null;
     const entryID = crypto.randomUUID();
+    const shareRoom = canShareActiveRoom && activeRoom ? activeRoom : null;
+    const sourceMessageId = shareRoom ? entryID : null;
     const entry: ClipboardHistoryEntry = {
       id: entryID,
       createdAt: Date.now(),
       text,
       image,
       response: '',
-      roomId: roomID || null,
-      roomTitle: roomTitle.trim() || 'Sala Hat',
-      sharedToRoom: Boolean(roomID.trim()),
+      roomId: activeRoom?.id ?? (roomID || null),
+      roomTitle: activeRoom?.title ?? (roomTitle.trim() || 'Sala Hat'),
+      sourceMessageId,
+      sharedToRoom: false,
+      roomSharePending: Boolean(shareRoom),
+      roomShareError: false,
       status: 'processing',
       flashShown: false,
     };
@@ -415,13 +678,18 @@ export function Main() {
         temperature: settings.temperature,
         maxTokens: settings.maxTokens,
         images: image ? [image] : [],
-        roomId: roomID || null,
-        roomShare: Boolean(roomID.trim()),
-        sourceMessageId: crypto.randomUUID(),
+        roomId: shareRoom?.id ?? null,
+        roomShare: Boolean(shareRoom),
+        sourceMessageId,
         idempotencyKey: crypto.randomUUID(),
       });
+      if (shareRoom) watchRoomShareConfirmation(entryID);
     } catch (err) {
-      setHistory((entries) => entries.map((item) => (item.id === entryID ? { ...item, status: 'error' } : item)));
+      setHistory((entries) => entries.map((item) => (
+        item.id === entryID
+          ? { ...item, status: 'error', roomSharePending: false, roomShareError: Boolean(shareRoom) }
+          : item
+      )));
       throw err;
     }
   }
@@ -456,6 +724,24 @@ export function Main() {
     setHistory((entries) => entries.map((item) => (item.id === entryID ? { ...item, flashShown: true } : item)));
   }
 
+  async function copyRoomEntry(entryID: string) {
+    const entry = roomEntries.find((item) => item.id === entryID || item.sourceMessageId === entryID);
+    if (entry?.aiAnswer) await hat.clipboard.writeText(entry.aiAnswer);
+  }
+
+  async function flashRoomEntry(entryID: string) {
+    if (!settings) return;
+    const entry = roomEntries.find((item) => item.id === entryID || item.sourceMessageId === entryID);
+    if (!entry?.aiAnswer) return;
+    await hat.flash.show({
+      text: entry.aiAnswer.slice(0, settings.clipboard.flash.previewLength),
+      position: settings.clipboard.flash.position,
+      timing: settings.clipboard.flash.timing,
+      appearance: settings.clipboard.flash.appearance,
+      streamId: streamID,
+    });
+  }
+
   async function createRoomFromTitle() {
     const token = await user?.getIdToken();
     if (!token) throw new Error('auth');
@@ -465,9 +751,13 @@ export function Main() {
   }
 
   async function joinCurrentRoom() {
+    await joinRoomByID(roomCode.trim());
+  }
+
+  async function joinRoomByID(nextRoomID: string) {
     const token = await user?.getIdToken();
     if (!token) throw new Error('auth');
-    const result = await joinRoom(roomCode.trim(), token);
+    const result = await joinRoom(nextRoomID, token);
     setRoomID(result.roomId);
     setRoomCode(result.roomId);
   }
@@ -520,7 +810,7 @@ export function Main() {
       <section className="flash-workbench">
         <header className="flash-topbar">
           <div className={`topbar-room-target ${roomID ? 'active' : user ? 'ready' : 'warn'}`}>
-            <span>{roomID ? roomTitle || 'Sala Hat' : user ? 'Escolha uma sala' : 'Conta desconectada'}</span>
+            <span>{roomID ? activeRoom?.title || roomTitle || 'Sala Hat' : user ? 'Escolha uma sala' : 'Conta desconectada'}</span>
           </div>
           <div className="flash-toolbar">
             <ModeSwitch mode={mode} disabled={!settings || isBusy} onChange={(next) => runGuarded('Salvando modo...', () => setMode(next))} />
@@ -583,24 +873,31 @@ export function Main() {
               roomID={roomID}
               roomCode={roomCode}
               setRoomCode={setRoomCode}
+              rooms={rooms}
+              activeRoom={activeRoom}
+              memberCount={activeMemberCount}
+              clusters={roomClusters}
+              notifications={roomNotifications}
+              roomsLoading={roomsLoading}
+              roomError={roomError}
+              waitingForMember={isWaitingForRoomMember}
               busy={isBusy}
               canUse={Boolean(user)}
               entries={roomEntries}
               activeEntryID={activeHistoryID}
-              thinking={thinking}
-              response={response}
               canCapture={canUseBackend}
               isBusy={isBusy}
               activeAction={activeAction}
               onCreate={() => runGuarded('Criando sala...', createRoomFromTitle)}
               onJoin={() => runGuarded('Entrando na sala...', joinCurrentRoom)}
+              onJoinRoom={(nextRoomID) => runGuarded('Entrando na sala...', () => joinRoomByID(nextRoomID))}
               onLeave={() => runGuarded('Saindo da sala...', leaveCurrentRoom)}
               onCopyRoom={() => runGuarded('Copiando codigo...', copyRoomID)}
               onLogin={() => runGuarded('Abrindo Google...', login)}
               onCapture={() => runGuarded('Processando clipboard...', processClipboardAndSend)}
               onSelectEntry={setActiveHistoryID}
-              onCopyResponse={(entryID) => runGuarded('Copiando resposta...', () => copyHistoryResponse(entryID))}
-              onFlashResponse={(entryID) => runGuarded('Mostrando flash...', () => flashHistoryResponse(entryID))}
+              onCopyResponse={(entryID) => runGuarded('Copiando resposta...', () => copyRoomEntry(entryID))}
+              onFlashResponse={(entryID) => runGuarded('Mostrando flash...', () => flashRoomEntry(entryID))}
             />
             <ClipboardHistorySurface
               entries={history}
@@ -609,7 +906,7 @@ export function Main() {
               response={response}
               processShortcut={processShortcut}
               flashEnabled={flashEnabled}
-              roomID={roomID}
+              roomDestination={canShareActiveRoom ? 'Sala' : activeRoom ? 'Aguarda' : 'Local'}
               canUseBackend={canUseBackend}
               isBusy={isBusy}
               activeAction={activeAction}
@@ -631,17 +928,24 @@ function RoomCommandCenter({
   roomID,
   roomCode,
   setRoomCode,
+  rooms,
+  activeRoom,
+  memberCount,
+  clusters,
+  notifications,
+  roomsLoading,
+  roomError,
+  waitingForMember,
   busy,
   canUse,
   entries,
   activeEntryID,
-  thinking,
-  response,
   canCapture,
   isBusy,
   activeAction,
   onCreate,
   onJoin,
+  onJoinRoom,
   onLeave,
   onCopyRoom,
   onLogin,
@@ -655,17 +959,24 @@ function RoomCommandCenter({
   roomID: string;
   roomCode: string;
   setRoomCode: (value: string) => void;
+  rooms: Room[];
+  activeRoom: Room | null;
+  memberCount: number;
+  clusters: RoomCluster[];
+  notifications: RoomNotification[];
+  roomsLoading: boolean;
+  roomError: string;
+  waitingForMember: boolean;
   busy: boolean;
   canUse: boolean;
-  entries: ClipboardHistoryEntry[];
+  entries: RoomEntry[];
   activeEntryID: string;
-  thinking: string;
-  response: string;
   canCapture: boolean;
   isBusy: boolean;
   activeAction: string;
   onCreate: () => void;
   onJoin: () => void;
+  onJoinRoom: (roomID: string) => void;
   onLeave: () => void;
   onCopyRoom: () => void;
   onLogin: () => void;
@@ -675,13 +986,13 @@ function RoomCommandCenter({
   onFlashResponse: (entryID: string) => void;
 }) {
   const isActiveRoom = Boolean(roomID);
-  const heading = isActiveRoom ? roomTitle || 'Sala Hat' : canUse ? 'Escolher sala' : 'Entrar no Hat';
+  const heading = isActiveRoom ? activeRoom?.title || roomTitle || 'Sala Hat' : canUse ? 'Escolher sala' : 'Entrar no Hat';
   const eyebrow = isActiveRoom ? 'Sala ativa' : canUse ? 'Sala' : 'Conta';
-  const destination = isActiveRoom ? roomTitle || 'Sala Hat' : 'Local';
+  const destination = isActiveRoom ? activeRoom?.title || roomTitle || 'Sala Hat' : 'Local';
   const headerStatus: Array<{ tone: 'ok' | 'warn' | 'muted'; label: string; value: string }> = isActiveRoom
     ? [
-      { tone: 'ok', label: 'Sala', value: 'Conectada' },
-      { tone: 'ok', label: 'Conta', value: 'Ok' },
+      { tone: waitingForMember ? 'warn' : 'ok', label: 'Membros', value: String(memberCount) },
+      { tone: activeRoom?.status === 'open' ? 'ok' : 'warn', label: 'Estado', value: activeRoom?.status === 'open' ? 'Aberta' : 'Pendente' },
     ]
     : canUse
       ? [
@@ -743,17 +1054,31 @@ function RoomCommandCenter({
       {!isActiveRoom ? (
         <section className="room-setup-stage" aria-label="Entrada da sala">
           {roomControls}
+          {canUse && (
+            <OpenRoomsList
+              rooms={rooms}
+              loading={roomsLoading}
+              activeRoomId={roomID}
+              onJoinRoom={onJoinRoom}
+            />
+          )}
         </section>
       ) : (
         <>
+          {roomError && (
+            <div className="room-warning-line">
+              <AlertCircle size={14} />
+              <span>{roomError}</span>
+            </div>
+          )}
           <section className="active-room-actions" aria-label="Acoes da sala">
             <button className="room-code-chip" onClick={onCopyRoom} title="Copiar codigo">
               <Copy size={14} />
               {roomID}
             </button>
             <div className="room-share-note">
-              <span>Proximo clipboard</span>
-              <strong>{destination}</strong>
+              <span>{waitingForMember ? 'Proximo clipboard' : 'Comparacao'}</span>
+              <strong>{waitingForMember ? 'Grava na sala' : destination}</strong>
             </div>
             <button className="solid-button room-capture-main" onClick={onCapture} disabled={!canCapture || isBusy}>
               {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
@@ -764,23 +1089,51 @@ function RoomCommandCenter({
             </button>
           </section>
 
-          <section className="room-activity-panel" aria-label="Atividade da sala">
-            <header>
-              <span>
-                <strong>Atividade da sala</strong>
-                <small>{entries.length} envios</small>
-              </span>
-            </header>
-            <RoomActivityList
-              entries={entries}
-              activeEntryID={activeEntryID}
-              thinking={thinking}
-              response={response}
-              onSelect={onSelectEntry}
-              onCopyResponse={onCopyResponse}
-              onFlashResponse={onFlashResponse}
-            />
-          </section>
+          {waitingForMember ? (
+            <section className="room-waiting-stack" aria-label="Aguardando comparacao">
+              <section className="room-waiting-panel">
+                <RadioTower size={22} />
+                <span>
+                  <strong>Aguardando outro membro</strong>
+                  <small>Envios ja ficam gravados. Comparacao comeca com 2+ membros.</small>
+                </span>
+              </section>
+              <section className="room-activity-panel compact" aria-label="Atividade da sala">
+                <header>
+                  <span>
+                    <strong>Atividade real</strong>
+                    <small>{entries.length} envio(s) gravados</small>
+                  </span>
+                </header>
+                <RoomActivityList
+                  entries={entries}
+                  activeEntryID={activeEntryID}
+                  onSelect={onSelectEntry}
+                  onCopyResponse={onCopyResponse}
+                  onFlashResponse={onFlashResponse}
+                />
+              </section>
+            </section>
+          ) : (
+            <section className="room-live-grid">
+              <section className="room-activity-panel" aria-label="Atividade da sala">
+                <header>
+                  <span>
+                    <strong>Atividade real</strong>
+                    <small>{entries.length} envios gravados</small>
+                  </span>
+                </header>
+                <RoomActivityList
+                  entries={entries}
+                  activeEntryID={activeEntryID}
+                  onSelect={onSelectEntry}
+                  onCopyResponse={onCopyResponse}
+                  onFlashResponse={onFlashResponse}
+                />
+              </section>
+              <RoomConsensusSummary clusters={clusters} entries={entries} notifications={notifications} />
+            </section>
+          )}
         </>
       )}
     </section>
@@ -794,7 +1147,7 @@ function ClipboardHistorySurface({
   response,
   processShortcut,
   flashEnabled,
-  roomID,
+  roomDestination,
   canUseBackend,
   isBusy,
   activeAction,
@@ -809,7 +1162,7 @@ function ClipboardHistorySurface({
   response: string;
   processShortcut: string;
   flashEnabled: boolean;
-  roomID: string;
+  roomDestination: string;
   canUseBackend: boolean;
   isBusy: boolean;
   activeAction: string;
@@ -841,7 +1194,7 @@ function ClipboardHistorySurface({
       <div className="history-meta">
         <ShortcutInline value={processShortcut} />
         <StatusChip tone={flashEnabled ? 'ok' : 'muted'} label="Flash" value={flashEnabled ? 'Ligado' : 'Off'} />
-        <StatusChip tone={roomID ? 'ok' : 'muted'} label="Destino" value={roomID ? 'Sala' : 'Local'} />
+        <StatusChip tone={roomDestination === 'Sala' ? 'ok' : 'muted'} label="Destino" value={roomDestination} />
       </div>
       <ClipboardHistoryPanel
         entries={entries}
@@ -856,19 +1209,64 @@ function ClipboardHistorySurface({
   );
 }
 
+function OpenRoomsList({
+  rooms,
+  loading,
+  activeRoomId,
+  onJoinRoom,
+}: {
+  rooms: Room[];
+  loading: boolean;
+  activeRoomId: string;
+  onJoinRoom: (roomID: string) => void;
+}) {
+  if (loading) {
+    return (
+      <section className="open-rooms-panel" aria-label="Salas abertas">
+        <strong>Salas</strong>
+        <small>Carregando...</small>
+      </section>
+    );
+  }
+
+  if (!rooms.length) {
+    return (
+      <section className="open-rooms-panel empty" aria-label="Salas abertas">
+        <strong>Sem salas abertas</strong>
+      </section>
+    );
+  }
+
+  return (
+    <section className="open-rooms-panel" aria-label="Salas abertas">
+      <header>
+        <strong>Salas abertas</strong>
+        <small>{rooms.length}</small>
+      </header>
+      <div>
+        {rooms.slice(0, 4).map((room) => (
+          <button key={room.id} onClick={() => onJoinRoom(room.id)} disabled={activeRoomId === room.id}>
+            <span>
+              <strong>{room.title}</strong>
+              <small>{room.memberCount} membro(s) · {room.id}</small>
+            </span>
+            <DoorOpen size={14} />
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function RoomActivityList({
   entries,
   activeEntryID,
-  thinking,
-  response,
   onSelect,
   onCopyResponse,
   onFlashResponse,
 }: {
-  entries: ClipboardHistoryEntry[];
+  entries: RoomEntry[];
   activeEntryID: string;
-  thinking: string;
-  response: string;
   onSelect: (entryID: string) => void;
   onCopyResponse: (entryID: string) => void;
   onFlashResponse: (entryID: string) => void;
@@ -885,24 +1283,21 @@ function RoomActivityList({
   return (
     <div className="room-activity-list">
       {entries.slice(0, MAX_CLIPBOARD_HISTORY).map((entry) => {
-        const isActive = entry.id === activeEntryID;
-        const liveResponse = isActive && response ? response : entry.response;
-        const liveThinking = isActive ? thinking : '';
-        const canUseResponse = Boolean(liveResponse);
+        const isActive = entry.sourceMessageId === activeEntryID || entry.id === activeEntryID;
+        const canUseResponse = Boolean(entry.aiAnswer);
         return (
           <article
-            className={`room-activity-item ${isActive ? 'active' : ''} ${entry.status}`}
+            className={`room-activity-item ${isActive ? 'active' : ''}`}
             key={entry.id}
-            onClick={() => onSelect(entry.id)}
+            onClick={() => onSelect(entry.sourceMessageId || entry.id)}
           >
             <header>
               <span>
-                <strong>{clipText(entry.text, 112)}</strong>
-                <small>{formatEntryTime(entry.createdAt)} · {entry.status === 'processing' ? 'Processando' : entry.status === 'error' ? 'Falhou' : 'Pronto'}</small>
+                <strong>{clipText(entry.questionText, 112)}</strong>
+                <small>{formatEntryTime(entry.createdAt)} · {entry.mode}</small>
               </span>
             </header>
-            {entry.image && <img src={entry.image} alt="Clipboard" />}
-            {(liveThinking || liveResponse) && <pre>{liveResponse || liveThinking}</pre>}
+            {entry.aiAnswer && <pre>{entry.aiAnswer}</pre>}
             <footer>
               <button onClick={(event) => { event.stopPropagation(); onCopyResponse(entry.id); }} disabled={!canUseResponse}>
                 <Copy size={14} />
@@ -917,6 +1312,51 @@ function RoomActivityList({
         );
       })}
     </div>
+  );
+}
+
+function RoomConsensusSummary({
+  clusters,
+  entries,
+  notifications,
+}: {
+  clusters: RoomCluster[];
+  entries: RoomEntry[];
+  notifications: RoomNotification[];
+}) {
+  const primary = clusters[0] ?? null;
+  const divergentCount = clusters.reduce((sum, cluster) => sum + cluster.divergentEntryIds.length, 0);
+  const unreadCount = notifications.filter((item) => !item.readAt).length;
+
+  return (
+    <aside className="room-consensus-summary" aria-label="Consenso">
+      <header>
+        <strong>Consenso</strong>
+        <small>{clusters.length} grupo(s)</small>
+      </header>
+      {primary ? (
+        <div className="consensus-card">
+          <small>{clipText(primary.canonicalQuestion, 86)}</small>
+          <strong>{primary.consensusAnswerText ?? String(primary.consensusAnswer ?? 'Pendente')}</strong>
+          <span>{Math.round(primary.consensusConfidence * 100)}% · {primary.entryIds.length} resposta(s)</span>
+        </div>
+      ) : (
+        <div className="consensus-empty">
+          <strong>Sem consenso</strong>
+          <small>{entries.length ? 'Aguardando novas respostas.' : 'Aguardando atividade real.'}</small>
+        </div>
+      )}
+      <div className="consensus-metrics">
+        <span>
+          <small>Divergencias</small>
+          <strong>{divergentCount}</strong>
+        </span>
+        <span>
+          <small>Alertas</small>
+          <strong>{unreadCount}</strong>
+        </span>
+      </div>
+    </aside>
   );
 }
 
@@ -988,7 +1428,7 @@ function ClipboardHistoryPanel({
               <span className="history-index">{String(index + 1).padStart(2, '0')}</span>
               <div>
                 <strong>{clipText(entry.text, 96)}</strong>
-                <small>{entry.sharedToRoom && entry.roomId ? entry.roomTitle : 'Local'} · {formatEntryTime(entry.createdAt)}</small>
+                <small>{historyDestination(entry)} · {formatEntryTime(entry.createdAt)}</small>
               </div>
               <span className={`history-state ${entry.status}`}>
                 {entry.status === 'processing' ? 'Processando' : entry.status === 'error' ? 'Falhou' : 'Pronto'}

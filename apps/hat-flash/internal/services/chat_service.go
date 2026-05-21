@@ -145,11 +145,12 @@ func (s *ChatService) proxyBody(request models.ChatStreamRequest) map[string]any
 	}
 
 	body := map[string]any{
-		"mode":         request.Mode,
-		"messages":     apiMessages,
-		"systemPrompt": request.SystemPrompt,
-		"temperature":  request.Temperature,
-		"maxTokens":    request.MaxTokens,
+		"mode":          request.Mode,
+		"messages":      apiMessages,
+		"systemPrompt":  request.SystemPrompt,
+		"temperature":   request.Temperature,
+		"maxTokens":     request.MaxTokens,
+		"requestSource": "clipboard",
 	}
 	if request.RoomShare {
 		body["roomShare"] = true
