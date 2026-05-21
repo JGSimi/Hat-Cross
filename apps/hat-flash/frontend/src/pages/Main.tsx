@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { Events } from '@wailsio/runtime';
 import type { LucideIcon } from 'lucide-react';
 import {
   AlertCircle,
@@ -8,50 +9,50 @@ import {
   Copy,
   DoorOpen,
   Hash,
-  KeyRound,
-  Keyboard,
   Loader2,
+  LogIn,
   LogOut,
-  MessageSquare,
   MonitorUp,
-  MoreHorizontal,
-  PanelRightOpen,
-  Power,
   RadioTower,
   RefreshCw,
   RotateCcw,
-  Search,
   Send,
   Settings,
   ShieldAlert,
   Sparkles,
-  Square,
   Trash2,
-  Wand2,
+  UserCircle,
   X,
   Zap,
 } from 'lucide-react';
 import type { User } from 'firebase/auth';
-import { firebaseAuth, firebaseReady, signInWithGoogle, signOutGoogle, watchAuth, watchCredits } from '../services/firebase';
+import {
+  firebaseAuth,
+  firebaseReady,
+  signInWithGoogle,
+  signOutGoogle,
+  summarizeCredits,
+  watchAuth,
+  watchCredits,
+  type CreditValidityInfo,
+} from '../services/firebase';
 import { createRoom, joinRoom, leaveRoom } from '../services/rooms';
 import { hat, type ChatStreamRequest, type Settings as HatSettings } from '../bridge/hat';
 import { useHatStore } from '../stores/hatStore';
 
 type Status = 'idle' | 'busy' | 'error';
-type DrawerView = 'chat' | 'clipboard' | 'rooms' | 'system';
+type DrawerView = 'rooms' | 'clipboard' | 'system';
 type ShortcutKey = keyof HatSettings['shortcuts'];
 
 const shortcutLabels: Record<ShortcutKey, { label: string; hint: string }> = {
-  clipboard: { label: 'Clipboard', hint: 'Captura texto e imagem' },
-  floatingChat: { label: 'Popover', hint: 'Chat rapido sobre outra janela' },
+  processClipboardFlash: { label: 'Clipboard + Flash', hint: 'Processa e mostra overlay' },
   adjustFlashPosition: { label: 'Flash', hint: 'Ajusta posicao do overlay' },
-  emergencyQuit: { label: 'Sair', hint: 'Fecha o app imediatamente' },
+  emergencyQuit: { label: 'Sair', hint: 'Fecha o app em qualquer tela' },
 };
 
 const defaultShortcuts: Record<ShortcutKey, string> = {
-  clipboard: 'CommandOrControl+Shift+X',
-  floatingChat: 'CommandOrControl+Shift+C',
-  adjustFlashPosition: 'CommandOrControl+Shift+F',
+  processClipboardFlash: 'CommandOrControl+Shift+F',
+  adjustFlashPosition: 'CommandOrControl+Alt+F',
   emergencyQuit: 'CommandOrControl+Shift+Q',
 };
 
@@ -60,14 +61,20 @@ function friendlyError(err: unknown) {
   const text = raw.toLowerCase();
   if (text === 'auth' || text.includes('auth') || text.includes('firebase')) return 'Conecte sua conta Google para continuar.';
   if (text.includes('clipboard')) return 'Clipboard vazio ou bloqueado pelo Windows.';
-  if (text.includes('network') || text.includes('fetch')) return 'Sem conexao com o Hat. Tente novamente.';
-  return raw || 'Algo falhou. Tente novamente.';
+  if (text.includes('network') || text.includes('fetch')) return 'Sem rede.';
+  return raw || 'Falhou.';
 }
 
-function shortEmail(email?: string | null) {
-  if (!email) return 'Desconectado';
-  const [name, domain] = email.split('@');
-  return `${name}@${domain?.split('.')[0] ?? ''}`;
+function profileName(user: User) {
+  return user.displayName?.trim() || user.email?.split('@')[0] || 'Perfil';
+}
+
+function compactCredits(value: number) {
+  if (value < 1_000_000) return value.toLocaleString('pt-BR');
+  return new Intl.NumberFormat('pt-BR', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
 function shortcutParts(shortcut: string) {
@@ -82,6 +89,31 @@ function shortcutTokenLabel(token: string) {
   if (normalized === 'option') return 'Alt';
   if (normalized === 'escape') return 'Esc';
   return token.length === 1 ? token.toUpperCase() : token;
+}
+
+function formatExpiryDistance(expiresAt: number, now: number) {
+  const diff = expiresAt - now;
+  if (diff <= 0) return null;
+
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  const rtf = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'always', style: 'short' });
+
+  if (diff < hour) return rtf.format(Math.max(1, Math.ceil(diff / minute)), 'minute');
+  if (diff < 2 * day) return rtf.format(Math.ceil(diff / hour), 'hour');
+  if (diff < 60 * day) return rtf.format(Math.ceil(diff / day), 'day');
+  return rtf.format(Math.ceil(diff / (30 * day)), 'month');
+}
+
+function creditValidityLabel(info: CreditValidityInfo | null, now: number) {
+  if (!info) return '';
+  if (info.hasLegacyBalanceWithoutLots) return 'sem validade';
+  if (!info.nextCreditExpiresAt) return '0 ativo';
+
+  const distance = formatExpiryDistance(info.nextCreditExpiresAt, now);
+  if (!distance) return 'vence agora';
+  return `${compactCredits(info.creditsExpiringNext)} vence ${distance}`;
 }
 
 function normalizeShortcutKey(key: string) {
@@ -126,19 +158,21 @@ export function Main() {
   const saveSettings = useHatStore((s) => s.saveSettings);
   const loadSettings = useHatStore((s) => s.loadSettings);
 
-  const [drawer, setDrawer] = useState<DrawerView>('chat');
+  const [drawer, setDrawer] = useState<DrawerView>('rooms');
   const [user, setUser] = useState<User | null>(firebaseAuth?.currentUser ?? null);
-  const [credits, setCredits] = useState<number | null>(null);
+  const [creditInfo, setCreditInfo] = useState<CreditValidityInfo | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [status, setStatus] = useState<Status>('idle');
   const [activeAction, setActiveAction] = useState('');
   const [error, setError] = useState('');
   const [prompt, setPrompt] = useState('');
   const [roomID, setRoomID] = useState('');
   const [roomTitle, setRoomTitle] = useState('Sala Hat');
-  const [roomShare, setRoomShare] = useState(false);
   const [updateMessage, setUpdateMessage] = useState('');
   const [quitConfirm, setQuitConfirm] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [activeMessageText, setActiveMessageText] = useState('');
+  const [activeMessageImage, setActiveMessageImage] = useState<string | null>(null);
+  const responseRef = useRef('');
 
   useEffect(() => {
     const stopAuth = watchAuth((nextUser) => setUser(nextUser));
@@ -147,11 +181,16 @@ export function Main() {
 
   useEffect(() => {
     if (!user) {
-      setCredits(null);
+      setCreditInfo(null);
       return;
     }
-    return watchCredits(user.uid, (doc) => setCredits(doc.credits ?? 0));
+    return watchCredits(user.uid, (doc) => setCreditInfo(summarizeCredits(doc)));
   }, [user]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!quitConfirm) return;
@@ -163,9 +202,20 @@ export function Main() {
   const canUseBackend = Boolean(user && settings);
   const activeText = (prompt || clipboardText).trim();
   const hasInput = Boolean(activeText || clipboardImage);
+  const hasWorkspaceContent = Boolean(activeMessageText || activeMessageImage || thinking || response);
+  const isEmptyWorkspace = !hasWorkspaceContent;
   const mode = settings?.mode ?? 'hat';
-  const conversationTitle = activeText ? activeText.slice(0, 44) : response ? response.slice(0, 44) : 'Nova conversa';
-  const inputSummary = clipboardImage ? 'Imagem anexada' : activeText ? `${activeText.length} caracteres` : 'Sem entrada';
+  const messageSummary = activeMessageImage ? 'Imagem' : activeMessageText ? 'Texto' : '';
+  const credits = creditInfo?.credits ?? null;
+  const userName = user ? profileName(user) : '';
+  const userEmail = user?.email ?? '';
+  const creditAmountLabel = credits === null ? '' : `${compactCredits(credits)} cr`;
+  const creditExpiryTitle = creditInfo?.nextCreditExpiresAt
+    ? new Intl.DateTimeFormat('pt-BR', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }).format(new Date(creditInfo.nextCreditExpiresAt))
+    : undefined;
 
   const streamRequest = useMemo(() => {
     if (!settings) return null;
@@ -178,11 +228,45 @@ export function Main() {
       maxTokens: settings.maxTokens,
       images: clipboardImage ? [clipboardImage] : [],
       roomId: roomID || null,
-      roomShare,
+      roomShare: Boolean(roomID.trim()),
       sourceMessageId: crypto.randomUUID(),
       idempotencyKey: crypto.randomUUID(),
     } satisfies ChatStreamRequest;
-  }, [activeText, clipboardImage, mode, roomID, roomShare, settings, streamID]);
+  }, [activeText, clipboardImage, mode, roomID, settings, streamID]);
+
+  useEffect(() => {
+    responseRef.current = response;
+  }, [response]);
+
+  useEffect(() => {
+    const offDone = Events.On('stream:done', (event) => {
+      const doneStreamId = Number(event.data?.streamId ?? 0);
+      if (doneStreamId !== streamID || !settings) return;
+      const finalResponse = responseRef.current;
+      if (!finalResponse) return;
+      if (settings.clipboard.copyResponseToClipboard) {
+        void hat.clipboard.writeText(finalResponse);
+      }
+      if (settings.clipboard.flash.enabled) {
+        void hat.flash.show({
+          text: finalResponse.slice(0, settings.clipboard.flash.previewLength),
+          position: settings.clipboard.flash.position,
+          timing: settings.clipboard.flash.timing,
+          appearance: settings.clipboard.flash.appearance,
+          streamId: streamID,
+        });
+      }
+    });
+    const offShortcut = Events.On('shortcut:pressed', (event) => {
+      if (event.data?.action === 'processClipboardFlash') {
+        void runGuarded('Processando clipboard...', processClipboardAndSend);
+      }
+    });
+    return () => {
+      offDone();
+      offShortcut();
+    };
+  }, [settings, streamID]);
 
   async function runGuarded(actionLabel: string, action: () => Promise<void>) {
     setStatus('busy');
@@ -199,8 +283,11 @@ export function Main() {
     }
   }
 
-  async function sendChat() {
+  async function sendClipboard() {
     if (!streamRequest || !canUseBackend || !hasInput) return;
+    const sentText = activeText || 'Analise o clipboard.';
+    setActiveMessageText(sentText);
+    setActiveMessageImage(clipboardImage);
     const nextStream = resetStream();
     await hat.chat.stream({ ...streamRequest, streamId: nextStream });
   }
@@ -210,6 +297,32 @@ export function Main() {
     setClipboard(payload.text, payload.image?.dataUrl ?? null);
     setPrompt(payload.text || 'Analise a imagem do clipboard.');
     setDrawer('clipboard');
+  }
+
+  async function processClipboardAndSend() {
+    if (!settings || !canUseBackend) return;
+    const payload = await hat.clipboard.process();
+    const text = payload.text || 'Analise a imagem do clipboard.';
+    const image = payload.image?.dataUrl ?? null;
+    setClipboard(payload.text, image);
+    setPrompt(text);
+    setActiveMessageText(text);
+    setActiveMessageImage(image);
+    setDrawer('clipboard');
+    const nextStream = resetStream();
+    await hat.chat.stream({
+      streamId: nextStream,
+      messages: [{ role: 'user', textContent: text }],
+      systemPrompt: settings.systemPrompt,
+      mode: mode as ChatStreamRequest['mode'],
+      temperature: settings.temperature,
+      maxTokens: settings.maxTokens,
+      images: image ? [image] : [],
+      roomId: roomID || null,
+      roomShare: Boolean(roomID.trim()),
+      sourceMessageId: crypto.randomUUID(),
+      idempotencyKey: crypto.randomUUID(),
+    });
   }
 
   async function copyResponse() {
@@ -240,7 +353,6 @@ export function Main() {
     if (!token) throw new Error('auth');
     const result = await createRoom(roomTitle.trim() || 'Sala Hat', token);
     setRoomID(result.roomId);
-    setRoomShare(true);
   }
 
   async function joinCurrentRoom() {
@@ -248,7 +360,6 @@ export function Main() {
     if (!token) throw new Error('auth');
     const result = await joinRoom(roomID.trim(), token);
     setRoomID(result.roomId);
-    setRoomShare(true);
   }
 
   async function leaveCurrentRoom() {
@@ -256,7 +367,6 @@ export function Main() {
     if (!token || !roomID) throw new Error('auth');
     await leaveRoom(roomID, token);
     setRoomID('');
-    setRoomShare(false);
   }
 
   async function saveShortcut(key: ShortcutKey, value: string) {
@@ -290,90 +400,57 @@ export function Main() {
     await hat.app.quit();
   }
 
-  function newConversation() {
-    resetStream();
-    setPrompt('');
-    setClipboard('', null);
-    setError('');
-    setDrawer('chat');
-  }
-
   return (
     <main className="hat-app">
       <aside className="hat-sidebar">
-        <div className="brand-row">
-          <div className="brand-symbol">H</div>
-          <div>
-            <h1>Hat</h1>
-            <span>Hat Flash</span>
-          </div>
-        </div>
-
         <nav className="main-nav" aria-label="Navegacao">
-          <NavButton active={drawer === 'chat'} icon={MessageSquare} label="Chat" onClick={() => setDrawer('chat')} />
           <NavButton active={drawer === 'clipboard'} icon={Clipboard} label="Clipboard" onClick={() => setDrawer('clipboard')} />
           <NavButton active={drawer === 'rooms'} icon={RadioTower} label="Salas" onClick={() => setDrawer('rooms')} />
-          <NavButton active={drawer === 'system'} icon={Settings} label="Sistema" onClick={() => setDrawer('system')} />
+          <NavButton active={drawer === 'system'} icon={Settings} label="Ajustes" onClick={() => setDrawer('system')} />
         </nav>
 
-        <label className="search-box">
-          <Search size={14} />
-          <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar" />
-        </label>
-
-        <section className="history-list">
-          <header>
-            <span>Historico</span>
-            <button onClick={newConversation} aria-label="Nova conversa">
-              <MessageSquare size={14} />
-            </button>
-          </header>
-          <button className="history-entry active" onClick={() => setDrawer('chat')}>
-            <strong>{conversationTitle}</strong>
-            <span>{response ? 'Resposta pronta' : hasInput ? 'Rascunho' : 'Vazia'}</span>
-          </button>
-          <button className="history-entry" onClick={() => setDrawer('clipboard')}>
-            <strong>Clipboard</strong>
-            <span>{inputSummary}</span>
-          </button>
-          <button className="history-entry" onClick={() => setDrawer('rooms')}>
-            <strong>{roomTitle}</strong>
-            <span>{roomID ? 'Ativa' : 'Sem sala'}</span>
-          </button>
-        </section>
-
         <footer className="sidebar-footer">
-          <div className={`live-status ${status}`}>
+          <div className={`live-status ${status}`} aria-live="polite">
             <span />
-            {isBusy ? activeAction : status === 'error' ? 'Atencao' : 'Pronto'}
+            {isBusy ? activeAction : status === 'error' ? 'Atencao' : user ? 'Pronto' : 'Faca login'}
           </div>
-          <button className="ghost-button" onClick={() => hat.popover.toggle()}>
-            <PanelRightOpen size={15} />
-            Popover
-          </button>
+          {user ? (
+            <button className="sidebar-profile" onClick={() => setDrawer('system')}>
+              <UserAvatar user={user} size={30} />
+              <span>
+                <strong>{userName}</strong>
+                <small>Perfil</small>
+              </span>
+            </button>
+          ) : (
+            <button className="sidebar-login" onClick={() => runGuarded('Abrindo Google...', async () => { await signInWithGoogle(); })} disabled={isBusy || !firebaseReady}>
+              <LogIn size={15} />
+              Entrar
+            </button>
+          )}
         </footer>
       </aside>
 
       <section className="chat-pane">
         <header className="top-bar">
-          <div>
-            <p>{drawer === 'chat' ? 'Chat' : drawer === 'clipboard' ? 'Clipboard' : drawer === 'rooms' ? 'Salas' : 'Sistema'}</p>
-            <h2>{drawer === 'chat' ? 'Conversa principal' : drawer === 'clipboard' ? 'Entrada do Windows' : drawer === 'rooms' ? 'Colaboracao' : 'Ajustes'}</h2>
-          </div>
           <div className="top-actions">
             <ModeSwitch mode={mode} disabled={!settings || isBusy} onChange={(next) => runGuarded('Salvando modo...', () => setMode(next))} />
-            <div className="account-pill">
-              <strong>{shortEmail(user?.email)}</strong>
-              <span>{credits ?? '--'} creditos</span>
-            </div>
-            {user ? (
+            {user && (
+              <section className="account-pill" aria-label="Perfil">
+                <UserAvatar user={user} size={34} />
+                <div className="account-copy">
+                  <strong>{userName}</strong>
+                  <span>{userEmail}</span>
+                </div>
+                <div className="account-credit">
+                  {credits !== null && <strong>{creditAmountLabel}</strong>}
+                  {creditInfo && <small title={creditExpiryTitle}>{creditValidityLabel(creditInfo, now)}</small>}
+                </div>
+              </section>
+            )}
+            {user && (
               <button className="icon-button" onClick={() => runGuarded('Saindo...', signOutGoogle)} aria-label="Sair">
                 <LogOut size={16} />
-              </button>
-            ) : (
-              <button className="solid-button" onClick={() => runGuarded('Abrindo Google...', async () => { await signInWithGoogle(); })} disabled={isBusy || !firebaseReady}>
-                <KeyRound size={15} />
-                Entrar
               </button>
             )}
           </div>
@@ -388,23 +465,39 @@ export function Main() {
         )}
 
         <div className="main-grid">
-          <section className="conversation">
-            {hasInput && (
+          <section className={`conversation ${isEmptyWorkspace ? 'empty' : ''}`}>
+            {isEmptyWorkspace && (
+              <div className="empty-start">
+                <h2>{roomID ? roomTitle : 'Entrada'}</h2>
+                <ComposerBar
+                  prompt={prompt}
+                  setPrompt={setPrompt}
+                  isBusy={isBusy}
+                  activeAction={activeAction}
+                  canUseBackend={canUseBackend}
+                  hasInput={hasInput}
+                  onCapture={() => runGuarded('Lendo clipboard...', processClipboard)}
+                  onSend={() => runGuarded('Enviando ao Hat...', sendClipboard)}
+                  centered
+                />
+              </div>
+            )}
+
+            {!isEmptyWorkspace && activeMessageText && (
               <article className="message user">
                 <header>
-                  <span>Voce</span>
-                  <small>{inputSummary}</small>
+                  <span>Clipboard</span>
+                  <small>{messageSummary}</small>
                 </header>
-                <pre>{activeText || 'Imagem anexada.'}</pre>
-                {clipboardImage && <img src={clipboardImage} alt="Clipboard" />}
+                <pre>{activeMessageText}</pre>
+                {activeMessageImage && <img src={activeMessageImage} alt="Clipboard" />}
               </article>
             )}
 
             {thinking && (
               <article className="message thinking">
                 <header>
-                  <span>Raciocinio</span>
-                  <small>stream</small>
+                  <span>Processando</span>
                 </header>
                 <pre>{thinking}</pre>
               </article>
@@ -413,32 +506,24 @@ export function Main() {
             {response ? (
               <article className="message assistant">
                 <header>
-                  <span><Bot size={14} /> Hat</span>
-                  <small>{response.length} caracteres</small>
+                  <span><Bot size={14} /> Resposta</span>
                 </header>
                 <pre>{response}</pre>
               </article>
-            ) : !hasInput ? (
-              <div className="empty-chat">
-                <Wand2 size={30} />
-                <h3>Pronto para trabalhar</h3>
-                <p>Escreva, capture o clipboard ou abra um submenu. A tela principal fica limpa.</p>
-              </div>
             ) : null}
           </section>
 
-          {drawer !== 'chat' && (
-            <aside className="drawer-panel">
-              <DrawerHeader icon={drawer === 'clipboard' ? Clipboard : drawer === 'rooms' ? RadioTower : Settings} title={drawer === 'clipboard' ? 'Clipboard' : drawer === 'rooms' ? 'Salas' : 'Sistema'} onClose={() => setDrawer('chat')} />
+          <aside className="drawer-panel">
+            <DrawerHeader icon={drawer === 'clipboard' ? Clipboard : drawer === 'rooms' ? RadioTower : Settings} title={drawer === 'clipboard' ? 'Clipboard' : drawer === 'rooms' ? 'Salas' : 'Ajustes'} onClose={() => setDrawer('rooms')} />
               {drawer === 'clipboard' && (
                 <ClipboardDrawer
                   text={activeText}
                   image={clipboardImage}
-                  shortcut={settings?.shortcuts.clipboard ?? ''}
+                  shortcut={settings?.shortcuts.processClipboardFlash ?? ''}
                   busy={isBusy}
                   onCapture={() => runGuarded('Lendo clipboard...', processClipboard)}
                   onCopy={() => runGuarded('Copiando entrada...', copyInput)}
-                  onSend={() => runGuarded('Enviando ao Hat...', sendChat)}
+                  onSend={() => runGuarded('Enviando ao Hat...', sendClipboard)}
                   prompt={prompt}
                   setPrompt={setPrompt}
                 />
@@ -449,8 +534,6 @@ export function Main() {
                   setRoomTitle={setRoomTitle}
                   roomID={roomID}
                   setRoomID={setRoomID}
-                  roomShare={roomShare}
-                  setRoomShare={setRoomShare}
                   busy={isBusy}
                   canUse={Boolean(user)}
                   onCreate={() => runGuarded('Criando sala...', createRoomFromTitle)}
@@ -474,26 +557,21 @@ export function Main() {
                   onQuit={() => runGuarded(quitConfirm ? 'Fechando app...' : 'Confirme saida...', emergencyQuit)}
                 />
               )}
-            </aside>
-          )}
+          </aside>
         </div>
 
-        <footer className="composer-bar">
-          <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Mensagem para o Hat..." rows={1} />
-          <button onClick={() => runGuarded('Lendo clipboard...', processClipboard)} disabled={isBusy} aria-label="Capturar clipboard">
-            {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
-          </button>
-          <button className="solid-button" onClick={() => runGuarded('Enviando ao Hat...', sendChat)} disabled={!canUseBackend || !hasInput || isBusy}>
-            {isBusy && activeAction.includes('Enviando') ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
-            Enviar
-          </button>
-          <button onClick={() => hat.chat.cancel(streamID)} disabled={!isBusy} aria-label="Parar">
-            <Square size={16} />
-          </button>
-          <button onClick={() => setDrawer(drawer === 'chat' ? 'clipboard' : 'chat')} aria-label="Mais">
-            <MoreHorizontal size={16} />
-          </button>
-        </footer>
+        {!isEmptyWorkspace && (
+          <ComposerBar
+            prompt={prompt}
+            setPrompt={setPrompt}
+            isBusy={isBusy}
+            activeAction={activeAction}
+            canUseBackend={canUseBackend}
+            hasInput={hasInput}
+            onCapture={() => runGuarded('Lendo clipboard...', processClipboard)}
+            onSend={() => runGuarded('Enviando ao Hat...', sendClipboard)}
+          />
+        )}
 
         {response && (
           <div className="result-actions">
@@ -516,12 +594,65 @@ export function Main() {
   );
 }
 
+function ComposerBar({
+  prompt,
+  setPrompt,
+  isBusy,
+  activeAction,
+  canUseBackend,
+  hasInput,
+  onCapture,
+  onSend,
+  centered = false,
+}: {
+  prompt: string;
+  setPrompt: (value: string) => void;
+  isBusy: boolean;
+  activeAction: string;
+  canUseBackend: boolean;
+  hasInput: boolean;
+  onCapture: () => void;
+  onSend: () => void;
+  centered?: boolean;
+}) {
+  return (
+    <footer className={`composer-bar ${centered ? 'center-composer' : ''}`}>
+      <textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            if (canUseBackend && hasInput && !isBusy) onSend();
+          }
+        }}
+        placeholder="Pergunta..."
+        rows={1}
+      />
+      <button onClick={onCapture} disabled={isBusy} aria-label="Capturar clipboard">
+        {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
+      </button>
+      <button className="solid-button icon-only" onClick={onSend} disabled={!canUseBackend || !hasInput || isBusy} aria-label="Enviar">
+        {isBusy && activeAction.includes('Enviando') ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
+      </button>
+    </footer>
+  );
+}
+
 function NavButton({ active, icon: Icon, label, onClick }: { active: boolean; icon: LucideIcon; label: string; onClick: () => void }) {
   return (
     <button className={`nav-button ${active ? 'active' : ''}`} onClick={onClick}>
       <Icon size={17} />
       <span>{label}</span>
     </button>
+  );
+}
+
+function UserAvatar({ user, size }: { user: User; size: number }) {
+  return (
+    <span className="user-avatar" style={{ width: size, height: size }}>
+      {user.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : <UserCircle size={Math.max(16, size - 12)} />}
+    </span>
   );
 }
 
@@ -573,7 +704,7 @@ function ClipboardDrawer({ text, image, shortcut, busy, onCapture, onCopy, onSen
       </button>
       <div className="drawer-preview">
         {image && <img src={image} alt="Clipboard" />}
-        {text ? <pre>{text}</pre> : <span>Clipboard vazio.</span>}
+        {text ? <pre>{text}</pre> : <span>Vazio</span>}
       </div>
       <textarea className="drawer-textarea" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Editar entrada..." />
       <div className="two-actions">
@@ -585,13 +716,11 @@ function ClipboardDrawer({ text, image, shortcut, busy, onCapture, onCopy, onSen
   );
 }
 
-function RoomsDrawer({ roomTitle, setRoomTitle, roomID, setRoomID, roomShare, setRoomShare, busy, canUse, onCreate, onJoin, onLeave, onCopy }: {
+function RoomsDrawer({ roomTitle, setRoomTitle, roomID, setRoomID, busy, canUse, onCreate, onJoin, onLeave, onCopy }: {
   roomTitle: string;
   setRoomTitle: (value: string) => void;
   roomID: string;
   setRoomID: (value: string) => void;
-  roomShare: boolean;
-  setRoomShare: (value: boolean) => void;
   busy: boolean;
   canUse: boolean;
   onCreate: () => void;
@@ -603,14 +732,10 @@ function RoomsDrawer({ roomTitle, setRoomTitle, roomID, setRoomID, roomShare, se
     <div className="drawer-body">
       <div className="room-card">
         <Hash size={15} />
-        <span>{roomID || 'sem sala ativa'}</span>
+        <span>{roomID || 'Nenhuma'}</span>
       </div>
       <Field label="Nome" value={roomTitle} onChange={setRoomTitle} placeholder="Sala Hat" />
       <Field label="Codigo" value={roomID} onChange={setRoomID} placeholder="Cole o codigo" />
-      <label className="check-row">
-        <input type="checkbox" checked={roomShare} onChange={(e) => setRoomShare(e.target.checked)} />
-        Compartilhar respostas
-      </label>
       <div className="two-actions">
         <button onClick={onCreate} disabled={!canUse || busy}><RadioTower size={14} /> Criar</button>
         <button onClick={onJoin} disabled={!canUse || !roomID || busy}><DoorOpen size={14} /> Entrar</button>
@@ -636,10 +761,14 @@ function SystemDrawer({ settings, updateMessage, quitConfirm, busy, onShortcut, 
   const shortcutEntries = settings ? (Object.keys(settings.shortcuts) as ShortcutKey[]) : [];
 
   return (
-    <div className="drawer-body">
-      <details open>
-        <summary>Atalhos</summary>
-        {settings && shortcutEntries.map((key) => (
+    <div className="drawer-body system-drawer">
+      <section className="settings-section">
+        <header>
+          <div>
+            <strong>Atalhos</strong>
+          </div>
+        </header>
+        {settings ? shortcutEntries.map((key) => (
           <ShortcutEditor
             key={key}
             shortcutKey={key}
@@ -649,21 +778,34 @@ function SystemDrawer({ settings, updateMessage, quitConfirm, busy, onShortcut, 
             disabled={busy}
             onChange={(value) => onShortcut(key, value)}
           />
-        ))}
-      </details>
-      <details>
-        <summary>Atualizacao</summary>
-        <button className="full" onClick={onUpdate} disabled={busy}><RefreshCw size={14} /> Verificar</button>
-        {updateMessage && <p className="drawer-note">{updateMessage}</p>}
-        <button className="full" onClick={onAutostart} disabled={busy}><Power size={14} /> {settings?.autoLaunch ? 'Desligar inicio' : 'Iniciar com Windows'}</button>
-      </details>
-      <details>
-        <summary>Seguranca</summary>
-        <button className="danger-button full" onClick={onQuit} disabled={busy && quitConfirm}>
-          <ShieldAlert size={14} />
-          {quitConfirm ? 'Clique de novo' : 'Sair do app'}
+        )) : (
+          <p className="drawer-note">Carregando...</p>
+        )}
+      </section>
+      <section className="settings-section compact">
+        <button
+          className={`toggle-setting ${settings?.autoLaunch ? 'active' : ''}`}
+          onClick={onAutostart}
+          disabled={busy}
+          aria-pressed={Boolean(settings?.autoLaunch)}
+        >
+          <span>
+            <strong>Iniciar ao ligar o computador</strong>
+            <small>{settings?.autoLaunch ? 'Ativado' : 'Desativado'}</small>
+          </span>
+          <span className="toggle-switch" aria-hidden="true">
+            <span />
+          </span>
         </button>
-      </details>
+      </section>
+      <section className="settings-actions">
+        <button onClick={onUpdate} disabled={busy}><RefreshCw size={14} /> Atualizar</button>
+        <button className="danger-button" onClick={onQuit} disabled={busy && quitConfirm}>
+          <ShieldAlert size={14} />
+          {quitConfirm ? 'Confirmar' : 'Sair'}
+        </button>
+        {updateMessage && <p className="drawer-note">{updateMessage}</p>}
+      </section>
     </div>
   );
 }
@@ -743,15 +885,6 @@ function ShortcutEditor({ shortcutKey, value, defaultValue, conflictLabel, disab
         <ShortcutValue value={value} recording={recording} saving={saving} />
       </button>
       <div className="shortcut-actions">
-        <button
-          type="button"
-          onClick={startRecording}
-          disabled={isBusy}
-          title="Gravar"
-          aria-label={`Gravar ${meta.label}`}
-        >
-          <Keyboard size={14} />
-        </button>
         <button
           type="button"
           onClick={() => void commitShortcut(defaultValue)}

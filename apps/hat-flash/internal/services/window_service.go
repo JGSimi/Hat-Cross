@@ -18,21 +18,6 @@ func (s *WindowService) SetWindow(name string, window application.Window) {
 	s.windows[name] = window
 }
 
-func (s *WindowService) TogglePopover() {
-	window := s.windows["popover"]
-	if window != nil {
-		if window.IsVisible() {
-			window.Hide()
-		} else {
-			window.Show()
-			window.Focus()
-		}
-	}
-	if s.events != nil {
-		s.events.Emit(models.EventPopoverToggle, nil)
-	}
-}
-
 func (s *WindowService) ShowFlash(payload models.FlashPayload) {
 	if window := s.windows["flash"]; window != nil {
 		window.SetPosition(payload.Position.X, payload.Position.Y)

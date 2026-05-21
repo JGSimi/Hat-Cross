@@ -9,6 +9,5 @@ const (
 	EventFlashHide        = "flash:hide"
 	EventAuthRequired     = "auth:required"
 	EventSettingsChanged  = "settings:changed"
-	EventPopoverToggle    = "popover:toggle"
 	EventShortcutPressed  = "shortcut:pressed"
 )

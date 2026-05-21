@@ -9,9 +9,8 @@ const fallbackSettings = {
   temperature: 0.7,
   maxTokens: 4096,
   shortcuts: {
-    clipboard: 'CommandOrControl+Shift+X',
-    floatingChat: 'CommandOrControl+Shift+C',
-    adjustFlashPosition: 'CommandOrControl+Shift+F',
+    processClipboardFlash: 'CommandOrControl+Shift+F',
+    adjustFlashPosition: 'CommandOrControl+Alt+F',
     emergencyQuit: 'CommandOrControl+Shift+Q',
   },
   tokenStats: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
@@ -23,24 +22,21 @@ const fallbackSettings = {
     soundOnComplete: true,
     captureImages: true,
     flash: {
-      enabled: false,
+      enabled: true,
       previewLength: 200,
       position: { x: 40, y: 40 },
-      timing: { mode: 'fade', fadeInMs: 300, fadeOutMs: 500, holdMs: null },
+      timing: { mode: 'typewriter', fadeInMs: 300, fadeOutMs: 500, holdMs: null },
       appearance: { color: '', opacity: 35, fontSizePx: 14, textShadow: true },
     },
   },
-  popover: { width: 380, height: 480, stealthMode: false, stealthHoverOpacity: 0.4, disguiseMode: true },
   notifications: {
     enabled: true,
     showProcessingNotification: true,
     showResponseNotification: true,
     showErrorNotification: true,
-    showChatResponseNotification: true,
     showUpdateNotification: true,
     showClipboardEmptyNotification: true,
   },
-  chatLimits: { maxContextMessages: 40, maxConversations: 50, maxMessagesPerConversation: 200, autoNewChatOnLimit: true },
   onboardingCompleted: false,
 } as Settings;
 
