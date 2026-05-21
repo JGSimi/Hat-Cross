@@ -1397,63 +1397,29 @@ summary {
 }
 
 .flash-workbench {
-  width: min(1180px, 100%);
+  width: min(1160px, 100%);
   height: 100vh;
   min-width: 0;
   margin: 0 auto;
-  padding: 18px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   overflow: hidden;
 }
 
 .flash-topbar {
-  min-height: 52px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-}
-
-.flash-brand {
-  min-width: 0;
+  min-height: 34px;
   display: flex;
   align-items: center;
-  gap: 11px;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.flash-brand h1 {
-  margin: 0;
-  color: var(--text);
-  font-size: 19px;
-  line-height: 1.1;
-  letter-spacing: 0;
-}
-
-.top-state {
-  min-height: 18px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 4px;
+.topbar-room-target {
+  min-width: 0;
   color: var(--muted);
   font-size: 12px;
-}
-
-.top-state i {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: var(--accent);
-}
-
-.top-state.busy i {
-  animation: pulse 1s ease-in-out infinite;
-}
-
-.top-state.error i {
-  background: var(--danger);
 }
 
 .flash-toolbar {
@@ -1461,7 +1427,7 @@ summary {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 7px;
 }
 
 .flash-toolbar .mode-switch {
@@ -1473,26 +1439,60 @@ summary {
   color: var(--accent);
 }
 
-.compact-account {
-  width: min(360px, 34vw);
-  min-width: 240px;
+.compact-account-chip {
+  min-width: 0;
+  max-width: 210px;
+  height: 34px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 3px 9px 3px 4px;
+  border-radius: 8px;
+  background: #0e0d0b;
+}
+
+.compact-account-chip span {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.compact-account-chip strong,
+.compact-account-chip small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-account-chip strong {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.05;
+}
+
+.compact-account-chip small {
+  color: #d6a93d;
+  font-size: 10px;
+  line-height: 1.05;
 }
 
 .room-main-layout {
   min-height: 0;
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(330px, 370px);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 10px;
   overflow: hidden;
 }
 
-.room-workspace-card {
+.room-command-center {
   min-height: 0;
   min-width: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 12px;
+  gap: 10px;
   padding: 16px;
   overflow: hidden;
   border: 1px solid var(--line-soft);
@@ -1500,21 +1500,22 @@ summary {
   background: #0d0c0a;
 }
 
-.room-workspace-card.active {
+.room-command-center.active {
   border-color: #3a4a32;
 }
 
-.room-workspace-card.idle {
+.room-command-center.idle {
   grid-template-rows: auto auto;
   align-content: start;
+  align-self: start;
 }
 
-.room-workspace-header {
+.room-center-header {
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  gap: 14px;
+  gap: 12px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--line-soft);
 }
@@ -1535,7 +1536,8 @@ summary {
 .room-title-lockup small,
 .room-command-panel label span,
 .room-auth-card small,
-.room-activity-panel header small {
+.room-activity-panel header small,
+.room-share-note span {
   color: var(--muted);
   font-size: 12px;
 }
@@ -1547,12 +1549,12 @@ summary {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text);
-  font-size: clamp(28px, 4.4vw, 52px);
+  font-size: clamp(30px, 4.6vw, 54px);
   line-height: 1;
   letter-spacing: 0;
 }
 
-.room-workspace-status {
+.room-center-status {
   display: grid;
   grid-template-columns: repeat(2, minmax(94px, 1fr));
   gap: 8px;
@@ -1563,7 +1565,7 @@ summary {
   display: grid;
   grid-template-columns: minmax(140px, 0.8fr) minmax(180px, 1fr) auto;
   align-items: end;
-  gap: 10px;
+  gap: 8px;
   padding: 12px;
   border-radius: 8px;
   background: #12100d;
@@ -1578,7 +1580,7 @@ summary {
 .room-command-actions {
   display: grid;
   grid-template-columns: minmax(78px, auto) minmax(78px, auto) 38px 38px;
-  gap: 8px;
+  gap: 6px;
 }
 
 .room-command-actions button[aria-label] {
@@ -1607,6 +1609,49 @@ summary {
 
 .room-setup-stage .room-command-actions {
   grid-template-columns: 1fr 1fr 44px 44px;
+}
+
+.active-room-actions {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #12100d;
+}
+
+.room-code-chip {
+  min-width: 0;
+  max-width: 210px;
+  justify-content: flex-start;
+  overflow: hidden;
+  border-color: #3a362e;
+  background: #0a0908;
+  color: #ddd6ca;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+}
+
+.room-share-note {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.room-share-note strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.room-capture-main {
+  min-height: 38px;
+  min-width: 170px;
 }
 
 .room-auth-card {
@@ -1651,6 +1696,7 @@ summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
 .room-activity-panel > header span {
@@ -1760,140 +1806,15 @@ summary {
   gap: 8px;
 }
 
-.room-ribbon {
-  min-height: 164px;
-  display: grid;
-  grid-template-columns: minmax(260px, 0.88fr) minmax(0, 1.12fr);
-  align-items: stretch;
-  gap: 14px;
-  padding: 16px;
-  border: 1px solid var(--line-soft);
-  border-radius: 8px;
-  background: linear-gradient(135deg, #17120d 0%, #0e0d0b 48%, #0b0a09 100%);
-}
-
-.room-ribbon.active {
-  border-color: #3a4a32;
-}
-
-.room-hero {
-  min-width: 0;
-  display: grid;
-  align-content: space-between;
-  gap: 18px;
-  padding: 4px 0;
-}
-
-.room-identity {
-  min-width: 0;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.room-identity span {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.room-identity small {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.room-identity strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text);
-  font-size: clamp(24px, 3vw, 38px);
-  line-height: 1.02;
-}
-
-.room-badges {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.room-form {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 10px;
-}
-
-.room-form label {
-  min-width: 0;
-  display: grid;
-  gap: 6px;
-}
-
-.room-form label span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.room-buttons {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: 1fr 1fr 44px 44px;
-  gap: 8px;
-}
-
-.room-buttons .icon-button,
-.room-buttons button[aria-label] {
-  width: 34px;
-  min-width: 34px;
-  padding: 0;
-}
-
-.room-login {
-  width: auto;
-  min-width: 132px;
-  min-height: 46px;
-}
-
-.room-login-panel {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  padding: 4px 0 4px 16px;
-  border-left: 1px solid var(--line-soft);
-}
-
-.room-login-panel span {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.room-login-panel small {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.room-login-panel strong {
-  color: var(--text);
-  font-size: clamp(22px, 2.8vw, 34px);
-  line-height: 1.04;
-}
-
 .clipboard-history-surface {
   min-height: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  padding: 12px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: #0d0c0a;
+  background: #0b0a08;
   overflow: hidden;
 }
 
@@ -1921,7 +1842,7 @@ summary {
 .history-header h2 {
   margin: 0;
   color: var(--text);
-  font-size: 20px;
+  font-size: 17px;
   line-height: 1.1;
   letter-spacing: 0;
 }
@@ -1931,15 +1852,19 @@ summary {
   font-size: 12px;
 }
 
-.process-button {
-  min-width: 142px;
-  min-height: 42px;
+.history-capture-button {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  border-color: #3a362e;
+  background: #12100d;
+  color: var(--muted);
 }
 
 .history-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .history-list {
@@ -1952,8 +1877,10 @@ summary {
 }
 
 .history-list.empty {
-  place-items: center;
-  align-content: center;
+  place-items: start;
+  align-content: start;
+  min-height: 0;
+  padding: 20px 4px;
   color: var(--muted);
 }
 
@@ -1964,11 +1891,11 @@ summary {
 
 .history-entry {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px;
   border: 1px solid transparent;
   border-radius: 8px;
-  background: #12100d;
+  background: #100f0d;
   cursor: pointer;
 }
 
@@ -2050,10 +1977,10 @@ summary {
 }
 
 .history-response {
-  max-height: 120px;
+  max-height: 96px;
   overflow: hidden;
   color: #e8e0d4;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -2062,69 +1989,6 @@ summary {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-}
-
-.clipboard-stage {
-  display: grid;
-  gap: 14px;
-  padding: 16px;
-  border: 1px solid var(--line-soft);
-  border-radius: 8px;
-  background: #0d0c0a;
-}
-
-.stage-header {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.stage-header div {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-}
-
-.stage-header h2 {
-  margin: 0;
-  color: var(--text);
-  font-size: 20px;
-  line-height: 1.1;
-  letter-spacing: 0;
-}
-
-.clipboard-stage .composer-bar {
-  min-height: 76px;
-  grid-template-columns: minmax(0, 1fr) 44px 44px;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 8px;
-  background: #171410;
-}
-
-.clipboard-stage .composer-bar textarea {
-  min-height: 48px;
-  font-size: 16px;
-}
-
-.clipboard-stage .composer-bar button {
-  min-height: 44px;
-}
-
-.stage-status {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.focus-shell .feed-panel {
-  min-height: 0;
-  border: 1px solid var(--line-soft);
-  background: #0a0908;
 }
 
 .settings-surface {
@@ -2153,12 +2017,9 @@ summary {
     padding: 14px 12px;
   }
 
-  .flash-topbar,
   .room-main-layout,
-  .room-workspace-header,
-  .room-command-panel,
-  .room-ribbon,
-  .room-form {
+  .room-center-header,
+  .room-command-panel {
     grid-template-columns: 1fr;
   }
 
@@ -2166,13 +2027,26 @@ summary {
     overflow: visible;
   }
 
-  .room-workspace-card,
+  .room-command-center,
   .clipboard-history-surface {
-    min-height: 420px;
+    min-height: 360px;
   }
 
-  .room-workspace-status {
+  .room-center-status {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .active-room-actions {
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
+
+  .active-room-actions .room-code-chip,
+  .active-room-actions .room-share-note {
+    grid-column: 1 / -1;
+  }
+
+  .active-room-actions .room-capture-main {
+    grid-column: 1;
   }
 
   .room-command-actions {
@@ -2191,56 +2065,40 @@ summary {
     flex: 1 1 auto;
   }
 
-  .compact-account {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .room-buttons {
-    display: grid;
-    grid-template-columns: 1fr 1fr 44px 44px;
-  }
-
-  .room-buttons button {
-    min-height: 44px;
-  }
-
-  .room-login-panel {
-    grid-template-columns: 1fr;
-    padding: 14px 0 0;
-    border-top: 1px solid var(--line-soft);
-    border-left: 0;
-  }
-
-  .room-login {
-    width: 100%;
-    justify-self: stretch;
+  .compact-account-chip {
+    max-width: 170px;
   }
 }
 
 @media (max-width: 520px) {
+  .topbar-room-target {
+    display: none;
+  }
+
+  .flash-topbar {
+    align-items: center;
+    flex-direction: row;
+  }
+
   .flash-toolbar {
+    width: 100%;
     flex-wrap: nowrap;
+    justify-content: stretch;
   }
 
   .flash-toolbar .mode-switch {
-    width: auto;
+    width: 116px;
+    flex: 0 0 116px;
     min-width: 0;
   }
 
-  .stage-header {
-    display: grid;
+  .compact-account-chip {
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 0;
   }
 
-  .stage-header .shortcut-inline {
-    justify-content: flex-start;
-  }
-
-  .clipboard-stage .composer-bar {
-    grid-template-columns: minmax(0, 1fr) 44px 44px;
-  }
-
-  .clipboard-stage .composer-bar textarea {
-    grid-column: auto;
+  .compact-account-chip small {
+    display: none;
   }
 }

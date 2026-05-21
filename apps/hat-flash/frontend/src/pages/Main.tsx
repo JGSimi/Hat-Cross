@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Events } from '@wailsio/runtime';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -55,6 +55,7 @@ interface ClipboardHistoryEntry {
 
 const MAX_CLIPBOARD_HISTORY = 10;
 const CLIPBOARD_HISTORY_STORAGE_KEY = 'hat-flash:clipboard-history:v1';
+const DEV_ROOM_ID = 'HF-DEMO-29K';
 
 const shortcutLabels: Record<ShortcutKey, { label: string; hint: string }> = {
   processClipboardFlash: { label: 'Clipboard + Flash', hint: 'Processa e mostra overlay' },
@@ -98,6 +99,35 @@ function clipText(value: string, max = 140) {
 
 function formatEntryTime(createdAt: number) {
   return new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date(createdAt));
+}
+
+function devSearchParams() {
+  if (!import.meta.env.DEV) return null;
+  return new URLSearchParams(window.location.search);
+}
+
+function devMockRoomID() {
+  return devSearchParams()?.has('mockRoom') ? DEV_ROOM_ID : '';
+}
+
+function devMockHistory() {
+  const params = devSearchParams();
+  if (!params?.has('mockHistory')) return null;
+  if (params.get('mockHistory') === 'empty') return [];
+  return Array.from({ length: MAX_CLIPBOARD_HISTORY }, (_, index) => ({
+    id: `dev-history-${index}`,
+    createdAt: Date.now() - index * 4 * 60_000,
+    text: index === 0
+      ? 'Resuma os pontos principais desta reuniao e destaque divergencias.'
+      : `Clipboard capturado ${index + 1}`,
+    image: null,
+    response: index === 2 ? '' : `Resposta pronta ${index + 1} para compartilhar na sala.`,
+    roomId: index < 6 ? DEV_ROOM_ID : null,
+    roomTitle: 'Sala Hat',
+    sharedToRoom: index < 6,
+    status: index === 2 ? 'processing' : index === 4 ? 'error' : 'done',
+    flashShown: index === 0,
+  } satisfies ClipboardHistoryEntry));
 }
 
 function friendlyError(err: unknown) {
@@ -160,6 +190,17 @@ function creditValidityLabel(info: CreditValidityInfo | null, now: number) {
   return `${compactCredits(info.creditsExpiringNext)} vence ${distance}`;
 }
 
+function devMockUser(): User | null {
+  if (!devSearchParams()?.has('mockLogin')) return null;
+  return {
+    uid: 'dev-preview-user',
+    displayName: 'Joao Gabriel',
+    email: 'joao2simi@gmail.com',
+    photoURL: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
+    getIdToken: async () => 'dev-preview-token',
+  } as User;
+}
+
 function normalizeShortcutKey(key: string) {
   if (key.length === 1) {
     if (key === ' ') return 'Space';
@@ -191,6 +232,8 @@ function shortcutFromEvent(event: ReactKeyboardEvent) {
 }
 
 export function Main() {
+  const previewUser = useMemo(() => devMockUser(), []);
+  const previewRoomID = useMemo(() => devMockRoomID(), []);
   const settings = useHatStore((s) => s.settings);
   const response = useHatStore((s) => s.response);
   const thinking = useHatStore((s) => s.thinking);
@@ -201,28 +244,41 @@ export function Main() {
   const loadSettings = useHatStore((s) => s.loadSettings);
 
   const [drawer, setDrawer] = useState<DrawerView>('rooms');
-  const [user, setUser] = useState<User | null>(firebaseAuth?.currentUser ?? null);
+  const [user, setUser] = useState<User | null>(previewUser ?? firebaseAuth?.currentUser ?? null);
   const [creditInfo, setCreditInfo] = useState<CreditValidityInfo | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [status, setStatus] = useState<Status>('idle');
   const [activeAction, setActiveAction] = useState('');
   const [error, setError] = useState('');
-  const [roomID, setRoomID] = useState('');
-  const [roomCode, setRoomCode] = useState('');
+  const [roomID, setRoomID] = useState(previewRoomID);
+  const [roomCode, setRoomCode] = useState(previewRoomID);
   const [roomTitle, setRoomTitle] = useState('Sala Hat');
   const [updateMessage, setUpdateMessage] = useState('');
   const [quitConfirm, setQuitConfirm] = useState(false);
-  const [history, setHistory] = useState<ClipboardHistoryEntry[]>(readClipboardHistory);
+  const [history, setHistory] = useState<ClipboardHistoryEntry[]>(() => devMockHistory() ?? readClipboardHistory());
   const [activeHistoryID, setActiveHistoryID] = useState(() => history[0]?.id ?? '');
   const responseRef = useRef('');
   const activeHistoryIDRef = useRef(activeHistoryID);
 
   useEffect(() => {
+    if (previewUser) {
+      setUser(previewUser);
+      return () => undefined;
+    }
     const stopAuth = watchAuth((nextUser) => setUser(nextUser));
     return stopAuth;
-  }, []);
+  }, [previewUser]);
 
   useEffect(() => {
+    if (previewUser) {
+      setCreditInfo({
+        credits: 800_000_000,
+        nextCreditExpiresAt: Date.now() + 9 * 24 * 60 * 60 * 1000,
+        creditsExpiringNext: 800_000_000,
+        hasLegacyBalanceWithoutLots: false,
+      });
+      return;
+    }
     if (!user) {
       setCreditInfo(null);
       return;
@@ -258,7 +314,6 @@ export function Main() {
   const creditAmountLabel = credits === null ? '' : `${compactCredits(credits)} cr`;
   const processShortcut = settings?.shortcuts.processClipboardFlash ?? defaultShortcuts.processClipboardFlash;
   const flashEnabled = settings?.clipboard.flash.enabled ?? true;
-  const stateLabel = isBusy ? activeAction : status === 'error' ? 'Atencao' : user ? 'Pronto' : 'Login pendente';
   const showingSettings = drawer === 'system';
   const roomEntries = roomID
     ? history.filter((entry) => entry.sharedToRoom && entry.roomId === roomID)
@@ -402,7 +457,7 @@ export function Main() {
   }
 
   async function createRoomFromTitle() {
-    const token = await firebaseAuth?.currentUser?.getIdToken();
+    const token = await user?.getIdToken();
     if (!token) throw new Error('auth');
     const result = await createRoom(roomTitle.trim() || 'Sala Hat', token);
     setRoomID(result.roomId);
@@ -410,7 +465,7 @@ export function Main() {
   }
 
   async function joinCurrentRoom() {
-    const token = await firebaseAuth?.currentUser?.getIdToken();
+    const token = await user?.getIdToken();
     if (!token) throw new Error('auth');
     const result = await joinRoom(roomCode.trim(), token);
     setRoomID(result.roomId);
@@ -418,7 +473,7 @@ export function Main() {
   }
 
   async function leaveCurrentRoom() {
-    const token = await firebaseAuth?.currentUser?.getIdToken();
+    const token = await user?.getIdToken();
     if (!token || !roomID) throw new Error('auth');
     await leaveRoom(roomID, token);
     setRoomID('');
@@ -464,35 +519,25 @@ export function Main() {
     <main className="hat-app focus-shell">
       <section className="flash-workbench">
         <header className="flash-topbar">
-          <div className="flash-brand">
-            <span className="brand-symbol">HF</span>
-            <div>
-              <h1>Hat Flash</h1>
-              <span className={`top-state ${status}`} aria-live="polite">
-                <i />
-                {stateLabel}
-              </span>
-            </div>
+          <div className="topbar-room-target">
+            {roomID ? <span>Sala ativa</span> : <span>{user ? 'Sem sala' : 'Login pendente'}</span>}
           </div>
           <div className="flash-toolbar">
             <ModeSwitch mode={mode} disabled={!settings || isBusy} onChange={(next) => runGuarded('Salvando modo...', () => setMode(next))} />
             {user ? (
-              <>
-                <section className="account-pill compact-account" aria-label="Perfil">
-                  <UserAvatar user={user} size={34} />
-                  <div className="account-copy">
-                    <strong>{userName}</strong>
-                    <span>{userEmail}</span>
-                  </div>
-                  <div className="account-credit">
-                    {credits !== null && <strong>{creditAmountLabel}</strong>}
-                    {creditInfo && <small title={creditExpiryTitle}>{creditValidityLabel(creditInfo, now)}</small>}
-                  </div>
-                </section>
-                <button className="icon-button" onClick={() => runGuarded('Saindo...', signOutGoogle)} aria-label="Sair" title="Sair">
-                  <LogOut size={16} />
-                </button>
-              </>
+              <CompactAccount
+                user={user}
+                name={userName}
+                email={userEmail}
+                credits={creditAmountLabel}
+                validity={creditInfo ? creditValidityLabel(creditInfo, now) : ''}
+                validityTitle={creditExpiryTitle}
+              />
+            ) : null}
+            {user ? (
+              <button className="icon-button" onClick={() => runGuarded('Saindo...', signOutGoogle)} aria-label="Sair" title="Sair">
+                <LogOut size={16} />
+              </button>
             ) : null}
             <button
               className={`icon-button ${showingSettings ? 'active' : ''}`}
@@ -532,7 +577,7 @@ export function Main() {
           </section>
         ) : (
           <section className="room-main-layout">
-            <RoomWorkspace
+            <RoomCommandCenter
               roomTitle={roomTitle}
               setRoomTitle={setRoomTitle}
               roomID={roomID}
@@ -544,11 +589,15 @@ export function Main() {
               activeEntryID={activeHistoryID}
               thinking={thinking}
               response={response}
+              canCapture={canUseBackend}
+              isBusy={isBusy}
+              activeAction={activeAction}
               onCreate={() => runGuarded('Criando sala...', createRoomFromTitle)}
               onJoin={() => runGuarded('Entrando na sala...', joinCurrentRoom)}
               onLeave={() => runGuarded('Saindo da sala...', leaveCurrentRoom)}
               onCopyRoom={() => runGuarded('Copiando codigo...', copyRoomID)}
               onLogin={() => runGuarded('Abrindo Google...', login)}
+              onCapture={() => runGuarded('Processando clipboard...', processClipboardAndSend)}
               onSelectEntry={setActiveHistoryID}
               onCopyResponse={(entryID) => runGuarded('Copiando resposta...', () => copyHistoryResponse(entryID))}
               onFlashResponse={(entryID) => runGuarded('Mostrando flash...', () => flashHistoryResponse(entryID))}
@@ -560,6 +609,7 @@ export function Main() {
               response={response}
               processShortcut={processShortcut}
               flashEnabled={flashEnabled}
+              roomID={roomID}
               canUseBackend={canUseBackend}
               isBusy={isBusy}
               activeAction={activeAction}
@@ -575,7 +625,7 @@ export function Main() {
   );
 }
 
-function RoomWorkspace({
+function RoomCommandCenter({
   roomTitle,
   setRoomTitle,
   roomID,
@@ -587,11 +637,15 @@ function RoomWorkspace({
   activeEntryID,
   thinking,
   response,
+  canCapture,
+  isBusy,
+  activeAction,
   onCreate,
   onJoin,
   onLeave,
   onCopyRoom,
   onLogin,
+  onCapture,
   onSelectEntry,
   onCopyResponse,
   onFlashResponse,
@@ -607,15 +661,21 @@ function RoomWorkspace({
   activeEntryID: string;
   thinking: string;
   response: string;
+  canCapture: boolean;
+  isBusy: boolean;
+  activeAction: string;
   onCreate: () => void;
   onJoin: () => void;
   onLeave: () => void;
   onCopyRoom: () => void;
   onLogin: () => void;
+  onCapture: () => void;
   onSelectEntry: (entryID: string) => void;
   onCopyResponse: (entryID: string) => void;
   onFlashResponse: (entryID: string) => void;
 }) {
+  const isActiveRoom = Boolean(roomID);
+  const destination = isActiveRoom ? roomTitle || 'Sala Hat' : 'Local';
   const roomControls = canUse ? (
     <section className="room-command-panel" aria-label="Controle da sala">
       <label className="room-field name">
@@ -653,28 +713,44 @@ function RoomWorkspace({
   );
 
   return (
-    <section className={`room-workspace-card ${roomID ? 'active' : 'idle'}`} aria-label="Sala">
-      <header className="room-workspace-header">
+    <section className={`room-command-center ${isActiveRoom ? 'active' : 'idle'}`} aria-label="Sala">
+      <header className="room-center-header">
         <div className="room-title-lockup">
           <RadioTower size={24} />
           <span>
-            <small>Sala ativa</small>
-            <h2>{roomID ? roomTitle || 'Sala Hat' : 'Sala'}</h2>
+            <small>{isActiveRoom ? 'Sala ativa' : canUse ? 'Sala' : 'Conta'}</small>
+            <h2>{isActiveRoom ? roomTitle || 'Sala Hat' : canUse ? 'Criar ou entrar' : 'Entrar no Hat'}</h2>
           </span>
         </div>
-        <div className="room-workspace-status">
-          <StatusChip tone={roomID ? 'ok' : 'warn'} label="Estado" value={roomID ? 'Conectada' : 'Pendente'} />
+        <div className="room-center-status">
+          <StatusChip tone={isActiveRoom ? 'ok' : 'warn'} label="Estado" value={isActiveRoom ? 'Conectada' : 'Pendente'} />
           <StatusChip tone={canUse ? 'ok' : 'warn'} label="Conta" value={canUse ? 'Autorizada' : 'Login'} />
         </div>
       </header>
 
-      {!roomID ? (
-        <section className="room-setup-stage">
+      {!isActiveRoom ? (
+        <section className="room-setup-stage" aria-label="Entrada da sala">
           {roomControls}
         </section>
       ) : (
         <>
-          {roomControls}
+          <section className="active-room-actions" aria-label="Acoes da sala">
+            <button className="room-code-chip" onClick={onCopyRoom} title="Copiar codigo">
+              <Copy size={14} />
+              {roomID}
+            </button>
+            <div className="room-share-note">
+              <span>Proximo clipboard</span>
+              <strong>{destination}</strong>
+            </div>
+            <button className="solid-button room-capture-main" onClick={onCapture} disabled={!canCapture || isBusy}>
+              {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
+              Capturar clipboard
+            </button>
+            <button onClick={onLeave} disabled={isBusy} aria-label="Sair da sala" title="Sair da sala">
+              <LogOut size={14} />
+            </button>
+          </section>
 
           <section className="room-activity-panel" aria-label="Atividade da sala">
             <header>
@@ -706,6 +782,7 @@ function ClipboardHistorySurface({
   response,
   processShortcut,
   flashEnabled,
+  roomID,
   canUseBackend,
   isBusy,
   activeAction,
@@ -720,6 +797,7 @@ function ClipboardHistorySurface({
   response: string;
   processShortcut: string;
   flashEnabled: boolean;
+  roomID: string;
   canUseBackend: boolean;
   isBusy: boolean;
   activeAction: string;
@@ -734,22 +812,24 @@ function ClipboardHistorySurface({
         <div>
           <Clipboard size={19} />
           <span>
-            <h2>Clipboard</h2>
-            <small>{entries.length}/{MAX_CLIPBOARD_HISTORY}</small>
+            <h2>Historico</h2>
+            <small>{entries.length}/{MAX_CLIPBOARD_HISTORY} recentes</small>
           </span>
         </div>
         <button
-          className="solid-button process-button"
+          className="history-capture-button"
           onClick={onCapture}
           disabled={!canUseBackend || isBusy}
+          title="Capturar clipboard"
+          aria-label="Capturar clipboard"
         >
           {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
-          Capturar
         </button>
       </header>
       <div className="history-meta">
         <ShortcutInline value={processShortcut} />
         <StatusChip tone={flashEnabled ? 'ok' : 'muted'} label="Flash" value={flashEnabled ? 'Ligado' : 'Off'} />
+        <StatusChip tone={roomID ? 'ok' : 'muted'} label="Destino" value={roomID ? 'Sala' : 'Local'} />
       </div>
       <ClipboardHistoryPanel
         entries={entries}
@@ -931,6 +1011,25 @@ function UserAvatar({ user, size }: { user: User; size: number }) {
     <span className="user-avatar" style={{ width: size, height: size }}>
       {user.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : <UserCircle size={Math.max(16, size - 12)} />}
     </span>
+  );
+}
+
+function CompactAccount({ user, name, email, credits, validity, validityTitle }: {
+  user: User;
+  name: string;
+  email: string;
+  credits: string;
+  validity: string;
+  validityTitle?: string;
+}) {
+  return (
+    <section className="compact-account-chip" aria-label="Perfil" title={email}>
+      <UserAvatar user={user} size={28} />
+      <span>
+        <strong>{credits || name}</strong>
+        {validity && <small title={validityTitle}>{validity}</small>}
+      </span>
+    </section>
   );
 }
 
