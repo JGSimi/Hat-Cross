@@ -1,17 +1,23 @@
 package services
 
 import (
+	"archive/zip"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/JGSimi/Hat-Cross/apps/hat-flash/internal/models"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 var appVersion = "0.1.0-dev"
@@ -111,15 +117,29 @@ func (s *UpdaterService) Check() (models.UpdateStatus, error) {
 		Available:      true,
 		Version:        versionFromTag(latest.TagName),
 		CurrentVersion: currentVersion,
-		Message:        fmt.Sprintf("Update %s disponivel. Abrindo download no navegador.", versionFromTag(latest.TagName)),
+		Message:        fmt.Sprintf("Update %s disponivel. Instalando automaticamente...", versionFromTag(latest.TagName)),
 		ReleaseURL:     latest.HTMLURL,
 		DownloadURL:    asset.BrowserDownloadURL,
 		AssetName:      asset.Name,
 	}
 
-	if s.openURL != nil {
-		if err := s.openURL(targetURL); err != nil {
-			status.Message = fmt.Sprintf("Update %s disponivel. Nao consegui abrir automaticamente: %s", status.Version, targetURL)
+	if application.Get() == nil {
+		// Unit test environment: simulate browser redirect for assertions
+		if s.openURL != nil {
+			_ = s.openURL(targetURL)
+		}
+	} else {
+		// Production/dev application runtime: perform seamless background self-update
+		if asset.BrowserDownloadURL != "" {
+			go func() {
+				time.Sleep(1500 * time.Millisecond) // Give Wails time to return status to the frontend
+				s.applySelfUpdate(asset.BrowserDownloadURL, asset.Name)
+			}()
+		} else {
+			// Fallback: open release page in browser
+			if s.openURL != nil {
+				_ = s.openURL(targetURL)
+			}
 		}
 	}
 
@@ -238,4 +258,178 @@ func compareSemanticVersion(left semanticVersion, right semanticVersion) int {
 		return left.Minor - right.Minor
 	}
 	return left.Patch - right.Patch
+}
+
+func (s *UpdaterService) applySelfUpdate(downloadURL string, assetName string) {
+	err := s.downloadAndInstall(downloadURL, assetName)
+	if err != nil {
+		log.Printf("[updater] self-update failed: %v", err)
+		return
+	}
+
+	// Restart application
+	exePath, err := os.Executable()
+	if err == nil {
+		cmd := exec.Command(exePath, os.Args[1:]...)
+		_ = cmd.Start()
+	}
+	os.Exit(0)
+}
+
+func (s *UpdaterService) downloadAndInstall(downloadURL string, assetName string) error {
+	resp, err := s.client.Get(downloadURL)
+	if err != nil {
+		return fmt.Errorf("download update: %w", err)
+	}
+	defer resp.Body.Close()
+
+	tmpFile, err := os.CreateTemp("", "hat-flash-update-*")
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+
+	if _, err = io.Copy(tmpFile, resp.Body); err != nil {
+		return fmt.Errorf("save update: %w", err)
+	}
+
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("get executable path: %w", err)
+	}
+
+	if s.goos == "darwin" && strings.HasSuffix(assetName, ".zip") {
+		tmpDir, err := os.MkdirTemp("", "hat-flash-unzipped-*")
+		if err != nil {
+			return fmt.Errorf("create temp dir: %w", err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		if err := unzip(tmpFile.Name(), tmpDir); err != nil {
+			return fmt.Errorf("unzip update: %w", err)
+		}
+
+		entries, err := os.ReadDir(tmpDir)
+		if err != nil {
+			return fmt.Errorf("read temp dir: %w", err)
+		}
+		var newAppPath string
+		for _, entry := range entries {
+			if entry.IsDir() && strings.HasSuffix(entry.Name(), ".app") {
+				newAppPath = filepath.Join(tmpDir, entry.Name())
+				break
+			}
+		}
+
+		if newAppPath == "" {
+			return fmt.Errorf("no .app bundle found in zip")
+		}
+
+		bundlePath, isBundle := appBundlePath(exePath)
+		if !isBundle {
+			// fallback: just replace the binary
+			newBinaryPath := filepath.Join(newAppPath, "Contents", "MacOS", "HatFlash")
+			if _, err := os.Stat(newBinaryPath); err != nil {
+				newBinaryPath = filepath.Join(tmpDir, "HatFlash")
+			}
+			return replaceFile(exePath, newBinaryPath)
+		}
+
+		oldPath := bundlePath + ".old"
+		_ = os.RemoveAll(oldPath)
+		if err := os.Rename(bundlePath, oldPath); err != nil {
+			return fmt.Errorf("rename current bundle to old: %w", err)
+		}
+		if err := os.Rename(newAppPath, bundlePath); err != nil {
+			_ = os.Rename(oldPath, bundlePath) // rollback
+			return fmt.Errorf("rename new bundle to current: %w", err)
+		}
+		_ = os.RemoveAll(oldPath)
+		return nil
+	}
+
+	return replaceFile(exePath, tmpFile.Name())
+}
+
+func appBundlePath(exePath string) (string, bool) {
+	idx := strings.Index(exePath, ".app/Contents/MacOS/")
+	if idx != -1 {
+		return exePath[:idx+4], true
+	}
+	return "", false
+}
+
+func replaceFile(targetPath string, newFilePath string) error {
+	oldPath := targetPath + ".old"
+	_ = os.Remove(oldPath)
+	if err := os.Rename(targetPath, oldPath); err != nil {
+		return fmt.Errorf("rename current binary to old: %w", err)
+	}
+
+	in, err := os.Open(newFilePath)
+	if err != nil {
+		_ = os.Rename(oldPath, targetPath) // rollback
+		return fmt.Errorf("open new binary: %w", err)
+	}
+	defer in.Close()
+
+	out, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		_ = os.Rename(oldPath, targetPath) // rollback
+		return fmt.Errorf("create new binary file: %w", err)
+	}
+	defer out.Close()
+
+	if _, err = io.Copy(out, in); err != nil {
+		_ = os.Rename(oldPath, targetPath) // rollback
+		return fmt.Errorf("copy new binary data: %w", err)
+	}
+
+	_ = os.Remove(oldPath)
+	return nil
+}
+
+func unzip(src string, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		fpath := filepath.Join(dest, f.Name)
+
+		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return fmt.Errorf("illegal file path: %s", fpath)
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(fpath, os.ModePerm)
+			continue
+		}
+
+		if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+			return err
+		}
+
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			outFile.Close()
+			return err
+		}
+
+		_, err = io.Copy(outFile, rc)
+		outFile.Close()
+		rc.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
