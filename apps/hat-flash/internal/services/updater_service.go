@@ -34,6 +34,7 @@ type UpdaterService struct {
 	openURL        externalURLOpener
 	goos           string
 	goarch         string
+	getExePath     func() (string, error)
 }
 
 type githubRelease struct {
@@ -81,6 +82,7 @@ func NewUpdaterServiceWithConfig(client *http.Client, releasesURL string, curren
 		openURL:        openURL,
 		goos:           runtime.GOOS,
 		goarch:         runtime.GOARCH,
+		getExePath:     os.Executable,
 	}
 }
 
@@ -268,7 +270,7 @@ func (s *UpdaterService) applySelfUpdate(downloadURL string, assetName string) {
 	}
 
 	// Restart application
-	exePath, err := os.Executable()
+	exePath, err := s.getExePath()
 	if err == nil {
 		cmd := exec.Command(exePath, os.Args[1:]...)
 		_ = cmd.Start()
@@ -294,7 +296,7 @@ func (s *UpdaterService) downloadAndInstall(downloadURL string, assetName string
 		return fmt.Errorf("save update: %w", err)
 	}
 
-	exePath, err := os.Executable()
+	exePath, err := s.getExePath()
 	if err != nil {
 		return fmt.Errorf("get executable path: %w", err)
 	}
