@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/JGSimi/Hat-Cross/apps/hat-flash/internal/models"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 var ErrClipboardImageUnsupported = errors.New("clipboard image unsupported on this platform")
@@ -72,7 +73,14 @@ func (s *ClipboardService) ReadText() (text string, err error) {
 	if s.clipboard == nil {
 		return "", errors.New("clipboard not ready")
 	}
-	text, ok := s.clipboard.Text()
+	var ok bool
+	if application.Get() == nil {
+		text, ok = s.clipboard.Text()
+	} else {
+		application.InvokeSync(func() {
+			text, ok = s.clipboard.Text()
+		})
+	}
 	if !ok {
 		return "", errors.New("failed to read clipboard text")
 	}
@@ -88,7 +96,15 @@ func (s *ClipboardService) WriteText(text string) (err error) {
 	if s.clipboard == nil {
 		return errors.New("clipboard not ready")
 	}
-	if !s.clipboard.SetText(text) {
+	var ok bool
+	if application.Get() == nil {
+		ok = s.clipboard.SetText(text)
+	} else {
+		application.InvokeSync(func() {
+			ok = s.clipboard.SetText(text)
+		})
+	}
+	if !ok {
 		return errors.New("failed to write clipboard text")
 	}
 	return nil
