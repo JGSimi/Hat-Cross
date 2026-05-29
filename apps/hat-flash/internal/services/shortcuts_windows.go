@@ -12,6 +12,7 @@ import (
 	"unsafe"
 
 	"github.com/JGSimi/Hat-Cross/apps/hat-flash/internal/models"
+	"github.com/wailsapp/wails/v3/pkg/application"
 	"golang.org/x/sys/windows"
 )
 
@@ -153,26 +154,28 @@ func (l *windowsShortcutLoop) drainMessages() {
 }
 
 func (l *windowsShortcutLoop) fire(action string) {
-	if l.events != nil {
-		l.events.Emit(models.EventShortcutPressed, map[string]any{"action": action})
-	}
-	switch action {
-	case "processClipboardFlash":
-		if l.handlers.ProcessClipboard != nil {
-			go l.handlers.ProcessClipboard()
-		}
-	case "adjustFlashPosition":
+	application.InvokeAsync(func() {
 		if l.events != nil {
-			l.events.Emit("flash-adjust-enter", nil)
+			l.events.Emit(models.EventShortcutPressed, map[string]any{"action": action})
 		}
-		if l.handlers.AdjustFlash != nil {
-			go l.handlers.AdjustFlash()
+		switch action {
+		case "processClipboardFlash":
+			if l.handlers.ProcessClipboard != nil {
+				go l.handlers.ProcessClipboard()
+			}
+		case "adjustFlashPosition":
+			if l.events != nil {
+				l.events.Emit("flash-adjust-enter", nil)
+			}
+			if l.handlers.AdjustFlash != nil {
+				go l.handlers.AdjustFlash()
+			}
+		case "emergencyQuit":
+			if l.handlers.EmergencyQuit != nil {
+				go l.handlers.EmergencyQuit()
+			}
 		}
-	case "emergencyQuit":
-		if l.handlers.EmergencyQuit != nil {
-			go l.handlers.EmergencyQuit()
-		}
-	}
+	})
 }
 
 func parseWindowsShortcut(shortcut string) (uint, uint, error) {

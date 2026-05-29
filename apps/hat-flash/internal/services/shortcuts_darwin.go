@@ -67,6 +67,7 @@ import (
 	"sync"
 
 	"github.com/JGSimi/Hat-Cross/apps/hat-flash/internal/models"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 const darwinHotkeyBaseID = 6200
@@ -143,7 +144,9 @@ func goHatFlashHotKeyPressed(id C.int) {
 	events := darwinShortcutsEvents
 	handlers := darwinShortcutsHandlers
 	darwinShortcutsMu.Unlock()
-	fireNativeShortcut(action, events, handlers)
+	application.InvokeAsync(func() {
+		fireNativeShortcut(action, events, handlers)
+	})
 }
 
 func fireNativeShortcut(action string, events EventBus, handlers ShortcutHandlers) {
