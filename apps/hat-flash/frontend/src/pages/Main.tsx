@@ -796,6 +796,9 @@ export function Main() {
     if (!settings) throw new Error('Configuracao ainda nao carregou.');
     if (!user) throw new Error('auth');
     if (!entitlements.canUseAI) throw new Error(billingRestrictionMessage('ai', subscriptionStatus));
+    if (settings.clipboard.flash.enabled) {
+      await showConfiguredFlash('Processando clipboard...', streamID, settings).catch(() => undefined);
+    }
     const payload = previewUser ? await devReadClipboardPayload() : await hat.clipboard.process();
     const text = payload.text || 'Analise a imagem do clipboard.';
     const image = payload.image?.dataUrl ?? null;
