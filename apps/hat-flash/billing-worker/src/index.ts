@@ -1,7 +1,7 @@
 import { verifyFirebaseIDToken, type FirebaseAuthEnv } from './firebaseAuth';
 import { createStripeGateway, type StripeEnv } from './stripeRest';
 import { applyStripeEvent } from './stripeWebhook';
-import { createBillingWorker, type BillingStore } from './worker';
+import { createBillingWorker, type BillingHealth, type BillingStore } from './worker';
 
 interface KVNamespace {
   get(key: string): Promise<string | null>;
@@ -27,6 +27,23 @@ function kvStore(kv: KVNamespace): BillingStore {
     async putJSON(key: string, value: unknown) {
       await kv.put(key, JSON.stringify(value));
     },
+  };
+}
+
+function hasValue(value: string | undefined) {
+  return Boolean(value?.trim());
+}
+
+function billingHealth(env: BillingEnv): BillingHealth {
+  const checks = {
+    billingKV: Boolean(env.BILLING_KV),
+    stripeSecret: hasValue(env.STRIPE_SECRET_KEY) && hasValue(env.STRIPE_WEBHOOK_SECRET),
+    firebaseProject: hasValue(env.FIREBASE_PROJECT_ID),
+    stripePrices: hasValue(env.STRIPE_PRICE_GO) && hasValue(env.STRIPE_PRICE_PRO) && hasValue(env.STRIPE_PRICE_ULTRA),
+  };
+  return {
+    ok: Object.values(checks).every(Boolean),
+    checks,
   };
 }
 
@@ -89,6 +106,9 @@ export default {
     if (request.method === 'OPTIONS') {
       return createBillingWorker().fetch(request);
     }
+    if (new URL(request.url).pathname.replace(/\/+$/, '') === '/v1/billing/healthz') {
+      return createBillingWorker({ health: () => billingHealth(env) }).fetch(request);
+    }
 
     const store = kvStore(requiredKV(env));
     return createBillingWorker({
@@ -96,6 +116,7 @@ export default {
       verifyIDToken: (idToken) => verifyFirebaseIDToken(idToken, env),
       stripe: createStripeGateway(env, store),
       handleWebhook: (webhookRequest) => handleStripeWebhook(webhookRequest, env, store),
+      health: () => billingHealth(env),
     }).fetch(request);
   },
 };

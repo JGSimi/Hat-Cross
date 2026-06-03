@@ -51,7 +51,15 @@ npm run configure:billing-worker-secrets
 npm run deploy:billing-worker
 ```
 
-6. Point the desktop app at this Worker with `VITE_HAT_BILLING_BASE_URL`, or route the existing Hat proxy path `/v1/billing` to this Worker.
+6. Smoke the deployed Worker:
+
+```bash
+BILLING_WORKER_URL=https://hat-flash-billing.<account>.workers.dev/v1/billing npm run smoke:billing-worker
+```
+
+The smoke command checks CORS, `/healthz`, and that `/subscription` still requires Firebase auth.
+
+7. Point the desktop app at this Worker with `VITE_HAT_BILLING_BASE_URL`, or route the existing Hat proxy path `/v1/billing` to this Worker.
 
 Current Cloudflare setup:
 

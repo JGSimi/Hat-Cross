@@ -25,6 +25,33 @@ function memoryStore(seed: Record<string, unknown> = {}): BillingStore {
 }
 
 describe('billing worker', () => {
+  it('returns a public health response without requiring auth', async () => {
+    const worker = createBillingWorker({
+      health: () => ({
+        ok: true,
+        checks: {
+          billingKV: true,
+          stripeSecret: true,
+          firebaseProject: true,
+          stripePrices: true,
+        },
+      }),
+    });
+
+    const response = await worker.fetch(new Request('https://billing.example.test/v1/billing/healthz'));
+
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      checks: {
+        billingKV: true,
+        stripeSecret: true,
+        firebaseProject: true,
+        stripePrices: true,
+      },
+    });
+    expect(response.status).toBe(200);
+  });
+
   it('returns CORS preflight headers', async () => {
     const worker = createBillingWorker();
 

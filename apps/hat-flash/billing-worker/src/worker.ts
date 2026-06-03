@@ -41,11 +41,22 @@ export interface BillingStore {
 
 export type FirebaseVerifier = (idToken: string) => Promise<AuthenticatedUser>;
 
+export interface BillingHealth {
+  ok: boolean;
+  checks: {
+    billingKV: boolean;
+    stripeSecret: boolean;
+    firebaseProject: boolean;
+    stripePrices: boolean;
+  };
+}
+
 interface BillingWorkerDependencies {
   stripe?: StripeGateway;
   verifyIDToken?: FirebaseVerifier;
   store?: BillingStore;
   handleWebhook?: (request: Request) => Promise<Response>;
+  health?: () => BillingHealth;
 }
 
 const corsHeaders = {
@@ -136,6 +147,18 @@ export function createBillingWorker(dependencies: BillingWorkerDependencies = {}
       try {
         const url = new URL(request.url);
         const route = routeFromURL(url);
+
+        if (route === '/healthz' && request.method === 'GET') {
+          return json(dependencies.health?.() ?? {
+            ok: false,
+            checks: {
+              billingKV: false,
+              stripeSecret: false,
+              firebaseProject: false,
+              stripePrices: false,
+            },
+          });
+        }
 
         if (route === '/checkout' && request.method === 'POST') {
           if (!dependencies.stripe) throw new HttpError(500, 'Stripe nao configurado.');

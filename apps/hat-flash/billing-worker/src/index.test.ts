@@ -19,6 +19,37 @@ async function stripeSignature(rawBody: string, secret: string, timestamp: numbe
 }
 
 describe('billing worker entrypoint', () => {
+  it('reports production readiness without exposing secret values', async () => {
+    const env = {
+      BILLING_KV: {
+        get: async () => null,
+        put: async () => undefined,
+      },
+      STRIPE_SECRET_KEY: 'sk_test_secret',
+      STRIPE_WEBHOOK_SECRET: 'whsec_secret',
+      FIREBASE_PROJECT_ID: 'hat-cross',
+      STRIPE_PRICE_GO: 'price_go',
+      STRIPE_PRICE_PRO: 'price_pro',
+      STRIPE_PRICE_ULTRA: 'price_ultra',
+    };
+
+    const response = await worker.fetch(new Request('https://billing.example.test/v1/billing/healthz'), env);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toEqual({
+      ok: true,
+      checks: {
+        billingKV: true,
+        stripeSecret: true,
+        firebaseProject: true,
+        stripePrices: true,
+      },
+    });
+    expect(JSON.stringify(payload)).not.toContain('sk_test_secret');
+    expect(JSON.stringify(payload)).not.toContain('price_go');
+  });
+
   it('answers CORS preflight even when required production bindings are not configured yet', async () => {
     const response = await worker.fetch(new Request('https://billing.example.test/v1/billing/checkout', {
       method: 'OPTIONS',
