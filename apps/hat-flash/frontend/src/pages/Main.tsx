@@ -34,6 +34,7 @@ import {
   type CreditValidityInfo,
 } from '../services/firebase';
 import { createCheckoutSession, createCustomerPortalSession, getSubscriptionStatus, type SubscriptionStatus } from '../services/billingGateway';
+import { billingEntitlements, billingRestrictionMessage } from '../services/billingEntitlements';
 import { formatPlanPrice, resolveSubscriptionPlan, subscriptionPlans, type SubscriptionPlanKey } from '../services/billingPlans';
 import { canShareClipboardToRoom, reconcileClipboardRoomShares, visibleMemberCount } from '../services/roomLogic';
 import {
@@ -322,6 +323,25 @@ function devMockUser(): User | null {
   } as User;
 }
 
+function devMockSubscriptionStatus(): SubscriptionStatus {
+  const plan = devSearchParams()?.get('mockPlan');
+  if (plan === 'none') {
+    return { status: 'none', plan: null, currentPeriodEnd: null };
+  }
+  if (plan === 'go' || plan === 'pro' || plan === 'ultra') {
+    return {
+      status: 'active',
+      plan,
+      currentPeriodEnd: Date.now() + 24 * 24 * 60 * 60 * 1000,
+    };
+  }
+  return {
+    status: 'active',
+    plan: 'pro',
+    currentPeriodEnd: Date.now() + 24 * 24 * 60 * 60 * 1000,
+  };
+}
+
 function normalizeShortcutKey(key: string) {
   if (key.length === 1) {
     if (key === ' ') return 'Space';
@@ -424,11 +444,7 @@ export function Main() {
 
   useEffect(() => {
     if (previewUser) {
-      setSubscriptionStatus({
-        status: 'active',
-        plan: 'pro',
-        currentPeriodEnd: Date.now() + 24 * 24 * 60 * 60 * 1000,
-      });
+      setSubscriptionStatus(devMockSubscriptionStatus());
       return () => undefined;
     }
     if (!user) {
@@ -599,8 +615,10 @@ export function Main() {
   }, []);
 
   const isBusy = status === 'busy';
-  const canUseBackend = Boolean(user && settings);
+  const entitlements = useMemo(() => billingEntitlements(subscriptionStatus), [subscriptionStatus]);
+  const canUseBackend = Boolean(user && settings && entitlements.canUseAI);
   const mode = settings?.mode ?? 'hat';
+  const effectiveMode = entitlements.canUseHatProMode ? mode : 'hat';
   const credits = creditInfo?.credits ?? null;
   const userName = user ? profileName(user) : '';
   const userEmail = user?.email ?? '';
@@ -609,7 +627,7 @@ export function Main() {
   const flashEnabled = settings?.clipboard.flash.enabled ?? true;
   const showingSettings = drawer === 'system';
   const activeMemberCount = visibleMemberCount(activeRoom, roomMembers.length);
-  const canShareActiveRoom = canShareClipboardToRoom(activeRoom, activeMemberCount);
+  const canShareActiveRoom = entitlements.canUseSharedRooms && canShareClipboardToRoom(activeRoom, activeMemberCount);
   const isWaitingForRoomMember = Boolean(activeRoom && activeMemberCount < 2);
   const creditExpiryTitle = creditInfo?.nextCreditExpiresAt
     ? new Intl.DateTimeFormat('pt-BR', {
@@ -732,6 +750,7 @@ export function Main() {
   async function processClipboardAndSend() {
     if (!settings) throw new Error('Configuracao ainda nao carregou.');
     if (!user) throw new Error('auth');
+    if (!entitlements.canUseAI) throw new Error(billingRestrictionMessage('ai', subscriptionStatus));
     const payload = await hat.clipboard.process();
     const text = payload.text || 'Analise a imagem do clipboard.';
     const image = payload.image?.dataUrl ?? null;
@@ -764,7 +783,7 @@ export function Main() {
         streamId: nextStream,
         messages: [{ role: 'user', textContent: text }],
         systemPrompt: settings.systemPrompt,
-        mode: mode as ChatStreamRequest['mode'],
+        mode: effectiveMode as ChatStreamRequest['mode'],
         temperature: settings.temperature,
         maxTokens: settings.maxTokens,
         images: image ? [image] : [],
@@ -862,6 +881,7 @@ export function Main() {
   }
 
   async function createRoomFromTitle() {
+    if (!entitlements.canUseSharedRooms) throw new Error(billingRestrictionMessage('rooms', subscriptionStatus));
     const token = await user?.getIdToken();
     if (!token) throw new Error('auth');
     const result = await createRoom(roomTitle.trim() || 'Sala Hat', token);
@@ -874,6 +894,7 @@ export function Main() {
   }
 
   async function joinRoomByID(nextRoomID: string) {
+    if (!entitlements.canUseSharedRooms) throw new Error(billingRestrictionMessage('rooms', subscriptionStatus));
     const token = await user?.getIdToken();
     if (!token) throw new Error('auth');
     const result = await joinRoom(nextRoomID, token);
@@ -899,6 +920,9 @@ export function Main() {
 
   async function setMode(nextMode: 'hat' | 'hat-pro') {
     if (!settings) return;
+    if (nextMode === 'hat-pro' && !entitlements.canUseHatProMode) {
+      throw new Error(billingRestrictionMessage('hat-pro', subscriptionStatus));
+    }
     await saveSettings({ ...settings, mode: nextMode as never });
   }
 
@@ -973,7 +997,12 @@ export function Main() {
             <span>{roomID ? activeRoom?.title || roomTitle || 'Sala Hat' : user ? 'Escolha uma sala' : 'Conta desconectada'}</span>
           </div>
           <div className="flash-toolbar">
-            <ModeSwitch mode={mode} disabled={!settings || isBusy} onChange={(next) => runGuarded('Salvando modo...', () => setMode(next))} />
+            <ModeSwitch
+              mode={effectiveMode}
+              disabled={!settings || isBusy}
+              proLocked={!entitlements.canUseHatProMode}
+              onChange={(next) => runGuarded('Salvando modo...', () => setMode(next))}
+            />
             {user ? (
               <CompactAccount
                 user={user}
@@ -1050,6 +1079,8 @@ export function Main() {
               waitingForMember={isWaitingForRoomMember}
               busy={isBusy}
               canUse={Boolean(user)}
+              canUseRooms={entitlements.canUseSharedRooms}
+              accessNote={billingRestrictionMessage('rooms', subscriptionStatus)}
               entries={roomEntries}
               activeEntryID={activeHistoryID}
               canCapture={canUseBackend}
@@ -1073,8 +1104,9 @@ export function Main() {
               response={response}
               processShortcut={processShortcut}
               flashEnabled={flashEnabled}
-              roomDestination={canShareActiveRoom ? 'Sala' : activeRoom ? 'Aguarda' : 'Local'}
+              roomDestination={canShareActiveRoom ? 'Sala' : activeRoom ? entitlements.canUseSharedRooms ? 'Aguarda' : 'Pro' : 'Local'}
               canUseBackend={canUseBackend}
+              disabledReason={!user ? 'Conecte sua conta Google.' : !entitlements.canUseAI ? billingRestrictionMessage('ai', subscriptionStatus) : ''}
               isBusy={isBusy}
               activeAction={activeAction}
               onCapture={() => runGuarded('Processando clipboard...', processClipboardAndSend)}
@@ -1105,6 +1137,8 @@ function RoomCommandCenter({
   waitingForMember,
   busy,
   canUse,
+  canUseRooms,
+  accessNote,
   entries,
   activeEntryID,
   canCapture,
@@ -1136,6 +1170,8 @@ function RoomCommandCenter({
   waitingForMember: boolean;
   busy: boolean;
   canUse: boolean;
+  canUseRooms: boolean;
+  accessNote: string;
   entries: RoomEntry[];
   activeEntryID: string;
   canCapture: boolean;
@@ -1153,7 +1189,7 @@ function RoomCommandCenter({
   onFlashResponse: (entryID: string) => void;
 }) {
   const isActiveRoom = Boolean(roomID);
-  const heading = isActiveRoom ? activeRoom?.title || roomTitle || 'Sala Hat' : canUse ? 'Escolher sala' : 'Entrar no Hat';
+  const heading = isActiveRoom ? activeRoom?.title || roomTitle || 'Sala Hat' : canUse ? canUseRooms ? 'Escolher sala' : 'Plano Pro' : 'Entrar no Hat';
   const eyebrow = isActiveRoom ? 'Sala ativa' : canUse ? 'Sala' : 'Conta';
   const destination = isActiveRoom ? activeRoom?.title || roomTitle || 'Sala Hat' : 'Local';
   const headerStatus: Array<{ tone: 'ok' | 'warn' | 'muted'; label: string; value: string }> = isActiveRoom
@@ -1163,7 +1199,7 @@ function RoomCommandCenter({
     ]
     : canUse
       ? [
-        { tone: 'warn', label: 'Sala', value: 'Sem sala' },
+        { tone: canUseRooms ? 'warn' : 'muted', label: 'Sala', value: canUseRooms ? 'Sem sala' : 'Pro' },
         { tone: 'ok', label: 'Conta', value: 'Ok' },
       ]
       : [];
@@ -1184,9 +1220,10 @@ function RoomCommandCenter({
         />
       </label>
       <div className="room-command-actions">
-        <button className="solid-button" onClick={onCreate} disabled={busy}><RadioTower size={14} /> Criar sala</button>
-        <button onClick={onJoin} disabled={Boolean(roomID) || !roomCode.trim() || busy}><DoorOpen size={14} /> Entrar</button>
+        <button className="solid-button" onClick={onCreate} disabled={!canUseRooms || busy}><RadioTower size={14} /> Criar sala</button>
+        <button onClick={onJoin} disabled={!canUseRooms || Boolean(roomID) || !roomCode.trim() || busy}><DoorOpen size={14} /> Entrar</button>
       </div>
+      {!canUseRooms && accessNote && <p className="drawer-note room-access-note">{accessNote}</p>}
     </section>
   ) : (
     <section className="room-auth-card" aria-label="Login">
@@ -1221,7 +1258,7 @@ function RoomCommandCenter({
       {!isActiveRoom ? (
         <section className="room-setup-stage" aria-label="Entrada da sala">
           {roomControls}
-          {canUse && (
+          {canUse && canUseRooms && (
             <OpenRoomsList
               rooms={rooms}
               loading={roomsLoading}
@@ -1316,6 +1353,7 @@ function ClipboardHistorySurface({
   flashEnabled,
   roomDestination,
   canUseBackend,
+  disabledReason,
   isBusy,
   activeAction,
   onCapture,
@@ -1331,6 +1369,7 @@ function ClipboardHistorySurface({
   flashEnabled: boolean;
   roomDestination: string;
   canUseBackend: boolean;
+  disabledReason: string;
   isBusy: boolean;
   activeAction: string;
   onCapture: () => void;
@@ -1352,7 +1391,7 @@ function ClipboardHistorySurface({
           className="history-capture-button"
           onClick={onCapture}
           disabled={!canUseBackend || isBusy}
-          title="Capturar clipboard"
+          title={canUseBackend ? 'Capturar clipboard' : disabledReason || 'Capturar clipboard'}
           aria-label="Capturar clipboard"
         >
           {isBusy && activeAction.includes('clipboard') ? <Loader2 className="spin" size={16} /> : <Clipboard size={16} />}
@@ -1363,6 +1402,7 @@ function ClipboardHistorySurface({
         <StatusChip tone={flashEnabled ? 'ok' : 'muted'} label="Flash" value={flashEnabled ? 'Ligado' : 'Off'} />
         <StatusChip tone={roomDestination === 'Sala' ? 'ok' : 'muted'} label="Destino" value={roomDestination} />
       </div>
+      {!canUseBackend && disabledReason && <p className="drawer-note history-access-note">{disabledReason}</p>}
       <ClipboardHistoryPanel
         entries={entries}
         activeEntryID={activeEntryID}
@@ -1652,14 +1692,24 @@ function CompactAccount({ user, name, email, credits, validity, validityTitle }:
   );
 }
 
-function ModeSwitch({ mode, disabled, onChange }: { mode: string; disabled: boolean; onChange: (mode: 'hat' | 'hat-pro') => void }) {
+function ModeSwitch({ mode, disabled, proLocked, onChange }: {
+  mode: string;
+  disabled: boolean;
+  proLocked: boolean;
+  onChange: (mode: 'hat' | 'hat-pro') => void;
+}) {
   return (
     <div className="mode-switch" role="group" aria-label="Modo">
       <button className={mode === 'hat' ? 'active' : ''} onClick={() => onChange('hat')} disabled={disabled}>
         {mode === 'hat' ? <Check size={14} /> : <Zap size={14} />}
         Hat
       </button>
-      <button className={mode === 'hat-pro' ? 'active' : ''} onClick={() => onChange('hat-pro')} disabled={disabled}>
+      <button
+        className={mode === 'hat-pro' ? 'active' : ''}
+        onClick={() => onChange('hat-pro')}
+        disabled={disabled || proLocked}
+        title={proLocked ? 'Modo Pro exige plano Pro ou Ultra.' : undefined}
+      >
         {mode === 'hat-pro' ? <Check size={14} /> : <Sparkles size={14} />}
         Pro
       </button>
