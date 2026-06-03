@@ -39,7 +39,11 @@ func (r *SettingsRepository) Get() (models.Settings, error) {
 	if err := json.Unmarshal(bytes, &loaded); err != nil {
 		return defaults, err
 	}
-	return normalizeSettings(loaded), nil
+	normalized := normalizeSettings(loaded)
+	if normalized != loaded {
+		_ = r.Save(normalized)
+	}
+	return normalized, nil
 }
 
 func (r *SettingsRepository) Save(settings models.Settings) error {

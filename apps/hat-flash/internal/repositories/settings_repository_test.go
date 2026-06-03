@@ -110,3 +110,26 @@ func TestSettingsRepositoryRepairsLegacyInvisibleFlashSettings(t *testing.T) {
 		t.Fatalf("flash opacity should be readable, got %d", got.Clipboard.Flash.Appearance.Opacity)
 	}
 }
+
+func TestSettingsRepositoryPersistsRepairedLegacyInvisibleFlashSettings(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	raw := `{"clipboard":{"flash":{"enabled":false,"appearance":{"opacity":35,"fontSizePx":14}}}}`
+	if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+	repo := NewSettingsRepository(path)
+
+	if _, err := repo.Get(); err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	got, err := repo.Get()
+	if err != nil {
+		t.Fatalf("get repaired: %v", err)
+	}
+	if !got.Clipboard.Flash.Enabled {
+		t.Fatalf("persisted legacy flash should be enabled")
+	}
+	if got.Clipboard.Flash.Appearance.Opacity < 86 {
+		t.Fatalf("persisted flash opacity should be readable, got %d", got.Clipboard.Flash.Appearance.Opacity)
+	}
+}
