@@ -50,6 +50,30 @@ test('reports missing billing release env vars without leaking values', () => {
   ]);
 });
 
+test('can check only the desktop build environment', () => {
+  assert.deepEqual(checkBillingReleaseEnv({
+    VITE_FIREBASE_API_KEY: 'AIzaSy-test',
+    VITE_FIREBASE_AUTH_DOMAIN: 'hat-cross.firebaseapp.com',
+    VITE_FIREBASE_PROJECT_ID: 'hat-cross',
+    VITE_FIREBASE_APP_ID: '1:123:web:abc',
+    VITE_HAT_BILLING_BASE_URL: 'https://hat-flash-billing.example.workers.dev/v1/billing',
+  }, { scope: 'desktop-build' }), {
+    ok: true,
+    missing: [],
+    warnings: [],
+  });
+});
+
+test('desktop build env check does not require worker secrets', () => {
+  assert.deepEqual(missingBillingReleaseEnv({}, { scope: 'desktop-build' }), [
+    { name: 'VITE_FIREBASE_API_KEY', scope: 'desktop-build' },
+    { name: 'VITE_FIREBASE_AUTH_DOMAIN', scope: 'desktop-build' },
+    { name: 'VITE_FIREBASE_PROJECT_ID', scope: 'desktop-build' },
+    { name: 'VITE_FIREBASE_APP_ID', scope: 'desktop-build' },
+    { name: 'VITE_HAT_BILLING_BASE_URL', scope: 'desktop-build' },
+  ]);
+});
+
 test('accepts a complete production billing release environment', () => {
   assert.deepEqual(checkBillingReleaseEnv(completeEnv), {
     ok: true,

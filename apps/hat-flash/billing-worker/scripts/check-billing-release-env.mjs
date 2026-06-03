@@ -14,8 +14,13 @@ export const BILLING_RELEASE_ENV = [
   { name: 'STRIPE_PRICE_ULTRA', scope: 'worker-secret' },
 ];
 
-export function missingBillingReleaseEnv(env = process.env) {
-  return BILLING_RELEASE_ENV
+function scopedEntries(scope) {
+  if (!scope) return BILLING_RELEASE_ENV;
+  return BILLING_RELEASE_ENV.filter((entry) => entry.scope === scope);
+}
+
+export function missingBillingReleaseEnv(env = process.env, options = {}) {
+  return scopedEntries(options.scope)
     .filter((entry) => !env[entry.name]?.trim())
     .map(({ name, scope }) => ({ name, scope }));
 }
@@ -49,11 +54,11 @@ function firebaseProjectWarning(env) {
   return 'FIREBASE_PROJECT_ID should match VITE_FIREBASE_PROJECT_ID.';
 }
 
-export function checkBillingReleaseEnv(env = process.env) {
-  const missing = missingBillingReleaseEnv(env);
+export function checkBillingReleaseEnv(env = process.env, options = {}) {
+  const missing = missingBillingReleaseEnv(env, options);
   const warnings = [
     billingURLWarning(env),
-    firebaseProjectWarning(env),
+    options.scope ? null : firebaseProjectWarning(env),
   ].filter(Boolean);
 
   return {
@@ -84,7 +89,10 @@ export function formatBillingReleaseCheck(result) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const result = checkBillingReleaseEnv();
+  const scopeArg = process.argv.find((arg) => arg.startsWith('--scope='));
+  const result = checkBillingReleaseEnv(process.env, {
+    scope: scopeArg ? scopeArg.slice('--scope='.length) : undefined,
+  });
   console.log(formatBillingReleaseCheck(result));
   if (!result.ok) process.exitCode = 1;
 }

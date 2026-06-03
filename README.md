@@ -76,6 +76,7 @@ Hat Flash cobra assinaturas mensais por Stripe:
 Antes de release com billing ativo, valide o ambiente:
 
 ```bash
+npm run check:billing-build-env
 npm run check:billing-release-env
 npm run test:billing-worker
 npm run test:billing-scripts
