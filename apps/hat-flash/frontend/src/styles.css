@@ -907,6 +907,123 @@ summary {
   line-height: 1.35;
 }
 
+.subscription-section {
+  gap: 12px;
+}
+
+.subscription-section > header svg {
+  color: var(--accent);
+}
+
+.subscription-summary {
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: #12100e;
+}
+
+.subscription-summary span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.subscription-summary small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subscription-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subscription-summary-actions button:first-child {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+}
+
+.subscription-plans {
+  display: grid;
+  gap: 8px;
+}
+
+.subscription-plan {
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid #2d2922;
+  border-radius: 8px;
+  background: #11100e;
+}
+
+.subscription-plan.active {
+  border-color: var(--accent);
+  background: #17130f;
+}
+
+.subscription-plan header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.subscription-plan header span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.subscription-plan header small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.subscription-plan b {
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.subscription-plan ul {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+  list-style: none;
+}
+
+.subscription-plan li {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.subscription-plan li::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  display: inline-block;
+  margin-right: 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  vertical-align: 1px;
+}
+
+.subscription-plan button {
+  width: 100%;
+}
+
 .toggle-setting {
   width: 100%;
   min-height: 48px;

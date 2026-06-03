@@ -6,7 +6,9 @@ import {
   Check,
   Clipboard,
   Copy,
+  CreditCard,
   DoorOpen,
+  ExternalLink,
   Loader2,
   LogIn,
   LogOut,
@@ -31,6 +33,8 @@ import {
   watchCredits,
   type CreditValidityInfo,
 } from '../services/firebase';
+import { createCheckoutSession, createCustomerPortalSession, getSubscriptionStatus, type SubscriptionStatus } from '../services/billingGateway';
+import { formatPlanPrice, resolveSubscriptionPlan, subscriptionPlans, type SubscriptionPlanKey } from '../services/billingPlans';
 import { canShareClipboardToRoom, reconcileClipboardRoomShares, visibleMemberCount } from '../services/roomLogic';
 import {
   createRoom,
@@ -363,6 +367,9 @@ export function Main() {
   const [drawer, setDrawer] = useState<DrawerView>('rooms');
   const [user, setUser] = useState<User | null>(previewUser ?? firebaseAuth?.currentUser ?? null);
   const [creditInfo, setCreditInfo] = useState<CreditValidityInfo | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingMessage, setBillingMessage] = useState('');
   const [now, setNow] = useState(() => Date.now());
   const [status, setStatus] = useState<Status>('idle');
   const [activeAction, setActiveAction] = useState('');
@@ -414,6 +421,44 @@ export function Main() {
     }
     return watchCredits(user.uid, (doc) => setCreditInfo(summarizeCredits(doc)));
   }, [user]);
+
+  useEffect(() => {
+    if (previewUser) {
+      setSubscriptionStatus({
+        status: 'active',
+        plan: 'pro',
+        currentPeriodEnd: Date.now() + 24 * 24 * 60 * 60 * 1000,
+      });
+      return () => undefined;
+    }
+    if (!user) {
+      setSubscriptionStatus(null);
+      setBillingMessage('');
+      setBillingLoading(false);
+      return () => undefined;
+    }
+
+    let active = true;
+    setBillingLoading(true);
+    getSubscriptionStatus({ getIdToken: () => user.getIdToken() })
+      .then((status) => {
+        if (!active) return;
+        setSubscriptionStatus(status);
+        setBillingMessage('');
+      })
+      .catch((err) => {
+        if (!active) return;
+        setSubscriptionStatus(null);
+        setBillingMessage(friendlyError(err));
+      })
+      .finally(() => {
+        if (active) setBillingLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [previewUser, user]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -879,6 +924,47 @@ export function Main() {
     await signInWithGoogle();
   }
 
+  function openBillingURL(url: string) {
+    const opened = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!opened) window.location.assign(url);
+  }
+
+  async function refreshBillingStatus(nextMessage = '') {
+    if (!user) throw new Error('auth');
+    const status = await getSubscriptionStatus({ getIdToken: () => user.getIdToken() });
+    setSubscriptionStatus(status);
+    setBillingMessage(nextMessage);
+  }
+
+  async function subscribePlan(planKey: SubscriptionPlanKey) {
+    if (!user) throw new Error('auth');
+    setBillingLoading(true);
+    try {
+      const session = await createCheckoutSession({
+        planKey,
+        getIdToken: () => user.getIdToken(),
+      });
+      openBillingURL(session.url);
+      setBillingMessage('Checkout Stripe aberto no navegador.');
+    } finally {
+      setBillingLoading(false);
+    }
+  }
+
+  async function manageBilling() {
+    if (!user) throw new Error('auth');
+    setBillingLoading(true);
+    try {
+      const session = await createCustomerPortalSession({
+        getIdToken: () => user.getIdToken(),
+      });
+      openBillingURL(session.url);
+      setBillingMessage('Portal Stripe aberto no navegador.');
+    } finally {
+      setBillingLoading(false);
+    }
+  }
+
   return (
     <main className="hat-app focus-shell">
       <section className="flash-workbench">
@@ -927,9 +1013,16 @@ export function Main() {
             <PanelHeader icon={Settings} title="Ajustes" />
             <SystemDrawer
               settings={settings}
+              canUseBilling={Boolean(user)}
+              subscriptionStatus={subscriptionStatus}
+              billingBusy={billingLoading || isBusy}
+              billingMessage={billingMessage}
               updateMessage={updateMessage}
               quitConfirm={quitConfirm}
               busy={isBusy}
+              onSubscribe={(planKey) => runGuarded(`Abrindo ${resolveSubscriptionPlan(planKey).name}...`, () => subscribePlan(planKey))}
+              onManageBilling={() => runGuarded('Abrindo portal...', manageBilling)}
+              onRefreshBilling={() => runGuarded('Atualizando assinatura...', () => refreshBillingStatus('Assinatura atualizada.'))}
               onShortcut={saveShortcut}
               onAutostart={() => runGuarded('Salvando inicio...', toggleAutostart)}
               onUpdate={() => runGuarded('Verificando update...', async () => {
@@ -1585,11 +1678,34 @@ function PanelHeader({ icon: Icon, title }: { icon: LucideIcon; title: string })
   );
 }
 
-function SystemDrawer({ settings, updateMessage, quitConfirm, busy, onShortcut, onAutostart, onUpdate, onQuit }: {
+function SystemDrawer({
+  settings,
+  canUseBilling,
+  subscriptionStatus,
+  billingBusy,
+  billingMessage,
+  updateMessage,
+  quitConfirm,
+  busy,
+  onSubscribe,
+  onManageBilling,
+  onRefreshBilling,
+  onShortcut,
+  onAutostart,
+  onUpdate,
+  onQuit,
+}: {
   settings: HatSettings | null;
+  canUseBilling: boolean;
+  subscriptionStatus: SubscriptionStatus | null;
+  billingBusy: boolean;
+  billingMessage: string;
   updateMessage: string;
   quitConfirm: boolean;
   busy: boolean;
+  onSubscribe: (planKey: SubscriptionPlanKey) => void;
+  onManageBilling: () => void;
+  onRefreshBilling: () => void;
   onShortcut: (key: ShortcutKey, value: string) => Promise<void>;
   onAutostart: () => void;
   onUpdate: () => void;
@@ -1599,6 +1715,15 @@ function SystemDrawer({ settings, updateMessage, quitConfirm, busy, onShortcut, 
 
   return (
     <div className="drawer-body system-drawer">
+      <SubscriptionSection
+        status={subscriptionStatus}
+        message={billingMessage}
+        canUse={canUseBilling}
+        busy={billingBusy}
+        onSubscribe={onSubscribe}
+        onManage={onManageBilling}
+        onRefresh={onRefreshBilling}
+      />
       <section className="settings-section">
         <header>
           <div>
@@ -1644,6 +1769,86 @@ function SystemDrawer({ settings, updateMessage, quitConfirm, busy, onShortcut, 
         {updateMessage && <p className="drawer-note">{updateMessage}</p>}
       </section>
     </div>
+  );
+}
+
+function statusLabel(status: SubscriptionStatus | null) {
+  if (!status || status.status === 'none') return 'Sem assinatura';
+  if (status.status === 'active') return 'Ativa';
+  if (status.status === 'trialing') return 'Trial';
+  if (status.status === 'past_due') return 'Pagamento pendente';
+  if (status.status === 'incomplete') return 'Checkout pendente';
+  if (status.status === 'paused') return 'Pausada';
+  return 'Cancelada';
+}
+
+function periodLabel(status: SubscriptionStatus | null) {
+  if (!status?.currentPeriodEnd) return '';
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(new Date(status.currentPeriodEnd));
+}
+
+function SubscriptionSection({ status, message, canUse, busy, onSubscribe, onManage, onRefresh }: {
+  status: SubscriptionStatus | null;
+  message: string;
+  canUse: boolean;
+  busy: boolean;
+  onSubscribe: (planKey: SubscriptionPlanKey) => void;
+  onManage: () => void;
+  onRefresh: () => void;
+}) {
+  const activePlan = status?.plan ? resolveSubscriptionPlan(status.plan) : null;
+  const activePeriod = periodLabel(status);
+
+  return (
+    <section className="settings-section subscription-section">
+      <header>
+        <div>
+          <strong>Assinatura</strong>
+          <span>{activePlan ? `${activePlan.name} - ${statusLabel(status)}` : statusLabel(status)}</span>
+        </div>
+        <CreditCard size={17} />
+      </header>
+      <div className="subscription-summary">
+        <span>
+          <strong>{activePlan ? activePlan.name : 'Escolha um plano'}</strong>
+          <small>{activePeriod ? `Renova em ${activePeriod}` : 'Stripe Checkout mensal'}</small>
+        </span>
+        <div className="subscription-summary-actions">
+          <button onClick={onRefresh} disabled={!canUse || busy} aria-label="Atualizar assinatura" title="Atualizar assinatura">
+            {busy ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />}
+          </button>
+          <button onClick={onManage} disabled={!canUse || busy || !activePlan}>
+            <ExternalLink size={14} />
+            Gerenciar
+          </button>
+        </div>
+      </div>
+      <div className="subscription-plans">
+        {subscriptionPlans.map((plan) => {
+          const selected = activePlan?.key === plan.key;
+          return (
+            <article key={plan.key} className={`subscription-plan ${selected ? 'active' : ''}`}>
+              <header>
+                <span>
+                  <strong>{plan.name}</strong>
+                  <small>{plan.badge}</small>
+                </span>
+                <b>{formatPlanPrice(plan)}</b>
+              </header>
+              <ul>
+                {plan.included.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+              <button onClick={() => onSubscribe(plan.key)} disabled={!canUse || busy || selected}>
+                <CreditCard size={14} />
+                {selected ? 'Plano atual' : 'Assinar'}
+              </button>
+            </article>
+          );
+        })}
+      </div>
+      {!canUse && <p className="drawer-note">Conecte sua conta Google para assinar.</p>}
+      {message && <p className="drawer-note">{message}</p>}
+    </section>
   );
 }
 

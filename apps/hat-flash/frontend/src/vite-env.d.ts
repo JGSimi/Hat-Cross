@@ -7,4 +7,5 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_APP_ID?: string;
   readonly VITE_GOOGLE_OAUTH_CLIENT_ID?: string;
   readonly VITE_GOOGLE_OAUTH_CLIENT_SECRET?: string;
+  readonly VITE_HAT_BILLING_BASE_URL?: string;
 }
