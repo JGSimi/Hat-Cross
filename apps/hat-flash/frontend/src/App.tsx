@@ -12,9 +12,13 @@ export default function App() {
 
   useEffect(() => {
     loadSettings();
-    Events.On('stream:chunk', (event) => addStreamChunk(event.data));
-    Events.On('flash:show', (event) => setFlashPayload(event.data));
+    const offStreamChunk = Events.On('stream:chunk', (event) => addStreamChunk(event.data));
+    const offFlashShow = Events.On('flash:show', (event) => setFlashPayload(event.data));
     WML.Reload();
+    return () => {
+      offStreamChunk();
+      offFlashShow();
+    };
   }, [addStreamChunk, loadSettings, setFlashPayload]);
 
   const path = window.location.pathname;

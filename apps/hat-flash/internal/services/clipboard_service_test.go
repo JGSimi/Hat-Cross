@@ -91,6 +91,21 @@ func TestClipboardProcessFallsBackToImageWhenTextReadFails(t *testing.T) {
 	}
 }
 
+func TestClipboardProcessReportsEmptyWhenTextReadFailsAndImagesAreUnsupported(t *testing.T) {
+	events := &MemoryEventBus{}
+	service := NewClipboardService(&fakeClipboard{ok: false}, events)
+	service.readImage = func() (*models.ClipboardImage, error) {
+		return nil, ErrClipboardImageUnsupported
+	}
+
+	if _, err := service.Process(); err == nil || err.Error() != "clipboard empty" {
+		t.Fatalf("Process error = %v", err)
+	}
+	if got := events.Events[len(events.Events)-1].Data[0]; got != "clipboard empty" {
+		t.Fatalf("failure = %#v", got)
+	}
+}
+
 func TestClipboardReadImageConvertsPanicToError(t *testing.T) {
 	service := NewClipboardService(&fakeClipboard{ok: true}, nil)
 	service.readImage = func() (*models.ClipboardImage, error) {

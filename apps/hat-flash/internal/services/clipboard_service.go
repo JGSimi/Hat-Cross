@@ -43,10 +43,10 @@ func (s *ClipboardService) Process() (models.ClipboardPayload, error) {
 	image, imageErr := s.ReadImage()
 	if imageErr != nil {
 		err := imageErr
-		if textErr != nil {
-			err = textErr
-		} else if errors.Is(imageErr, ErrClipboardImageUnsupported) {
+		if errors.Is(imageErr, ErrClipboardImageUnsupported) {
 			err = errors.New("clipboard empty")
+		} else if textErr != nil {
+			err = textErr
 		}
 		if s.events != nil {
 			s.events.Emit(models.EventClipboardFailed, err.Error())
