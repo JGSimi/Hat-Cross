@@ -4,6 +4,7 @@ import { useHatStore } from '../stores/hatStore';
 
 export function Flash() {
   const storePayload = useHatStore((s) => s.flashPayload);
+  const loadCurrentFlash = useHatStore((s) => s.loadCurrentFlash);
   const previewPayload = useMemo(() => {
     if (!import.meta.env.DEV || !new URLSearchParams(window.location.search).has('mockFlash')) return null;
     return {
@@ -15,6 +16,11 @@ export function Flash() {
     };
   }, []);
   const payload = storePayload ?? previewPayload;
+
+  useEffect(() => {
+    if (storePayload || previewPayload) return;
+    void loadCurrentFlash().catch(() => undefined);
+  }, [loadCurrentFlash, previewPayload, storePayload]);
 
   const holdMs = useMemo(() => {
     if (!payload) return 1600;
@@ -30,7 +36,7 @@ export function Flash() {
     return () => window.clearTimeout(timer);
   }, [holdMs, payload]);
 
-  if (!payload) return <main className="flash" aria-hidden="true" />;
+  if (!payload) return <main className="flash flash-empty" aria-hidden="true" />;
 
   const cardAlpha = Math.max(0.94, Math.min(0.99, payload.appearance.opacity / 100));
   const flashStyle = {

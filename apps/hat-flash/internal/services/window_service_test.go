@@ -47,3 +47,32 @@ func TestShowFlashEmitsPayloadEvent(t *testing.T) {
 		t.Fatalf("payload = %#v", got)
 	}
 }
+
+func TestShowFlashStoresCurrentPayloadUntilHide(t *testing.T) {
+	service := NewWindowService(nil)
+	payload := models.FlashPayload{
+		Text:       "resposta pronta",
+		Position:   models.FlashPosition{X: 40, Y: 40},
+		Appearance: models.FlashAppearance{Opacity: 92},
+	}
+
+	service.ShowFlash(payload)
+
+	got := service.CurrentFlash()
+	if got == nil {
+		t.Fatalf("current flash payload missing")
+	}
+	if got.Text != payload.Text || got.Position.X != 40 {
+		t.Fatalf("current flash payload = %#v", got)
+	}
+
+	got.Text = "mutated"
+	if service.CurrentFlash().Text != payload.Text {
+		t.Fatalf("current flash payload should be returned as a copy")
+	}
+
+	service.HideFlash()
+	if service.CurrentFlash() != nil {
+		t.Fatalf("current flash payload should be cleared after hide")
+	}
+}

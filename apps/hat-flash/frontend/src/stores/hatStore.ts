@@ -52,6 +52,7 @@ interface HatStore {
   addStreamChunk: (chunk: StreamChunk) => void;
   resetStream: () => number;
   setFlashPayload: (payload: FlashPayload | null) => void;
+  loadCurrentFlash: () => Promise<void>;
   loadSettings: () => Promise<void>;
   saveSettings: (settings: Settings) => Promise<void>;
 }
@@ -82,6 +83,10 @@ export const useHatStore = create<HatStore>((set, get) => ({
     return next;
   },
   setFlashPayload: (payload) => set({ flashPayload: payload }),
+  loadCurrentFlash: async () => {
+    const payload = await hat.flash.current();
+    if (payload) set({ flashPayload: payload });
+  },
   loadSettings: async () => {
     try {
       const settings = await hat.settings.get();

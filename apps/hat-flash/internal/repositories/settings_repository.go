@@ -102,5 +102,11 @@ func normalizeSettings(settings models.Settings) models.Settings {
 	if settings.Clipboard.Flash.Appearance.FontSizePx == 0 {
 		settings.Clipboard.Flash.Appearance = defaults.Clipboard.Flash.Appearance
 	}
+	if settings.Clipboard.Flash.Appearance.Opacity < 86 {
+		if !settings.Clipboard.Flash.Enabled && settings.Clipboard.Flash.Appearance.Opacity <= 35 {
+			settings.Clipboard.Flash.Enabled = defaults.Clipboard.Flash.Enabled
+		}
+		settings.Clipboard.Flash.Appearance.Opacity = defaults.Clipboard.Flash.Appearance.Opacity
+	}
 	return settings
 }

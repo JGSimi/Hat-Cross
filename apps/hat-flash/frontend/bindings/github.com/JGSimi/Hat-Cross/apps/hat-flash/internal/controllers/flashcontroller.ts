@@ -9,6 +9,12 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 // @ts-ignore: Unused imports
 import * as models$0 from "../models/models.js";
 
+export function Current(): $CancellablePromise<models$0.FlashPayload | null> {
+    return $Call.ByID(3680473517).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
 export function Hide(): $CancellablePromise<void> {
     return $Call.ByID(2989440392);
 }
@@ -16,3 +22,7 @@ export function Hide(): $CancellablePromise<void> {
 export function Show(payload: models$0.FlashPayload): $CancellablePromise<void> {
     return $Call.ByID(3654763649, payload);
 }
+
+// Private type creation functions
+const $$createType0 = models$0.FlashPayload.createFrom;
+const $$createType1 = $Create.Nullable($$createType0);

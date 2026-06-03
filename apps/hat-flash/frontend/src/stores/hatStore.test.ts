@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   save: vi.fn(async () => undefined),
   register: vi.fn(async () => undefined),
+  currentFlash: vi.fn<() => Promise<unknown>>(async () => null),
 }));
 
 vi.mock('../bridge/hat', () => ({
@@ -13,6 +14,9 @@ vi.mock('../bridge/hat', () => ({
     },
     shortcuts: {
       register: mocks.register,
+    },
+    flash: {
+      current: mocks.currentFlash,
     },
   },
 }));
@@ -27,10 +31,13 @@ describe('hatStore', () => {
       streamID: 1,
       clipboardText: '',
       clipboardImage: null,
+      flashPayload: null,
     });
     mocks.save.mockClear();
     mocks.register.mockReset();
     mocks.register.mockResolvedValue(undefined);
+    mocks.currentFlash.mockReset();
+    mocks.currentFlash.mockResolvedValue(null);
   });
 
   it('keeps stream chunks scoped to the active stream', () => {
@@ -83,5 +90,20 @@ describe('hatStore', () => {
 
     expect(mocks.save).not.toHaveBeenCalled();
     expect(useHatStore.getState().settings).toBeNull();
+  });
+
+  it('loads the current backend flash payload when the window missed the show event', async () => {
+    mocks.currentFlash.mockResolvedValue({
+      text: 'resposta pronta',
+      position: { x: 40, y: 40 },
+      timing: { mode: 'fade', fadeInMs: 220, fadeOutMs: 420, holdMs: 2200 },
+      appearance: { color: '', opacity: 92, fontSizePx: 15, textShadow: true },
+      streamId: 7,
+    });
+
+    await useHatStore.getState().loadCurrentFlash();
+
+    expect(useHatStore.getState().flashPayload?.text).toBe('resposta pronta');
+    expect(useHatStore.getState().flashPayload?.appearance.opacity).toBe(92);
   });
 });

@@ -60,6 +60,7 @@ export const hat = {
   },
   flash: {
     show: (payload: FlashPayload) => FlashController.Show(payload),
+    current: (): Promise<FlashPayload | null> => FlashController.Current(),
     hide: () => FlashController.Hide(),
   },
   shortcuts: {
