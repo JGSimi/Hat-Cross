@@ -19,13 +19,13 @@ func (s *WindowService) SetWindow(name string, window application.Window) {
 }
 
 func (s *WindowService) ShowFlash(payload models.FlashPayload) {
-	if window := s.windows["flash"]; window != nil {
-		window.SetPosition(payload.Position.X, payload.Position.Y)
-		window.Show()
-	}
 	if s.events != nil {
 		s.events.Emit(models.EventFlashShow, payload)
 		s.events.Emit("flash-show", payload)
+	}
+	if window := s.windows["flash"]; window != nil {
+		window.SetPosition(payload.Position.X, payload.Position.Y)
+		window.Show()
 	}
 }
 

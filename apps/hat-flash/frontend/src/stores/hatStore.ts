@@ -26,7 +26,7 @@ const fallbackSettings = {
       previewLength: 200,
       position: { x: 40, y: 40 },
       timing: { mode: 'typewriter', fadeInMs: 300, fadeOutMs: 500, holdMs: null },
-      appearance: { color: '', opacity: 35, fontSizePx: 14, textShadow: true },
+      appearance: { color: '', opacity: 92, fontSizePx: 14, textShadow: true },
     },
   },
   notifications: {

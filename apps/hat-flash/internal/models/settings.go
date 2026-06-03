@@ -114,7 +114,7 @@ func DefaultSettings() Settings {
 				PreviewLength: 200,
 				Position:      FlashPosition{X: 40, Y: 40},
 				Timing:        FlashTiming{Mode: "typewriter", FadeInMs: 300, FadeOutMs: 500},
-				Appearance:    FlashAppearance{Color: "", Opacity: 35, FontSizePx: 14, TextShadow: true},
+				Appearance:    FlashAppearance{Color: "", Opacity: 92, FontSizePx: 14, TextShadow: true},
 			},
 		},
 		Notifications: NotificationSettings{

@@ -14,10 +14,12 @@ export default function App() {
     loadSettings();
     const offStreamChunk = Events.On('stream:chunk', (event) => addStreamChunk(event.data));
     const offFlashShow = Events.On('flash:show', (event) => setFlashPayload(event.data));
+    const offFlashHide = Events.On('flash:hide', () => setFlashPayload(null));
     WML.Reload();
     return () => {
       offStreamChunk();
       offFlashShow();
+      offFlashHide();
     };
   }, [addStreamChunk, loadSettings, setFlashPayload]);
 

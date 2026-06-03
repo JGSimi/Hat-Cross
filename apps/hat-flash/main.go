@@ -130,6 +130,7 @@ func main() {
 		Hidden:                   true,
 		URL:                      "/flash",
 		BackgroundType:           application.BackgroundTypeTransparent,
+		BackgroundColour:         application.NewRGBA(0, 0, 0, 0),
 		ContentProtectionEnabled: true,
 		HideOnEscape:             true,
 		DisableResize:            true,

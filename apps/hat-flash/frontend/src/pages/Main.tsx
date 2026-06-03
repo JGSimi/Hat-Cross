@@ -464,6 +464,7 @@ export function Main() {
   const handleShortcutActionRef = useRef<(action: string) => void>(() => undefined);
   const roomShareTimersRef = useRef<Map<string, number>>(new Map());
   const shownNotificationIDsRef = useRef<Set<string>>(new Set());
+  const shownStreamFlashIDsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (previewUser) {
@@ -715,13 +716,8 @@ export function Main() {
         void hat.clipboard.writeText(finalResponse);
       }
       if (settings.clipboard.flash.enabled) {
-        void hat.flash.show({
-          text: finalResponse.slice(0, settings.clipboard.flash.previewLength),
-          position: settings.clipboard.flash.position,
-          timing: settings.clipboard.flash.timing,
-          appearance: settings.clipboard.flash.appearance,
-          streamId: streamID,
-        });
+        shownStreamFlashIDsRef.current.add(doneStreamId);
+        void showConfiguredFlash(finalResponse, doneStreamId, settings);
       }
     });
     const offShortcut = Events.On('shortcut:pressed', (event) => {
@@ -853,6 +849,9 @@ export function Main() {
       if (settings.clipboard.copyResponseToClipboard) {
         await navigator.clipboard?.writeText?.(finalDevResponse).catch(() => undefined);
       }
+      if (settings.clipboard.flash.enabled) {
+        await showConfiguredFlash(finalDevResponse, streamID, settings).catch(() => undefined);
+      }
       return;
     }
     const nextStream = resetStream();
@@ -870,6 +869,16 @@ export function Main() {
         sourceMessageId,
         idempotencyKey: crypto.randomUUID(),
       });
+      const finalResponse = responseRef.current;
+      if (settings.clipboard.flash.enabled && finalResponse && !shownStreamFlashIDsRef.current.has(nextStream)) {
+        shownStreamFlashIDsRef.current.add(nextStream);
+        await showConfiguredFlash(finalResponse, nextStream, settings);
+        setHistory((entries) => entries.map((item) => (
+          item.id === entryID
+            ? { ...item, response: finalResponse, status: 'done', flashShown: true }
+            : item
+        )));
+      }
       if (shareRoom) watchRoomShareConfirmation(entryID);
     } catch (err) {
       setHistory((entries) => entries.map((item) => (
@@ -879,6 +888,19 @@ export function Main() {
       )));
       throw err;
     }
+  }
+
+  async function showConfiguredFlash(text: string, flashStreamID: number, sourceSettings: HatSettings) {
+    await hat.flash.show({
+      text: text.slice(0, sourceSettings.clipboard.flash.previewLength),
+      position: sourceSettings.clipboard.flash.position,
+      timing: sourceSettings.clipboard.flash.timing,
+      appearance: {
+        ...sourceSettings.clipboard.flash.appearance,
+        opacity: Math.max(sourceSettings.clipboard.flash.appearance.opacity, 86),
+      },
+      streamId: flashStreamID,
+    });
   }
 
   async function adjustFlashPosition() {

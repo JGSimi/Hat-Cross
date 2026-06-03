@@ -32,8 +32,10 @@ export function Flash() {
 
   if (!payload) return <main className="flash" aria-hidden="true" />;
 
+  const cardAlpha = Math.max(0.94, Math.min(0.99, payload.appearance.opacity / 100));
   const flashStyle = {
     '--flash-hold': `${holdMs}ms`,
+    '--flash-card-alpha': String(cardAlpha),
   } as CSSProperties;
 
   return (
@@ -41,8 +43,7 @@ export function Flash() {
       <section
         className="flash-card"
         style={{
-          color: payload.appearance.color || '#f8fafc',
-          opacity: Math.max(0.55, payload.appearance.opacity / 100),
+          color: payload.appearance.color || '#fffaf2',
           fontSize: `clamp(14px, ${payload.appearance.fontSizePx}px, 34px)`,
           textShadow: payload.appearance.textShadow ? '0 2px 18px rgba(0,0,0,.9)' : 'none',
         }}

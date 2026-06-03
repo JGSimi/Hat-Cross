@@ -32,6 +32,9 @@ func TestSettingsRepositoryRoundTrip(t *testing.T) {
 	if !got.Clipboard.Flash.Enabled {
 		t.Fatalf("flash should default enabled")
 	}
+	if got.Clipboard.Flash.Appearance.Opacity < 86 {
+		t.Fatalf("flash opacity should default to readable value, got %d", got.Clipboard.Flash.Appearance.Opacity)
+	}
 }
 
 func TestSettingsRepositoryMissingFileReturnsDefaults(t *testing.T) {
