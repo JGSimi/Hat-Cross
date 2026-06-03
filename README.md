@@ -1,4 +1,4 @@
-# Hat — AI Assistant
+# Hat Flash — AI Assistant
 
 Assistente de IA cross-platform que vive na barra de menus (macOS) / system tray (Windows).
 
@@ -37,23 +37,38 @@ Se o SmartScreen aparecer, clique **Mais informações** -> **Executar mesmo ass
 - **Markdown render**: respostas com syntax highlight
 - **Histórico de conversas**: sidebar com pin, rename, busca
 
-## Stack
+## Stack Principal
 
-- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Zustand
-- **Backend**: Rust, Tauri v2
-- **Streaming**: SSE via Rust -> eventos Tauri -> React
+- **Frontend**: React 18, TypeScript, Vite, Zustand
+- **Backend**: Go, Wails v3
+- **Streaming**: SSE via Go -> eventos Wails -> React
+
+O app principal agora vive em `apps/hat-flash`. O app Tauri antigo continua no
+repo para referencia e manutencao, mas os scripts raiz apontam para Hat Flash.
 
 ## Desenvolvimento
 
 ```bash
 # Instalar dependências
 npm install
+cd apps/hat-flash/frontend && npm install
 
 # Dev mode
-npm run tauri dev
+npm run dev
 
 # Build
-npm run tauri build
+npm run build
+
+# Testes principais
+npm test
+```
+
+Fluxo Tauri legado:
+
+```bash
+npm run dev:tauri
+npm run build:tauri
+npm run test:tauri
 ```
 
 ## Modelo IA
@@ -81,5 +96,6 @@ cd src-tauri && cargo test streaming
 
 | Atalho | Ação |
 |--------|------|
-| Cmd/Ctrl+Shift+Z | Análise de Tela |
-| Cmd/Ctrl+Shift+X | Processar Clipboard |
+| Cmd/Ctrl+Shift+F | Processar Clipboard + Flash |
+| Cmd/Ctrl+Alt+F | Ajustar posição do Flash |
+| Cmd/Ctrl+Shift+Q | Fechamento de emergência |

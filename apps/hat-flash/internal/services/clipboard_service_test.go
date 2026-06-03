@@ -76,6 +76,21 @@ func TestClipboardProcessReturnsTextWithoutReadingImage(t *testing.T) {
 	}
 }
 
+func TestClipboardProcessFallsBackToImageWhenTextReadFails(t *testing.T) {
+	service := NewClipboardService(&fakeClipboard{ok: false}, nil)
+	service.readImage = func() (*models.ClipboardImage, error) {
+		return &models.ClipboardImage{MimeType: "image/png", DataURL: "data:image/png;base64,abc", Width: 12, Height: 8}, nil
+	}
+
+	payload, err := service.Process()
+	if err != nil {
+		t.Fatalf("Process: %v", err)
+	}
+	if payload.Image == nil || payload.Image.DataURL != "data:image/png;base64,abc" {
+		t.Fatalf("payload = %#v", payload)
+	}
+}
+
 func TestClipboardReadImageConvertsPanicToError(t *testing.T) {
 	service := NewClipboardService(&fakeClipboard{ok: true}, nil)
 	service.readImage = func() (*models.ClipboardImage, error) {

@@ -44,6 +44,7 @@ import {
   type RoomMember,
   type RoomNotification,
 } from '../services/rooms';
+import { keyboardEventMatchesShortcut } from '../services/shortcutMatcher';
 import { hat, type ChatStreamRequest, type Settings as HatSettings } from '../bridge/hat';
 import { useHatStore } from '../stores/hatStore';
 import type { ClipboardHistoryEntry } from '../types/clipboard';
@@ -382,6 +383,7 @@ export function Main() {
   const [activeHistoryID, setActiveHistoryID] = useState(() => history[0]?.id ?? '');
   const responseRef = useRef('');
   const activeHistoryIDRef = useRef(activeHistoryID);
+  const processClipboardAndSendRef = useRef<() => Promise<void>>(async () => undefined);
   const roomShareTimersRef = useRef<Map<string, number>>(new Map());
   const shownNotificationIDsRef = useRef<Set<string>>(new Set());
 
@@ -574,6 +576,10 @@ export function Main() {
   }, [response]);
 
   useEffect(() => {
+    processClipboardAndSendRef.current = processClipboardAndSend;
+  });
+
+  useEffect(() => {
     const offDone = Events.On('stream:done', (event) => {
       const doneStreamId = Number(event.data?.streamId ?? 0);
       if (doneStreamId !== streamID || !settings) return;
@@ -602,7 +608,9 @@ export function Main() {
     });
     const offShortcut = Events.On('shortcut:pressed', (event) => {
       if (event.data?.action === 'processClipboardFlash') {
-        void runGuarded('Processando clipboard...', processClipboardAndSend);
+        setTimeout(() => {
+          void runGuarded('Processando clipboard...', processClipboardAndSendRef.current);
+        }, 0);
       }
     });
     return () => {
@@ -610,6 +618,17 @@ export function Main() {
       offShortcut();
     };
   }, [settings, streamID]);
+
+  useEffect(() => {
+    if (!settings) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!keyboardEventMatchesShortcut(event, settings.shortcuts.processClipboardFlash)) return;
+      event.preventDefault();
+      void runGuarded('Processando clipboard...', processClipboardAndSendRef.current);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [settings]);
 
   async function runGuarded(actionLabel: string, action: () => Promise<void>) {
     setStatus('busy');
@@ -641,7 +660,8 @@ export function Main() {
   }
 
   async function processClipboardAndSend() {
-    if (!settings || !canUseBackend) return;
+    if (!settings) throw new Error('Configuracao ainda nao carregou.');
+    if (!user) throw new Error('auth');
     const payload = await hat.clipboard.process();
     const text = payload.text || 'Analise a imagem do clipboard.';
     const image = payload.image?.dataUrl ?? null;
