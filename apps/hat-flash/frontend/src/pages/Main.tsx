@@ -51,7 +51,7 @@ import {
 } from '../services/rooms';
 import { nextFlashPosition } from '../services/flashPosition';
 import { keyboardEventMatchesShortcut } from '../services/shortcutMatcher';
-import { hat, type ChatStreamRequest, type Settings as HatSettings } from '../bridge/hat';
+import { hat, type ChatStreamRequest, type ClipboardPayload, type Settings as HatSettings } from '../bridge/hat';
 import { useHatStore } from '../stores/hatStore';
 import type { ClipboardHistoryEntry } from '../types/clipboard';
 
@@ -153,6 +153,32 @@ function devMockRoom(): Room | null {
   };
 }
 
+function createDevRoom(id: string, title: string, memberCount = 1): Room {
+  const now = Date.now();
+  return {
+    id,
+    title,
+    ownerUid: 'dev-preview-user',
+    status: 'open',
+    joinCost: 800,
+    createdAt: now,
+    updatedAt: now,
+    memberCount,
+  };
+}
+
+function createDevMembers(memberCount: number): RoomMember[] {
+  return Array.from({ length: memberCount }, (_, index) => ({
+    uid: index === 0 ? 'dev-preview-user' : `dev-member-${index}`,
+    role: index === 0 ? 'owner' : 'member',
+    displayName: index === 0 ? 'Joao Gabriel' : `Membro ${index + 1}`,
+    photoURL: null,
+    paidAt: Date.now() - 50 * 60_000,
+    lastSeenAt: Date.now() - index * 2 * 60_000,
+    creditsCharged: 800,
+  }));
+}
+
 function devMockRooms(): Room[] {
   const active = devMockRoom();
   if (active) return [active];
@@ -174,15 +200,7 @@ function devMockRooms(): Room[] {
 
 function devMockMembers(): RoomMember[] {
   if (!devMockRoomID()) return [];
-  return Array.from({ length: devMockMemberCount() }, (_, index) => ({
-    uid: index === 0 ? 'dev-preview-user' : `dev-member-${index}`,
-    role: index === 0 ? 'owner' : 'member',
-    displayName: index === 0 ? 'Joao Gabriel' : `Membro ${index + 1}`,
-    photoURL: null,
-    paidAt: Date.now() - 50 * 60_000,
-    lastSeenAt: Date.now() - index * 2 * 60_000,
-    creditsCharged: 800,
-  }));
+  return createDevMembers(devMockMemberCount());
 }
 
 function devMockRoomEntries(): RoomEntry[] {
@@ -250,6 +268,21 @@ function devMockHistory() {
     status: index === 2 ? 'processing' : index === 4 ? 'error' : 'done',
     flashShown: index === 0,
   } satisfies ClipboardHistoryEntry));
+}
+
+async function devReadClipboardPayload(): Promise<ClipboardPayload> {
+  const text = await navigator.clipboard?.readText?.().catch(() => '');
+  const normalized = text?.trim();
+  if (!normalized) throw new Error('Clipboard vazio ou bloqueado pelo navegador.');
+  return { text: normalized, image: null };
+}
+
+async function devWriteClipboardText(text: string) {
+  await navigator.clipboard?.writeText?.(text).catch(() => undefined);
+}
+
+function devAnswerForClipboard(text: string) {
+  return `Resposta de teste: ${clipText(text, 140)}`;
 }
 
 function friendlyError(err: unknown) {
@@ -767,32 +800,61 @@ export function Main() {
     if (!settings) throw new Error('Configuracao ainda nao carregou.');
     if (!user) throw new Error('auth');
     if (!entitlements.canUseAI) throw new Error(billingRestrictionMessage('ai', subscriptionStatus));
-    const payload = await hat.clipboard.process();
+    const payload = previewUser ? await devReadClipboardPayload() : await hat.clipboard.process();
     const text = payload.text || 'Analise a imagem do clipboard.';
     const image = payload.image?.dataUrl ?? null;
     const entryID = crypto.randomUUID();
     const shareRoom = canShareActiveRoom && activeRoom ? activeRoom : null;
     const sourceMessageId = shareRoom ? entryID : null;
+    const finalDevResponse = previewUser ? devAnswerForClipboard(text) : '';
     const entry: ClipboardHistoryEntry = {
       id: entryID,
       createdAt: Date.now(),
       text,
       image,
-      response: '',
+      response: finalDevResponse,
       roomId: activeRoom?.id ?? (roomID || null),
       roomTitle: activeRoom?.title ?? (roomTitle.trim() || 'Sala Hat'),
       sourceMessageId,
-      sharedToRoom: false,
-      roomSharePending: Boolean(shareRoom),
+      sharedToRoom: Boolean(previewUser && shareRoom),
+      roomSharePending: Boolean(!previewUser && shareRoom),
       roomShareError: false,
-      status: 'processing',
-      flashShown: false,
+      status: previewUser ? 'done' : 'processing',
+      flashShown: Boolean(previewUser && settings.clipboard.flash.enabled),
     };
     setClipboard(payload.text, image);
     setDrawer('clipboard');
     setActiveHistoryID(entryID);
     activeHistoryIDRef.current = entryID;
     setHistory((entries) => [entry, ...entries.filter((item) => item.id !== entryID)].slice(0, MAX_CLIPBOARD_HISTORY));
+    if (previewUser) {
+      if (shareRoom) {
+        const roomEntry: RoomEntry = {
+          id: `dev-room-entry-${entryID}`,
+          uid: user.uid,
+          questionText: text,
+          aiAnswer: finalDevResponse,
+          extractedAnswer: finalDevResponse,
+          normalizedQuestion: text.toLowerCase().trim(),
+          answerOptions: [],
+          selectedOptionLabel: null,
+          selectedOptionText: null,
+          canonicalAnswerText: finalDevResponse,
+          questionPreview: clipText(text, 140),
+          answerType: 'short_text',
+          confidence: 0.92,
+          mode: effectiveMode === 'hat-pro' ? 'hat-pro' : 'hat',
+          createdAt: Date.now(),
+          sourceMessageId: sourceMessageId ?? '',
+          clusterId: '',
+        };
+        setRoomEntries((entries) => [roomEntry, ...entries]);
+      }
+      if (settings.clipboard.copyResponseToClipboard) {
+        await navigator.clipboard?.writeText?.(finalDevResponse).catch(() => undefined);
+      }
+      return;
+    }
     const nextStream = resetStream();
     try {
       await hat.chat.stream({
@@ -832,6 +894,7 @@ export function Main() {
         },
       },
     });
+    if (previewUser) return;
     await hat.flash.show({
       text: 'Flash aqui',
       position,
@@ -856,11 +919,21 @@ export function Main() {
   async function copyHistoryResponse(entryID: string) {
     const entry = history.find((item) => item.id === entryID);
     const text = entry ? responseForEntry(entry) : response;
-    if (text) await hat.clipboard.writeText(text);
+    if (!text) return;
+    if (previewUser) {
+      await devWriteClipboardText(text);
+      return;
+    }
+    await hat.clipboard.writeText(text);
   }
 
   async function copyRoomID() {
-    if (roomID) await hat.clipboard.writeText(roomID);
+    if (!roomID) return;
+    if (previewUser) {
+      await devWriteClipboardText(roomID);
+      return;
+    }
+    await hat.clipboard.writeText(roomID);
   }
 
   async function flashHistoryResponse(entryID: string) {
@@ -868,6 +941,10 @@ export function Main() {
     const entry = history.find((item) => item.id === entryID);
     const text = entry ? responseForEntry(entry) : response;
     if (!text) return;
+    if (previewUser) {
+      setHistory((entries) => entries.map((item) => (item.id === entryID ? { ...item, flashShown: true } : item)));
+      return;
+    }
     await hat.flash.show({
       text: text.slice(0, settings.clipboard.flash.previewLength),
       position: settings.clipboard.flash.position,
@@ -880,13 +957,19 @@ export function Main() {
 
   async function copyRoomEntry(entryID: string) {
     const entry = roomEntries.find((item) => item.id === entryID || item.sourceMessageId === entryID);
-    if (entry?.aiAnswer) await hat.clipboard.writeText(entry.aiAnswer);
+    if (!entry?.aiAnswer) return;
+    if (previewUser) {
+      await devWriteClipboardText(entry.aiAnswer);
+      return;
+    }
+    await hat.clipboard.writeText(entry.aiAnswer);
   }
 
   async function flashRoomEntry(entryID: string) {
     if (!settings) return;
     const entry = roomEntries.find((item) => item.id === entryID || item.sourceMessageId === entryID);
     if (!entry?.aiAnswer) return;
+    if (previewUser) return;
     await hat.flash.show({
       text: entry.aiAnswer.slice(0, settings.clipboard.flash.previewLength),
       position: settings.clipboard.flash.position,
@@ -898,6 +981,21 @@ export function Main() {
 
   async function createRoomFromTitle() {
     if (!entitlements.canUseSharedRooms) throw new Error(billingRestrictionMessage('rooms', subscriptionStatus));
+    if (previewUser) {
+      const title = roomTitle.trim() || 'Sala Hat';
+      const room = createDevRoom(`HF-DEV-${Math.random().toString(36).slice(2, 6).toUpperCase()}`, title);
+      setActiveRoom(room);
+      setRooms((current) => [room, ...current.filter((item) => item.id !== room.id)]);
+      setRoomMembers(createDevMembers(room.memberCount));
+      setRoomEntries([]);
+      setRoomClusters([]);
+      setRoomNotifications([]);
+      setRoomID(room.id);
+      setRoomCode(room.id);
+      setRoomTitle(room.title);
+      setRoomError('');
+      return;
+    }
     const token = await user?.getIdToken();
     if (!token) throw new Error('auth');
     const result = await createRoom(roomTitle.trim() || 'Sala Hat', token);
@@ -911,6 +1009,22 @@ export function Main() {
 
   async function joinRoomByID(nextRoomID: string) {
     if (!entitlements.canUseSharedRooms) throw new Error(billingRestrictionMessage('rooms', subscriptionStatus));
+    if (previewUser) {
+      const normalizedRoomID = nextRoomID.trim();
+      if (!normalizedRoomID) throw new Error('Informe o codigo da sala.');
+      const room = rooms.find((item) => item.id === normalizedRoomID) ?? createDevRoom(normalizedRoomID, roomTitle.trim() || 'Sala Hat');
+      setActiveRoom(room);
+      setRooms((current) => [room, ...current.filter((item) => item.id !== room.id)]);
+      setRoomMembers(createDevMembers(room.memberCount));
+      setRoomEntries([]);
+      setRoomClusters([]);
+      setRoomNotifications([]);
+      setRoomID(room.id);
+      setRoomCode(room.id);
+      setRoomTitle(room.title);
+      setRoomError('');
+      return;
+    }
     const token = await user?.getIdToken();
     if (!token) throw new Error('auth');
     const result = await joinRoom(nextRoomID, token);
@@ -919,6 +1033,17 @@ export function Main() {
   }
 
   async function leaveCurrentRoom() {
+    if (previewUser) {
+      setActiveRoom(null);
+      setRoomMembers([]);
+      setRoomEntries([]);
+      setRoomClusters([]);
+      setRoomNotifications([]);
+      setRoomID('');
+      setRoomCode('');
+      setRoomError('');
+      return;
+    }
     const token = await user?.getIdToken();
     if (!token || !roomID) throw new Error('auth');
     await leaveRoom(roomID, token);
