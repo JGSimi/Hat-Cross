@@ -57,7 +57,7 @@ import type { ClipboardHistoryEntry } from '../types/clipboard';
 
 type Status = 'idle' | 'busy' | 'error';
 type DrawerView = 'rooms' | 'clipboard' | 'system';
-type ShortcutKey = keyof HatSettings['shortcuts'];
+type ShortcutKey = Extract<keyof HatSettings['shortcuts'], string>;
 
 const MAX_CLIPBOARD_HISTORY = 10;
 const CLIPBOARD_HISTORY_STORAGE_KEY = 'hat-flash:clipboard-history:v1';

@@ -123,8 +123,8 @@ func main() {
 	flashWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:                     "flash",
 		Title:                    "Hat Flash",
-		Width:                    420,
-		Height:                   90,
+		Width:                    480,
+		Height:                   118,
 		Frameless:                true,
 		AlwaysOnTop:              true,
 		Hidden:                   true,

@@ -3,7 +3,18 @@ import { hat } from '../bridge/hat';
 import { useHatStore } from '../stores/hatStore';
 
 export function Flash() {
-  const payload = useHatStore((s) => s.flashPayload);
+  const storePayload = useHatStore((s) => s.flashPayload);
+  const previewPayload = useMemo(() => {
+    if (!import.meta.env.DEV || !new URLSearchParams(window.location.search).has('mockFlash')) return null;
+    return {
+      text: 'Resposta pronta: Stripe funcionando, sala criada e captura de clipboard registrada com sucesso.',
+      position: { x: 40, y: 40 },
+      timing: { mode: 'fade', fadeInMs: 220, fadeOutMs: 420, holdMs: 4200 },
+      appearance: { color: '', opacity: 92, fontSizePx: 15, textShadow: true },
+      streamId: 0,
+    };
+  }, []);
+  const payload = storePayload ?? previewPayload;
 
   const holdMs = useMemo(() => {
     if (!payload) return 1600;
@@ -22,8 +33,6 @@ export function Flash() {
   if (!payload) return <main className="flash" aria-hidden="true" />;
 
   const flashStyle = {
-    '--flash-x': `${payload.position.x}%`,
-    '--flash-y': `${payload.position.y}%`,
     '--flash-hold': `${holdMs}ms`,
   } as CSSProperties;
 
