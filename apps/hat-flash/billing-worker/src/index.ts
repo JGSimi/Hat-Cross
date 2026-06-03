@@ -43,13 +43,22 @@ function timingSafeEqual(a: string, b: string) {
   return diff === 0;
 }
 
-async function verifyStripeSignature(rawBody: string, signatureHeader: string | null, secret: string | undefined) {
+export async function verifyStripeSignature(
+  rawBody: string,
+  signatureHeader: string | null,
+  secret: string | undefined,
+  nowSeconds = Math.floor(Date.now() / 1000),
+) {
   if (!secret?.trim()) throw new Error('STRIPE_WEBHOOK_SECRET nao configurado.');
   const values = Object.fromEntries((signatureHeader ?? '').split(',').map((part) => {
     const [key, value] = part.split('=');
     return [key, value];
   }));
   if (!values.t || !values.v1) throw new Error('Stripe signature ausente.');
+  const timestamp = Number(values.t);
+  if (!Number.isFinite(timestamp) || Math.abs(nowSeconds - timestamp) > 300) {
+    throw new Error('Stripe signature expirada.');
+  }
 
   const key = await crypto.subtle.importKey(
     'raw',
@@ -77,6 +86,10 @@ async function handleStripeWebhook(request: Request, env: BillingEnv, store: Bil
 
 export default {
   async fetch(request: Request, env: BillingEnv): Promise<Response> {
+    if (request.method === 'OPTIONS') {
+      return createBillingWorker().fetch(request);
+    }
+
     const store = kvStore(requiredKV(env));
     return createBillingWorker({
       store,

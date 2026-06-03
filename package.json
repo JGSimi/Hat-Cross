@@ -9,6 +9,8 @@
     "preview": "cd apps/hat-flash/frontend && npm run preview",
     "test": "npm --prefix apps/hat-flash/frontend test && cd apps/hat-flash && go test ./... && cd ../.. && npm run test:billing-worker",
     "test:billing-worker": "vitest run --config apps/hat-flash/billing-worker/vitest.config.ts && tsc -p apps/hat-flash/billing-worker/tsconfig.json",
+    "dry-run:billing-worker": "cd apps/hat-flash/billing-worker && npx wrangler deploy --dry-run",
+    "deploy:billing-worker": "cd apps/hat-flash/billing-worker && npx wrangler deploy",
     "dev:tauri": "vite",
     "build:tauri": "tsc && vite build",
     "preview:tauri": "vite preview",

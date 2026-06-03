@@ -18,5 +18,5 @@ STRIPE_PORTAL_RETURN_URL = "https://hat-flash.com/billing"
 
 [[kv_namespaces]]
 binding = "BILLING_KV"
-id = "replace-with-production-kv-id"
-preview_id = "replace-with-preview-kv-id"
+id = "318cadf3680f4765870fa8ab313b374f"
+preview_id = "713221a407b84e30b3bce9bd8670f059"

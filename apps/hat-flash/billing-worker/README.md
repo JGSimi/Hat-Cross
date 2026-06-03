@@ -12,7 +12,20 @@ Routes:
 Required setup:
 
 1. Create Stripe Products/Prices for monthly plans Go, Pro, Ultra.
-2. Set Worker secrets:
+2. Confirm the Worker package is deployable:
+
+```bash
+npm run test:billing-worker
+npm run dry-run:billing-worker
+```
+
+3. Deploy the Worker once so Cloudflare can accept Worker secrets:
+
+```bash
+npm run deploy:billing-worker
+```
+
+4. Set Worker secrets:
 
 ```bash
 wrangler secret put STRIPE_SECRET_KEY
@@ -23,8 +36,19 @@ wrangler secret put STRIPE_PRICE_PRO
 wrangler secret put STRIPE_PRICE_ULTRA
 ```
 
-3. Create/bind `BILLING_KV` and replace the IDs in `wrangler.toml`.
-4. Point the desktop app at this Worker with `VITE_HAT_BILLING_BASE_URL`, or deploy it at the existing Hat proxy path `/v1/billing`.
+5. Deploy again after secrets are present:
+
+```bash
+npm run deploy:billing-worker
+```
+
+6. Point the desktop app at this Worker with `VITE_HAT_BILLING_BASE_URL`, or route the existing Hat proxy path `/v1/billing` to this Worker.
+
+Current Cloudflare setup:
+
+- `BILLING_KV` production namespace is bound in `wrangler.toml`.
+- `BILLING_KV` preview namespace is bound in `wrangler.toml`.
+- The Worker must still be deployed and configured with Stripe/Firebase secrets before live billing works.
 
 Stripe docs used for this design:
 
