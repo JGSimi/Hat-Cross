@@ -11,11 +11,19 @@ Routes:
 
 Required setup:
 
-1. Create Stripe Products/Prices for monthly plans Go, Pro, Ultra.
+1. Create Stripe Products/Prices for monthly plans Go, Pro, Ultra:
+
+```bash
+STRIPE_SECRET_KEY=sk_live_... npm run stripe:provision-catalog
+```
+
+The script is idempotent: it reuses active Stripe Prices tagged with `app=hat-flash` and the plan key when they already exist. Copy the printed `STRIPE_PRICE_*` values into your environment.
+
 2. Confirm the Worker package is deployable:
 
 ```bash
 npm run test:billing-worker
+npm run test:billing-scripts
 npm run dry-run:billing-worker
 ```
 
@@ -25,15 +33,16 @@ npm run dry-run:billing-worker
 npm run deploy:billing-worker
 ```
 
-4. Set Worker secrets:
+4. Set Worker secrets from environment variables:
 
 ```bash
-wrangler secret put STRIPE_SECRET_KEY
-wrangler secret put STRIPE_WEBHOOK_SECRET
-wrangler secret put FIREBASE_PROJECT_ID
-wrangler secret put STRIPE_PRICE_GO
-wrangler secret put STRIPE_PRICE_PRO
-wrangler secret put STRIPE_PRICE_ULTRA
+export STRIPE_SECRET_KEY=sk_live_...
+export STRIPE_WEBHOOK_SECRET=whsec_...
+export FIREBASE_PROJECT_ID=...
+export STRIPE_PRICE_GO=price_...
+export STRIPE_PRICE_PRO=price_...
+export STRIPE_PRICE_ULTRA=price_...
+npm run configure:billing-worker-secrets
 ```
 
 5. Deploy again after secrets are present:
