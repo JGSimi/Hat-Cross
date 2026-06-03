@@ -323,6 +323,13 @@ function devMockUser(): User | null {
   } as User;
 }
 
+const DEV_BILLING_BASE_URL = 'http://127.0.0.1:8789/v1/billing';
+
+function devBillingBaseURL(user: User | null) {
+  if (!import.meta.env.DEV || user?.uid !== 'dev-preview-user') return undefined;
+  return DEV_BILLING_BASE_URL;
+}
+
 function devMockSubscriptionStatus(): SubscriptionStatus {
   const plan = devSearchParams()?.get('mockPlan');
   if (plan === 'none') {
@@ -969,7 +976,15 @@ export function Main() {
 
   async function refreshBillingStatus(nextMessage = '') {
     if (!user) throw new Error('auth');
-    const status = await getSubscriptionStatus({ getIdToken: () => user.getIdToken() });
+    if (previewUser) {
+      setSubscriptionStatus(devMockSubscriptionStatus());
+      setBillingMessage(nextMessage);
+      return;
+    }
+    const status = await getSubscriptionStatus({
+      getIdToken: () => user.getIdToken(),
+      baseURL: devBillingBaseURL(user),
+    });
     setSubscriptionStatus(status);
     setBillingMessage(nextMessage);
   }
@@ -981,6 +996,7 @@ export function Main() {
       const session = await createCheckoutSession({
         planKey,
         getIdToken: () => user.getIdToken(),
+        baseURL: devBillingBaseURL(user),
       });
       openBillingURL(session.url);
       setBillingMessage('Checkout Stripe aberto no navegador.');
@@ -995,6 +1011,7 @@ export function Main() {
     try {
       const session = await createCustomerPortalSession({
         getIdToken: () => user.getIdToken(),
+        baseURL: devBillingBaseURL(user),
       });
       openBillingURL(session.url);
       setBillingMessage('Portal Stripe aberto no navegador.');
