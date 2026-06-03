@@ -342,6 +342,15 @@ function devMockSubscriptionStatus(): SubscriptionStatus {
   };
 }
 
+function enableDevMockLogin(plan: SubscriptionPlanKey = 'ultra') {
+  if (!import.meta.env.DEV) return false;
+  const url = new URL(window.location.href);
+  url.searchParams.set('mockLogin', '1');
+  url.searchParams.set('mockPlan', plan);
+  window.location.assign(`${url.pathname}${url.search}${url.hash}`);
+  return true;
+}
+
 function normalizeShortcutKey(key: string) {
   if (key.length === 1) {
     if (key === ' ') return 'Space';
@@ -945,7 +954,12 @@ export function Main() {
   }
 
   async function login() {
-    await signInWithGoogle();
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      if (enableDevMockLogin('ultra')) return;
+      throw err;
+    }
   }
 
   function openBillingURL(url: string) {
