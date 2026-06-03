@@ -44,6 +44,7 @@ import {
   type RoomMember,
   type RoomNotification,
 } from '../services/rooms';
+import { nextFlashPosition } from '../services/flashPosition';
 import { keyboardEventMatchesShortcut } from '../services/shortcutMatcher';
 import { hat, type ChatStreamRequest, type Settings as HatSettings } from '../bridge/hat';
 import { useHatStore } from '../stores/hatStore';
@@ -384,6 +385,7 @@ export function Main() {
   const responseRef = useRef('');
   const activeHistoryIDRef = useRef(activeHistoryID);
   const processClipboardAndSendRef = useRef<() => Promise<void>>(async () => undefined);
+  const handleShortcutActionRef = useRef<(action: string) => void>(() => undefined);
   const roomShareTimersRef = useRef<Map<string, number>>(new Map());
   const shownNotificationIDsRef = useRef<Set<string>>(new Set());
 
@@ -580,6 +582,10 @@ export function Main() {
   });
 
   useEffect(() => {
+    handleShortcutActionRef.current = handleShortcutAction;
+  });
+
+  useEffect(() => {
     const offDone = Events.On('stream:done', (event) => {
       const doneStreamId = Number(event.data?.streamId ?? 0);
       if (doneStreamId !== streamID || !settings) return;
@@ -607,11 +613,7 @@ export function Main() {
       }
     });
     const offShortcut = Events.On('shortcut:pressed', (event) => {
-      if (event.data?.action === 'processClipboardFlash') {
-        setTimeout(() => {
-          void runGuarded('Processando clipboard...', processClipboardAndSendRef.current);
-        }, 0);
-      }
+      setTimeout(() => handleShortcutActionRef.current(String(event.data?.action ?? '')), 0);
     });
     return () => {
       offDone();
@@ -622,13 +624,36 @@ export function Main() {
   useEffect(() => {
     if (!settings) return undefined;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!keyboardEventMatchesShortcut(event, settings.shortcuts.processClipboardFlash)) return;
+      const action = shortcutActionFromKeyboardEvent(event, settings.shortcuts);
+      if (!action) return;
       event.preventDefault();
-      void runGuarded('Processando clipboard...', processClipboardAndSendRef.current);
+      handleShortcutActionRef.current(action);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [settings]);
+
+  function shortcutActionFromKeyboardEvent(event: KeyboardEvent, shortcuts: HatSettings['shortcuts']) {
+    const action = (Object.keys(shortcuts) as ShortcutKey[]).find((key) => (
+      keyboardEventMatchesShortcut(event, shortcuts[key])
+    ));
+    return action ?? '';
+  }
+
+  function handleShortcutAction(action: string) {
+    switch (action) {
+      case 'processClipboardFlash':
+        void runGuarded('Processando clipboard...', processClipboardAndSendRef.current);
+        return;
+      case 'adjustFlashPosition':
+        void runGuarded('Ajustando flash...', adjustFlashPosition);
+        return;
+      case 'emergencyQuit':
+        void hat.app.quit();
+        return;
+      default:
+    }
+  }
 
   async function runGuarded(actionLabel: string, action: () => Promise<void>) {
     setStatus('busy');
@@ -712,6 +737,35 @@ export function Main() {
       )));
       throw err;
     }
+  }
+
+  async function adjustFlashPosition() {
+    if (!settings) throw new Error('Configuracao ainda nao carregou.');
+    const position = nextFlashPosition(settings.clipboard.flash.position);
+    await saveSettings({
+      ...settings,
+      clipboard: {
+        ...settings.clipboard,
+        flash: {
+          ...settings.clipboard.flash,
+          position,
+        },
+      },
+    });
+    await hat.flash.show({
+      text: 'Flash aqui',
+      position,
+      timing: {
+        ...settings.clipboard.flash.timing,
+        mode: 'fade',
+        holdMs: 1200,
+      },
+      appearance: {
+        ...settings.clipboard.flash.appearance,
+        opacity: Math.max(settings.clipboard.flash.appearance.opacity, 80),
+      },
+      streamId: streamID,
+    });
   }
 
   function responseForEntry(entry: ClipboardHistoryEntry) {
