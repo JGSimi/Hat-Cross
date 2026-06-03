@@ -34,8 +34,11 @@ func (s *WindowService) ShowFlash(payload models.FlashPayload) {
 		s.events.Emit(models.EventFlashShow, payload)
 	}
 	if window != nil {
+		window.SetAlwaysOnTop(true)
 		window.SetPosition(payload.Position.X, payload.Position.Y)
 		window.Show()
+		window.Focus()
+		window.SetAlwaysOnTop(true)
 		window.EmitEvent(models.EventFlashShow, payload)
 	}
 }
