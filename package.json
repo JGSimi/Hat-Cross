@@ -10,6 +10,7 @@
     "test": "npm --prefix apps/hat-flash/frontend test && cd apps/hat-flash && go test ./... && cd ../.. && npm run test:billing-worker",
     "test:billing-worker": "vitest run --config apps/hat-flash/billing-worker/vitest.config.ts && tsc -p apps/hat-flash/billing-worker/tsconfig.json",
     "test:billing-scripts": "node --test apps/hat-flash/billing-worker/scripts/*.test.mjs",
+    "check:billing-release-env": "node apps/hat-flash/billing-worker/scripts/check-billing-release-env.mjs",
     "stripe:provision-catalog": "node apps/hat-flash/billing-worker/scripts/provision-stripe-catalog.mjs",
     "configure:billing-worker-secrets": "cd apps/hat-flash/billing-worker && node scripts/configure-worker-secrets.mjs",
     "smoke:billing-worker": "node apps/hat-flash/billing-worker/scripts/smoke-billing-worker.mjs",

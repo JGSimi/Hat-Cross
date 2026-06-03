@@ -63,6 +63,30 @@ npm run build
 npm test
 ```
 
+## Billing / Stripe
+
+Hat Flash cobra assinaturas mensais por Stripe:
+
+| Plano | Preco mensal | Acesso |
+|-------|--------------|--------|
+| Go | R$ 20 | Hat pessoal e processamento de clipboard |
+| Pro | R$ 50 | Go + salas compartilhadas e modo Hat Pro |
+| Ultra | R$ 99 | Pro + prioridade marcada no billing |
+
+Antes de release com billing ativo, valide o ambiente:
+
+```bash
+npm run check:billing-release-env
+npm run test:billing-worker
+npm run test:billing-scripts
+npm run dry-run:billing-worker
+```
+
+O Worker Stripe fica em `apps/hat-flash/billing-worker`. Ele precisa dos
+segredos `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FIREBASE_PROJECT_ID`,
+`STRIPE_PRICE_GO`, `STRIPE_PRICE_PRO` e `STRIPE_PRICE_ULTRA` configurados no
+Cloudflare antes de billing live funcionar.
+
 Fluxo Tauri legado:
 
 ```bash
