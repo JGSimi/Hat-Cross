@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mocks = vi.hoisted(() => ({
+  save: vi.fn(async () => undefined),
+  register: vi.fn(async () => undefined),
+}));
+
 vi.mock('../bridge/hat', () => ({
   hat: {
     settings: {
       get: vi.fn(async () => ({ shortcuts: { processClipboardFlash: 'CommandOrControl+Shift+X' } })),
-      save: vi.fn(async () => undefined),
+      save: mocks.save,
     },
     shortcuts: {
-      register: vi.fn(async () => undefined),
+      register: mocks.register,
     },
   },
 }));
@@ -23,6 +28,9 @@ describe('hatStore', () => {
       clipboardText: '',
       clipboardImage: null,
     });
+    mocks.save.mockClear();
+    mocks.register.mockReset();
+    mocks.register.mockResolvedValue(undefined);
   });
 
   it('keeps stream chunks scoped to the active stream', () => {
@@ -59,5 +67,21 @@ describe('hatStore', () => {
 
     expect(useHatStore.getState().thinking).toBe('plan');
     expect(useHatStore.getState().response).toBe('');
+  });
+
+  it('does not save shortcut settings when native registration fails', async () => {
+    const settings = {
+      shortcuts: {
+        processClipboardFlash: 'CommandOrControl+Shift+F',
+        adjustFlashPosition: 'CommandOrControl+Alt+F',
+        emergencyQuit: 'CommandOrControl+Shift+Q',
+      },
+    };
+    mocks.register.mockRejectedValue(new Error('shortcut already in use'));
+
+    await expect(useHatStore.getState().saveSettings(settings as never)).rejects.toThrow('shortcut already in use');
+
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(useHatStore.getState().settings).toBeNull();
   });
 });

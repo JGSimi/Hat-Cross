@@ -91,8 +91,8 @@ export const useHatStore = create<HatStore>((set, get) => ({
     }
   },
   saveSettings: async (settings) => {
-    await hat.settings.save(settings).catch(() => undefined);
-    await hat.shortcuts.register(settings.shortcuts).catch(() => undefined);
+    await hat.shortcuts.register(settings.shortcuts);
+    await hat.settings.save(settings);
     set({ settings });
   },
 }));
