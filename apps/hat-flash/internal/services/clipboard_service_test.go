@@ -55,6 +55,9 @@ func TestClipboardProcessEmitsFailureForEmptyClipboard(t *testing.T) {
 	if len(events.Events) < 2 || events.Events[0].Name != "clipboard:started" || events.Events[1].Name != "clipboard:failed" {
 		t.Fatalf("events = %#v", events.Events)
 	}
+	if len(events.Events[0].Data) != 0 {
+		t.Fatalf("clipboard started event should not carry nil payload: %#v", events.Events[0].Data)
+	}
 	if got := events.Events[1].Data[0]; got != "clipboard empty" {
 		t.Fatalf("failure = %#v", got)
 	}

@@ -34,6 +34,6 @@ func (s *WindowService) HideFlash() {
 		window.Hide()
 	}
 	if s.events != nil {
-		s.events.Emit(models.EventFlashHide, nil)
+		s.events.Emit(models.EventFlashHide)
 	}
 }

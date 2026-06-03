@@ -23,10 +23,10 @@ var assets embed.FS
 func init() {
 	application.RegisterEvent[models.StreamChunk](models.EventStreamChunk)
 	application.RegisterEvent[map[string]any](models.EventStreamDone)
-	application.RegisterEvent[any](models.EventClipboardStarted)
+	application.RegisterEvent[application.Void](models.EventClipboardStarted)
 	application.RegisterEvent[string](models.EventClipboardFailed)
 	application.RegisterEvent[models.FlashPayload](models.EventFlashShow)
-	application.RegisterEvent[any](models.EventFlashHide)
+	application.RegisterEvent[application.Void](models.EventFlashHide)
 	application.RegisterEvent[map[string]any](models.EventAuthRequired)
 	application.RegisterEvent[models.Settings](models.EventSettingsChanged)
 	application.RegisterEvent[map[string]any](models.EventShortcutPressed)

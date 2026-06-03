@@ -32,7 +32,7 @@ func (s *ClipboardService) SetTextClipboard(clipboard TextClipboard) {
 
 func (s *ClipboardService) Process() (models.ClipboardPayload, error) {
 	if s.events != nil {
-		s.events.Emit(models.EventClipboardStarted, nil)
+		s.events.Emit(models.EventClipboardStarted)
 	}
 
 	text, textErr := s.ReadText()

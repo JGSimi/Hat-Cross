@@ -14,8 +14,8 @@ declare module "@wailsio/runtime" {
         interface CustomEvents {
             "auth:required": { [_ in string]?: any };
             "clipboard:failed": string;
-            "clipboard:started": any;
-            "flash:hide": any;
+            "clipboard:started": void;
+            "flash:hide": void;
             "flash:show": models$0.FlashPayload;
             "settings:changed": models$0.Settings;
             "shortcut:pressed": { [_ in string]?: any };
