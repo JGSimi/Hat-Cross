@@ -31,13 +31,23 @@ Baixe a última versão em [Releases](https://github.com/JGSimi/Hat-Cross/releas
 | **macOS Intel** | `Hat_X.Y.Z_x64.dmg` |
 | **Windows 64-bit** | `Hat_X.Y.Z_x64-setup.exe` |
 
-O app **não é assinado** (sem licença Apple/Microsoft). É seguro; o SO só não
-reconhece o certificado pago. Na **primeira** abertura:
+O app **não é assinado/notarizado** (sem licença Apple/Microsoft). É seguro; o
+SO só não reconhece o certificado pago.
 
-- **macOS:** arraste o `.app` para Aplicativos → clique com o **botão direito →
-  Abrir** → confirme. (Ou Ajustes do Sistema → Privacidade e Segurança → "Abrir
-  mesmo assim". Em último caso: `xattr -cr /Applications/Hat.app`.)
-- **Windows:** ao ver o SmartScreen, **Mais informações → Executar mesmo assim**.
+- **macOS (Apple Silicon e Intel):** abra o `.dmg`, arraste o **Hat** para
+  Aplicativos e rode **uma vez** no Terminal:
+
+  ```bash
+  xattr -cr /Applications/Hat.app
+  ```
+
+  Depois abra normal (duplo-clique). Esse passo é necessário porque o macOS põe
+  o app em "quarentena" ao baixar e, sem notarização, mostra **"Hat está
+  danificado"** — o `xattr -cr` remove a quarentena (não é vírus; é só o
+  certificado pago que falta). O "botão direito → Abrir" **não** resolve o
+  "danificado" no Apple Silicon; use o comando acima.
+- **Windows:** rode o instalador; no SmartScreen, **Mais informações →
+  Executar mesmo assim**.
 
 ### Atualizações — automáticas
 

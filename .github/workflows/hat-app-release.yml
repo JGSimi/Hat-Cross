@@ -73,11 +73,18 @@ jobs:
             Hat — Salas + Flash. App único (substitui Hat e Hat Flash).
 
             ## Instalação (app não-assinado — sem licença de dev)
-            - **macOS:** baixe o `.dmg`, arraste para Aplicativos. Na 1ª abertura,
-              clique com o botão direito → **Abrir** (ou Ajustes do Sistema →
-              Privacidade e Segurança → "Abrir mesmo assim"). Depois disso abre normal.
-            - **Windows:** rode o instalador. Se aparecer o SmartScreen, clique em
-              **Mais informações → Executar mesmo assim**.
+            **macOS:** abra o `.dmg`, arraste o **Hat** para Aplicativos e rode
+            **uma vez** no Terminal:
+            ```
+            xattr -cr /Applications/Hat.app
+            ```
+            Depois abra normal (duplo-clique). Sem notarização, o macOS mostra
+            **"Hat está danificado"** ao baixar — o comando acima remove a
+            quarentena (não é vírus, é só o certificado pago que falta). No
+            Apple Silicon o "botão direito → Abrir" **não** resolve; use o comando.
+
+            **Windows:** rode o instalador; no SmartScreen, **Mais informações →
+            Executar mesmo assim**.
 
             As **atualizações** depois disso são automáticas (assinatura minisign).
           releaseDraft: false
