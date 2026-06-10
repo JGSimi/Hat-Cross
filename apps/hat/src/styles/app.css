@@ -1,0 +1,98 @@
+@import 'tailwindcss';
+
+/*
+ * Tokens do design system (subconjunto V1 dos 24 tokens semânticos do
+ * docs/design-system.md). Tailwind v4 CSS-first: @theme é a fonte única.
+ */
+@theme {
+  --font-body: 'General Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* Display ultraleve — mesma voz do DisguiseClock/saldos do produto. */
+  --font-display: 'General Sans', system-ui, sans-serif;
+
+  --color-surface-base: #0e0e0d;
+  --color-surface-raised: #171716;
+  --color-surface-overlay: #090908;
+  --color-text-primary: #f4f4f2;
+  --color-text-secondary: #a8a8a3;
+  --color-text-muted: #6b6b66;
+  --color-accent-default: #6366f1;
+  --color-accent-hover: #818cf8;
+  --color-state-success: #34d399;
+  --color-state-warn: #fbbf24;
+  --color-state-error: #f87171;
+  --color-state-info: #60a5fa;
+
+  /* Salas — vereditos discretos: musgo p/ consenso, âmbar p/ divergência
+     (nunca vermelho acusatório — regra de produto). */
+  --color-consensus: #9db38a;
+  --color-divergence: #d9a05b;
+  --color-hairline: rgb(244 244 242 / 0.08);
+  --color-hairline-strong: rgb(244 244 242 / 0.16);
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Reveals discretos com stagger — usados pela UI das salas. */
+@keyframes hat-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hat-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.hat-rise {
+  animation: hat-rise 600ms var(--ease-out-expo) both;
+}
+
+.hat-pulse {
+  animation: hat-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hat-rise,
+  .hat-pulse {
+    animation: none;
+  }
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  font-family: var(--font-body);
+}
+
+/* A janela flash é transparente; o fundo vem do card, nunca do body
+   (lição do legado: fundo de janela transparente + blur diverge entre
+   WKWebView e WebView2). */
+body[data-window='flash'] {
+  background: transparent;
+  overflow: hidden;
+}
+
+body[data-window='main'] {
+  background: var(--color-surface-base);
+  color: var(--color-text-primary);
+}

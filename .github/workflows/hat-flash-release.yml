@@ -1,14 +1,9 @@
-name: Hat Flash
+name: Hat Flash (LEGADO — desativado)
 
+# DESATIVADO no pivot 2026-06: o Hat Flash (Wails, apps/hat-flash) foi
+# substituído por apps/hat. Mantido só para histórico; só roda sob demanda.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - '.github/workflows/hat-flash-release.yml'
-      - 'apps/hat-flash/**'
-  push:
-    tags:
-      - 'hat-flash-v*'
 
 permissions:
   contents: write

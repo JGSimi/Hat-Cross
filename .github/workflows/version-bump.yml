@@ -1,12 +1,11 @@
-name: 'Auto Version & Release'
+name: 'Auto Version & Release (LEGADO — desativado)'
 
+# DESATIVADO no pivot 2026-06: era o auto-release do Hat legado (Tauri em
+# /src-tauri). O app distribuído agora é apps/hat (workflow "Hat (app)").
+# NÃO reabilitar o trigger de push: publicaria releases `v*` com um latest.json
+# que sequestraria o updater do app novo (releases/latest = release mais recente).
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - '*.md'
-      - '.github/workflows/**'
+  workflow_dispatch:
 
 jobs:
   version-bump:

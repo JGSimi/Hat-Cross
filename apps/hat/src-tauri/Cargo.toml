@@ -1,0 +1,36 @@
+[package]
+name = "hat"
+version = "2.0.0"
+description = "Hat — assistente de IA stealth na bandeja do sistema"
+edition = "2021"
+
+[workspace]
+members = ["crates/hat-core"]
+
+[lib]
+name = "hat_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+hat-core = { path = "crates/hat-core" }
+tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-store = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", features = ["stream", "json"] }
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+once_cell = "1"
+base64 = "0.22"
+clipboard-rs = "0.3"
+
+# macOS — NSWindowCollectionBehavior::FullScreenAuxiliary não é exposto pela
+# API pública da Tauri; aplicamos direto no NSWindow (porte do app legado).
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"

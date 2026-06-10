@@ -1,0 +1,67 @@
+name: hat-v2-ci
+
+on:
+  push:
+    paths:
+      - 'apps/hat/**'
+      - '.github/workflows/hat-v2-ci.yml'
+  pull_request:
+    paths:
+      - 'apps/hat/**'
+
+jobs:
+  domain-ts:
+    name: Domínio TS (Vitest + typecheck)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/hat
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/hat/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run test:coverage
+      - name: Gate — domínio não importa Tauri
+        run: |
+          if grep -rE "from ['\"]@tauri-apps" src/domain; then
+            echo "::error::src/domain importa @tauri-apps — viola a regra de arquitetura"
+            exit 1
+          fi
+
+  domain-rust:
+    name: Domínio Rust (hat-core)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/hat/src-tauri/crates/hat-core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/hat/src-tauri
+      - run: cargo test
+      - run: cargo clippy -- -D warnings
+
+  shell-check:
+    name: Shell nativo compila (matrix)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: apps/hat/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/hat/src-tauri
+      - run: cargo check --workspace

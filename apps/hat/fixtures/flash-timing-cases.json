@@ -1,0 +1,13 @@
+{
+  "description": "holdMs = max(1800, min(6500, textLength * 34)). Consumido por src/domain/flash/timing.test.ts e crates/hat-core/src/flash.rs.",
+  "cases": [
+    { "textLength": 0, "holdMs": 1800 },
+    { "textLength": 10, "holdMs": 1800 },
+    { "textLength": 52, "holdMs": 1800 },
+    { "textLength": 53, "holdMs": 1802 },
+    { "textLength": 100, "holdMs": 3400 },
+    { "textLength": 191, "holdMs": 6494 },
+    { "textLength": 192, "holdMs": 6500 },
+    { "textLength": 500, "holdMs": 6500 }
+  ]
+}

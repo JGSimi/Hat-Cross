@@ -1,0 +1,85 @@
+name: Hat (app)
+
+# Release do app Hat (Tauri v2) — o ÚNICO app distribuído.
+# Não-assinado (sem licença Apple/MS): a 1ª instalação tem o aviso de
+# Gatekeeper/SmartScreen; as ATUALIZAÇÕES são automáticas via minisign +
+# latest.json (tauri-plugin-updater). Dispare com uma tag `hat-app-v*`.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'hat-app-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14        # Apple Silicon (arm64)
+            target: aarch64-apple-darwin
+          - os: macos-13        # Intel (x86_64)
+            target: x86_64-apple-darwin
+          - os: windows-latest  # Windows x64
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+      VITE_GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.VITE_GOOGLE_OAUTH_CLIENT_ID }}
+      VITE_GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.VITE_GOOGLE_OAUTH_CLIENT_SECRET }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: apps/hat/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/hat/src-tauri
+
+      - name: Install frontend deps
+        working-directory: apps/hat
+        run: npm ci
+
+      - name: Build + release (Tauri, não-assinado, minisign)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Chave minisign do updater (NÃO é certificado Apple/MS).
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/hat
+          args: --target ${{ matrix.target }}
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-app-vnext' }}
+          releaseName: 'Hat ${{ github.ref_name }}'
+          releaseBody: |
+            Hat — Salas + Flash. App único (substitui Hat e Hat Flash).
+
+            ## Instalação (app não-assinado — sem licença de dev)
+            - **macOS:** baixe o `.dmg`, arraste para Aplicativos. Na 1ª abertura,
+              clique com o botão direito → **Abrir** (ou Ajustes do Sistema →
+              Privacidade e Segurança → "Abrir mesmo assim"). Depois disso abre normal.
+            - **Windows:** rode o instalador. Se aparecer o SmartScreen, clique em
+              **Mais informações → Executar mesmo assim**.
+
+            As **atualizações** depois disso são automáticas (assinatura minisign).
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true

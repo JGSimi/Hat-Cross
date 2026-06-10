@@ -1,0 +1,52 @@
+{
+  "description": "Normalização de atalhos. Forma canônica: modificadores na ordem CommandOrControl, Alt, Shift, seguidos da tecla (Code do W3C sem prefixo Key/Digit quando alfanumérica). Consumido por src/domain/shortcuts/accelerator.test.ts e crates/hat-core/src/accelerator.rs.",
+  "normalize": [
+    { "input": "CommandOrControl+Shift+F", "expected": "CommandOrControl+Shift+F" },
+    { "input": "commandorcontrol+shift+f", "expected": "CommandOrControl+Shift+F" },
+    { "input": "Shift+CommandOrControl+F", "expected": "CommandOrControl+Shift+F" },
+    { "input": "CmdOrCtrl+Shift+F", "expected": "CommandOrControl+Shift+F" },
+    { "input": "CommandOrControl+Alt+F", "expected": "CommandOrControl+Alt+F" },
+    { "input": "CommandOrControl+Shift+Q", "expected": "CommandOrControl+Shift+Q" },
+    { "input": "Cmd+Shift+X", "expected": "CommandOrControl+Shift+X" },
+    { "input": "Ctrl+Shift+X", "expected": "CommandOrControl+Shift+X" },
+    { "input": "Super+Shift+F", "expected": "Super+Shift+F" },
+    { "input": "CommandOrControl+Shift+Digit1", "expected": "CommandOrControl+Shift+1" },
+    { "input": "CommandOrControl+Shift+KeyF", "expected": "CommandOrControl+Shift+F" }
+  ],
+  "validate": [
+    { "input": "CommandOrControl+Shift+F", "valid": true },
+    { "input": "Shift+F", "valid": false, "reason": "exige ao menos um modificador não-Shift" },
+    { "input": "F", "valid": false, "reason": "sem modificador" },
+    { "input": "CommandOrControl+Shift", "valid": false, "reason": "sem tecla final" },
+    { "input": "CommandOrControl+F5", "valid": true },
+    { "input": "", "valid": false, "reason": "vazio" }
+  ],
+  "displayLabel": [
+    { "input": "CommandOrControl+Shift+F", "darwin": "⌘⇧F", "win32": "Ctrl+Shift+F" },
+    { "input": "CommandOrControl+Alt+F", "darwin": "⌘⌥F", "win32": "Ctrl+Alt+F" },
+    { "input": "CommandOrControl+Shift+Q", "darwin": "⌘⇧Q", "win32": "Ctrl+Shift+Q" }
+  ],
+  "fromKeyboardEvent": [
+    {
+      "event": { "code": "KeyF", "ctrlKey": false, "metaKey": true, "altKey": false, "shiftKey": true },
+      "platform": "darwin",
+      "expected": "CommandOrControl+Shift+F"
+    },
+    {
+      "event": { "code": "KeyF", "ctrlKey": true, "metaKey": false, "altKey": false, "shiftKey": true },
+      "platform": "win32",
+      "expected": "CommandOrControl+Shift+F"
+    },
+    {
+      "event": { "code": "Digit1", "ctrlKey": true, "metaKey": false, "altKey": true, "shiftKey": false },
+      "platform": "win32",
+      "expected": "CommandOrControl+Alt+1"
+    },
+    {
+      "event": { "code": "KeyQ", "ctrlKey": false, "metaKey": false, "altKey": false, "shiftKey": true },
+      "platform": "darwin",
+      "expected": null,
+      "reason": "Shift sozinho não forma binding válido"
+    }
+  ]
+}
