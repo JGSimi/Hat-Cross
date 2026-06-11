@@ -6,7 +6,8 @@ export type RoomsClientErrorCode =
   | 'insufficientCredits'
   | 'sessionExpired'
   | 'roomError'
-  | 'notFound';
+  | 'notFound'
+  | 'activeRoomExists';
 
 /** O Worker devolve identificadores; o documento completo vem pelo realtime. */
 export interface RoomRef {
@@ -52,6 +53,9 @@ function errorFromStatus(status: number): RoomsClientError {
   }
   if (status === 404) {
     return new RoomsClientError('notFound', 'Sala não encontrada', status);
+  }
+  if (status === 409) {
+    return new RoomsClientError('activeRoomExists', 'Você já está em outra sala', status);
   }
   return new RoomsClientError('roomError', `Falha na operação da sala (HTTP ${status})`, status);
 }
