@@ -23,6 +23,7 @@ pub enum Action {
     AdjustFlashPosition,
     EmergencyQuit,
     ShowCorrection,
+    ToggleGabarito,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -33,10 +34,16 @@ pub struct ShortcutBindings {
     pub emergency_quit: String,
     #[serde(default = "default_show_correction")]
     pub show_correction: String,
+    #[serde(default = "default_toggle_gabarito")]
+    pub toggle_gabarito: String,
 }
 
 fn default_show_correction() -> String {
     "CommandOrControl+Shift+D".into()
+}
+
+fn default_toggle_gabarito() -> String {
+    "CommandOrControl+Shift+G".into()
 }
 
 impl Default for ShortcutBindings {
@@ -46,12 +53,13 @@ impl Default for ShortcutBindings {
             adjust_flash_position: "CommandOrControl+Alt+F".into(),
             emergency_quit: "CommandOrControl+Shift+Q".into(),
             show_correction: default_show_correction(),
+            toggle_gabarito: default_toggle_gabarito(),
         }
     }
 }
 
 impl ShortcutBindings {
-    fn entries(&self) -> [(&str, Action); 4] {
+    fn entries(&self) -> [(&str, Action); 5] {
         [
             (
                 self.process_clipboard_flash.as_str(),
@@ -63,6 +71,7 @@ impl ShortcutBindings {
             ),
             (self.emergency_quit.as_str(), Action::EmergencyQuit),
             (self.show_correction.as_str(), Action::ShowCorrection),
+            (self.toggle_gabarito.as_str(), Action::ToggleGabarito),
         ]
     }
 }
@@ -124,6 +133,10 @@ fn handle_action(app: &AppHandle, action: Action) {
             // A próxima correção não-lida vive no store da janela main; ela
             // escolhe e chama flash_show_text. Aqui só sinalizamos.
             let _ = app.emit("shortcut:show-correction", ());
+        }
+        Action::ToggleGabarito => {
+            // A main monta o gabarito da sala ativa e chama gabarito_show/hide.
+            let _ = app.emit("shortcut:toggle-gabarito", ());
         }
     }
 }

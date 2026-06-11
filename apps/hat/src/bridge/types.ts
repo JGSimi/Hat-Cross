@@ -76,6 +76,22 @@ export interface ShortcutBindings {
   emergencyQuit: string;
   /** Mostra a próxima correção da sala no Flash, sob demanda. */
   showCorrection: string;
+  /** Mostra/esconde o gabarito (respostas corrigidas) abaixo do Flash. */
+  toggleGabarito: string;
+}
+
+export interface GabaritoItem {
+  question: string;
+  answer: string;
+  diverged: boolean;
+}
+
+export interface GabaritoShowPayload {
+  items: GabaritoItem[];
+  opacity?: number;
+  background?: boolean;
+  bgColor?: string;
+  textColor?: string;
 }
 
 export type NativeEventMap = {
@@ -88,6 +104,10 @@ export type NativeEventMap = {
   'clipboard:failed': { reason: string };
   /** Atalho global pediu a próxima correção da sala no Flash. */
   'shortcut:show-correction': void;
+  /** Atalho global pediu mostrar/esconder o gabarito. */
+  'shortcut:toggle-gabarito': void;
+  /** Conteúdo do gabarito (na janela gabarito). */
+  'gabarito:show': GabaritoShowPayload;
   'shortcut:registration-failed': { binding: string; code: string };
   'settings:changed': void;
 };

@@ -12,6 +12,7 @@ export interface Settings {
     adjustFlashPosition: string;
     emergencyQuit: string;
     showCorrection: string;
+    toggleGabarito: string;
   };
   flash: {
     position: { x: number; y: number; monitorLabel?: string };
@@ -31,6 +32,7 @@ export const defaultSettings: Settings = {
     adjustFlashPosition: 'CommandOrControl+Alt+F',
     emergencyQuit: 'CommandOrControl+Shift+Q',
     showCorrection: 'CommandOrControl+Shift+D',
+    toggleGabarito: 'CommandOrControl+Shift+G',
   },
   flash: {
     position: { x: 24, y: 24 },
@@ -82,6 +84,7 @@ function migrateShortcuts(value: unknown): Settings['shortcuts'] {
     ),
     emergencyQuit: asString(raw['emergencyQuit'], defaults.emergencyQuit),
     showCorrection: asString(raw['showCorrection'], defaults.showCorrection),
+    toggleGabarito: asString(raw['toggleGabarito'], defaults.toggleGabarito),
   };
 }
 

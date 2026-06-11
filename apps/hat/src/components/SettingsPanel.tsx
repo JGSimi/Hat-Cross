@@ -18,6 +18,7 @@ function detectPlatform(): Platform {
 const SHORTCUT_LABELS: { key: keyof ShortcutBindings; label: string }[] = [
   { key: 'processClipboardFlash', label: 'Processar clipboard + Flash' },
   { key: 'showCorrection', label: 'Mostrar correção da sala' },
+  { key: 'toggleGabarito', label: 'Mostrar/esconder gabarito' },
   { key: 'adjustFlashPosition', label: 'Ajustar posição do Flash' },
   { key: 'emergencyQuit', label: 'Fechamento de emergência' },
 ];

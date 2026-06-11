@@ -3,9 +3,10 @@ import { createTauriBridge } from './bridge/tauri';
 import type { NativeBridge } from './bridge/native';
 import type { AuthPort } from './bridge/auth';
 import { FlashPage } from './pages/FlashPage';
+import { GabaritoPage } from './pages/GabaritoPage';
 import { MainPage } from './pages/MainPage';
 
-export type WindowRole = 'main' | 'flash';
+export type WindowRole = 'main' | 'flash' | 'gabarito';
 
 interface AppProps {
   windowRole: WindowRole;
@@ -20,6 +21,9 @@ export function App({ windowRole, bridge, authPort }: AppProps) {
 
   if (windowRole === 'flash') {
     return <FlashPage bridge={nativeBridge} />;
+  }
+  if (windowRole === 'gabarito') {
+    return <GabaritoPage bridge={nativeBridge} />;
   }
   return <MainPage bridge={nativeBridge} authPort={authPort} />;
 }

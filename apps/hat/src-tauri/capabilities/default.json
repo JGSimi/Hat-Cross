@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Permissões mínimas. Atalhos globais são gerenciados no Rust — o renderer não recebe permissão de global-shortcut.",
-  "windows": ["main", "flash"],
+  "windows": ["main", "flash", "gabarito"],
   "permissions": [
     "core:default",
     "store:default",

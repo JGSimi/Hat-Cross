@@ -3,6 +3,7 @@ import type { NativeBridge } from '../bridge/native';
 import type { AuthPort } from '../bridge/auth';
 import { startClipboardFlow } from '../controllers/clipboardFlow';
 import { startCorrectionsFlow } from '../controllers/correctionsFlow';
+import { startGabaritoFlow } from '../controllers/gabaritoFlow';
 import { createTokenManager, type TokenManager } from '../domain/auth/tokenManager';
 import { unreadCount } from '../domain/rooms/corrections';
 import { useRoomStore } from '../stores/roomStore';
@@ -119,6 +120,24 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
       onError: (e) => console.warn('correctionsFlow:', e),
     });
   }, [bridge]);
+
+  // Gabarito (respostas corrigidas) — toggle por atalho, abaixo do flash.
+  useEffect(() => {
+    return startGabaritoFlow({
+      bridge,
+      getRoomData: () => {
+        const s = useRoomStore.getState();
+        const roomId = s.activeRoomId;
+        if (!roomId) return null;
+        return {
+          clusters: s.clusters[roomId] ?? [],
+          entries: s.entries[roomId] ?? [],
+          myUid: session?.uid ?? '',
+        };
+      },
+      onError: (e) => console.warn('gabaritoFlow:', e),
+    });
+  }, [bridge, session]);
 
   // Lista de salas do usuário (realtime)
   useEffect(() => {

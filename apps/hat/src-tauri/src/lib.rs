@@ -49,6 +49,8 @@ pub fn run() {
             flash_window::flash_save_position,
             flash_window::get_flash_appearance,
             flash_window::set_flash_appearance,
+            flash_window::gabarito_show,
+            flash_window::gabarito_hide,
             shortcuts::set_shortcuts,
             shortcuts::get_shortcuts,
             stream::start_stream,

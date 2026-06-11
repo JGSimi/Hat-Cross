@@ -19,6 +19,7 @@ const DEFAULT_BINDINGS: ShortcutBindings = {
   adjustFlashPosition: 'CommandOrControl+Alt+F',
   emergencyQuit: 'CommandOrControl+Shift+Q',
   showCorrection: 'CommandOrControl+Shift+D',
+  toggleGabarito: 'CommandOrControl+Shift+G',
 };
 
 export interface MockBridge extends NativeBridge {
@@ -48,6 +49,8 @@ export function createMockBridge(): MockBridge {
     flashEnterAdjustMode: record('flashEnterAdjustMode'),
     flashSavePosition: record('flashSavePosition'),
     flashShowText: record('flashShowText'),
+    gabaritoShow: record('gabaritoShow'),
+    gabaritoHide: record('gabaritoHide'),
     setShortcuts: record('setShortcuts'),
     getShortcuts: () => {
       calls.push({ method: 'getShortcuts', args: [] });

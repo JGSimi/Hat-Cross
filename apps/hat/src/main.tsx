@@ -8,8 +8,9 @@ import './styles/app.css';
 
 // Papel da janela vem da URL (#/flash) — a janela flash é criada pelo Rust
 // com essa hash. Decidir aqui (e não via API Tauri) mantém o React testável.
-const windowRole = window.location.hash === '#/flash' ? 'flash' : 'main';
-document.body.dataset.window = windowRole;
+const hash = window.location.hash;
+const windowRole = hash === '#/flash' ? 'flash' : hash === '#/gabarito' ? 'gabarito' : 'main';
+document.body.dataset.window = windowRole === 'main' ? 'main' : 'flash';
 
 // Auth só na janela main (a flash é display puro). Sem credenciais no
 // ambiente, o app roda em modo sem-conta.

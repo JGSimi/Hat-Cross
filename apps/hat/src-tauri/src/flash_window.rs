@@ -10,8 +10,11 @@ use tauri_plugin_store::StoreExt;
 use crate::macos_overlay::{apply_fullscreen_overlay, OverlayLevel};
 
 pub const FLASH_LABEL: &str = "flash";
+pub const GABARITO_LABEL: &str = "gabarito";
 const CARD_W: f64 = 440.0;
 const CARD_H: f64 = 200.0;
+const GABARITO_H: f64 = 300.0;
+const GABARITO_GAP: f64 = 10.0;
 const SETTINGS_STORE: &str = "settings.json";
 const POSITION_KEY: &str = "flash.position";
 
@@ -103,30 +106,38 @@ pub fn set_flash_appearance(app: AppHandle, appearance: FlashAppearance) -> Resu
     Ok(())
 }
 
-pub fn create_prewarmed(app: &AppHandle) -> tauri::Result<()> {
-    let window = WebviewWindowBuilder::new(
-        app,
-        FLASH_LABEL,
-        WebviewUrl::App("index.html#/flash".into()),
-    )
-    .title("Hat Flash")
-    .inner_size(CARD_W, CARD_H)
-    .visible(false)
-    .transparent(true)
-    .decorations(false)
-    .always_on_top(true)
-    .skip_taskbar(true)
-    .focused(false)
-    .resizable(false)
-    .shadow(false)
-    .accept_first_mouse(false)
-    .visible_on_all_workspaces(true)
-    .content_protected(true)
-    .build()?;
-
-    // Click-through: o card nunca captura mouse.
+/// Cria um overlay (flash ou gabarito): transparente, click-through, topmost,
+/// content-protected, oculto e pré-aquecido. Mesmo tratamento stealth.
+fn build_overlay(
+    app: &AppHandle,
+    label: &str,
+    route: &str,
+    w: f64,
+    h: f64,
+) -> tauri::Result<()> {
+    let window = WebviewWindowBuilder::new(app, label, WebviewUrl::App(route.into()))
+        .title("Hat")
+        .inner_size(w, h)
+        .visible(false)
+        .transparent(true)
+        .decorations(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .focused(false)
+        .resizable(false)
+        .shadow(false)
+        .accept_first_mouse(false)
+        .visible_on_all_workspaces(true)
+        .content_protected(true)
+        .build()?;
     let _ = window.set_ignore_cursor_events(true);
     apply_fullscreen_overlay(&window, OverlayLevel::Top);
+    Ok(())
+}
+
+pub fn create_prewarmed(app: &AppHandle) -> tauri::Result<()> {
+    build_overlay(app, FLASH_LABEL, "index.html#/flash", CARD_W, CARD_H)?;
+    build_overlay(app, GABARITO_LABEL, "index.html#/gabarito", CARD_W, GABARITO_H)?;
     Ok(())
 }
 
@@ -205,6 +216,70 @@ pub fn flash_hide(app: AppHandle) {
 #[tauri::command]
 pub fn flash_show_text(app: AppHandle, text: String) {
     show(&app, "answer", &text);
+}
+
+// ───────────────────────────── Gabarito ──────────────────────────────────
+// Overlay PERSISTENTE abaixo do flash, mesma config visual. Mostra as
+// respostas corrigidas (consenso da IA) da sala. Toggle por atalho.
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GabaritoItem {
+    pub question: String,
+    pub answer: String,
+    pub diverged: bool,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+struct GabaritoPayload {
+    items: Vec<GabaritoItem>,
+    appearance: FlashAppearance,
+}
+
+#[tauri::command]
+pub fn gabarito_show(app: AppHandle, items: Vec<GabaritoItem>) {
+    let Some(window) = app.get_webview_window(GABARITO_LABEL) else {
+        return;
+    };
+    let pos = saved_position(&app);
+    let mut x = pos.x;
+    // Abaixo do flash.
+    let mut y = pos.y + CARD_H + GABARITO_GAP;
+    if let Ok(Some(monitor)) = window.current_monitor() {
+        let size = monitor.size();
+        let scale = monitor.scale_factor();
+        let (cx, cy) = hat_core::flash::clamp_position(
+            x,
+            y,
+            CARD_W,
+            GABARITO_H,
+            size.width as f64 / scale,
+            size.height as f64 / scale,
+        );
+        x = cx;
+        y = cy;
+    }
+    let _ = window.set_position(tauri::LogicalPosition::new(x, y));
+    let _ = window.set_always_on_top(true);
+    let _ = window.set_content_protected(true);
+    let _ = window.set_ignore_cursor_events(true);
+    apply_fullscreen_overlay(&window, OverlayLevel::Top);
+    let _ = window.show();
+    let _ = app.emit(
+        "gabarito:show",
+        GabaritoPayload {
+            items,
+            appearance: saved_appearance(&app),
+        },
+    );
+}
+
+#[tauri::command]
+pub fn gabarito_hide(app: AppHandle) {
+    if let Some(window) = app.get_webview_window(GABARITO_LABEL) {
+        let _ = window.hide();
+    }
 }
 
 #[tauri::command]

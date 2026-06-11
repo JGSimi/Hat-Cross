@@ -2,6 +2,7 @@ import type {
   ClipboardContent,
   FlashAppearance,
   FlashPosition,
+  GabaritoItem,
   NativeEventMap,
   NativeEventName,
   ShortcutBindings,
@@ -20,6 +21,9 @@ export interface NativeBridge {
   flashSavePosition(position: FlashPosition): Promise<void>;
   /** Mostra o Flash com um texto arbitrário (correção da sala, sob demanda). */
   flashShowText(text: string): Promise<void>;
+  /** Mostra o gabarito (overlay abaixo do flash) com os itens dados. */
+  gabaritoShow(items: GabaritoItem[]): Promise<void>;
+  gabaritoHide(): Promise<void>;
   setShortcuts(bindings: ShortcutBindings): Promise<void>;
   getShortcuts(): Promise<ShortcutBindings>;
   getFlashAppearance(): Promise<FlashAppearance>;

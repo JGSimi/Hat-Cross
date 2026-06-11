@@ -15,7 +15,7 @@ describe('SettingsPanel', () => {
     await setup();
     expect(screen.getByTestId('flash-preview')).toBeInTheDocument();
     // 4 atalhos capturáveis
-    expect(screen.getAllByTestId(/^keycap-/)).toHaveLength(4);
+    expect(screen.getAllByTestId(/^keycap-/)).toHaveLength(5);
     expect(screen.getByLabelText('Opacidade do Flash')).toHaveValue('16');
   });
 
