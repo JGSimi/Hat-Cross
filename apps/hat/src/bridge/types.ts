@@ -42,12 +42,27 @@ export interface FlashPosition {
 
 export type FlashState = 'processing' | 'answer' | 'error';
 
-export interface FlashShowPayload {
+export interface FlashAppearance {
+  /** 0–100. Opacidade do card (stealth: baixíssima por padrão). */
+  opacity: number;
+  /** Desenhar fundo do card? Se false, só o texto aparece. */
+  background: boolean;
+  /** Cor do fundo (hex). */
+  bgColor: string;
+  /** Cor do texto (hex). */
+  textColor: string;
+}
+
+export interface FlashShowPayload extends Partial<FlashAppearance> {
   state: FlashState;
   text: string;
   position: FlashPosition;
-  /** 0–100. Opacidade do card (stealth: baixíssima por padrão). */
-  opacity?: number;
+}
+
+export interface UpdateCheck {
+  status: 'uptodate' | 'updated' | 'error';
+  version?: string | null;
+  message?: string | null;
 }
 
 export type ClipboardContent =

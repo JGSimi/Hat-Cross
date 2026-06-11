@@ -23,28 +23,84 @@ pub struct FlashPosition {
     pub monitor_label: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FlashAppearance {
+    /// 0–100 (stealth): opacidade do card. Quase invisível por padrão.
+    pub opacity: u8,
+    /// Desenhar o fundo do card? Se false, só o texto aparece (mais furtivo).
+    pub background: bool,
+    /// Cor do fundo (hex). Aplicada com a opacidade.
+    pub bg_color: String,
+    /// Cor do texto (hex).
+    pub text_color: String,
+}
+
+impl Default for FlashAppearance {
+    fn default() -> Self {
+        Self {
+            opacity: 16,
+            background: true,
+            bg_color: "#090908".into(),
+            text_color: "#f6f6f4".into(),
+        }
+    }
+}
+
 #[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct FlashShowPayload {
     pub state: String, // "processing" | "answer" | "error"
     pub text: String,
     pub position: FlashPosition,
-    /// 0–100 (stealth): opacidade do card. Quase invisível por padrão.
-    pub opacity: u8,
+    #[serde(flatten)]
+    pub appearance: FlashAppearance,
 }
 
-const DEFAULT_OPACITY: u8 = 16;
 const OPACITY_KEY: &str = "flash.opacity";
+const BACKGROUND_KEY: &str = "flash.background";
+const BG_COLOR_KEY: &str = "flash.bgColor";
+const TEXT_COLOR_KEY: &str = "flash.textColor";
 
-fn saved_opacity(app: &AppHandle) -> u8 {
+fn saved_appearance(app: &AppHandle) -> FlashAppearance {
+    let d = FlashAppearance::default();
     let Ok(store) = app.store(SETTINGS_STORE) else {
-        return DEFAULT_OPACITY;
+        return d;
     };
-    store
-        .get(OPACITY_KEY)
-        .and_then(|v| v.as_u64())
-        .map(|v| v.clamp(0, 100) as u8)
-        .unwrap_or(DEFAULT_OPACITY)
+    FlashAppearance {
+        opacity: store
+            .get(OPACITY_KEY)
+            .and_then(|v| v.as_u64())
+            .map(|v| v.clamp(0, 100) as u8)
+            .unwrap_or(d.opacity),
+        background: store
+            .get(BACKGROUND_KEY)
+            .and_then(|v| v.as_bool())
+            .unwrap_or(d.background),
+        bg_color: store
+            .get(BG_COLOR_KEY)
+            .and_then(|v| v.as_str().map(String::from))
+            .unwrap_or(d.bg_color),
+        text_color: store
+            .get(TEXT_COLOR_KEY)
+            .and_then(|v| v.as_str().map(String::from))
+            .unwrap_or(d.text_color),
+    }
+}
+
+#[tauri::command]
+pub fn get_flash_appearance(app: AppHandle) -> FlashAppearance {
+    saved_appearance(&app)
+}
+
+#[tauri::command]
+pub fn set_flash_appearance(app: AppHandle, appearance: FlashAppearance) -> Result<(), String> {
+    let store = app.store(SETTINGS_STORE).map_err(|e| e.to_string())?;
+    store.set(OPACITY_KEY, serde_json::json!(appearance.opacity.min(100)));
+    store.set(BACKGROUND_KEY, serde_json::json!(appearance.background));
+    store.set(BG_COLOR_KEY, serde_json::json!(appearance.bg_color));
+    store.set(TEXT_COLOR_KEY, serde_json::json!(appearance.text_color));
+    Ok(())
 }
 
 pub fn create_prewarmed(app: &AppHandle) -> tauri::Result<()> {
@@ -127,7 +183,7 @@ pub fn show(app: &AppHandle, state: &str, text: &str) {
             state: state.to_string(),
             text: text.to_string(),
             position,
-            opacity: saved_opacity(app),
+            appearance: saved_appearance(app),
         },
     );
 }

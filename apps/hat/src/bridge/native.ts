@@ -1,10 +1,12 @@
 import type {
   ClipboardContent,
+  FlashAppearance,
   FlashPosition,
   NativeEventMap,
   NativeEventName,
   ShortcutBindings,
   StreamRequest,
+  UpdateCheck,
 } from './types';
 
 /**
@@ -19,6 +21,13 @@ export interface NativeBridge {
   /** Mostra o Flash com um texto arbitrário (correção da sala, sob demanda). */
   flashShowText(text: string): Promise<void>;
   setShortcuts(bindings: ShortcutBindings): Promise<void>;
+  getShortcuts(): Promise<ShortcutBindings>;
+  getFlashAppearance(): Promise<FlashAppearance>;
+  setFlashAppearance(appearance: FlashAppearance): Promise<void>;
+  /** Verifica/instala atualização sob demanda (aplica no próximo start). */
+  checkForUpdate(): Promise<UpdateCheck>;
+  /** Versão do app (ex.: "2.0.0"). */
+  getAppVersion(): Promise<string>;
   startStream(request: StreamRequest): Promise<void>;
   cancelStream(streamId: number): Promise<void>;
   readClipboard(): Promise<ClipboardContent>;

@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { getVersion } from '@tauri-apps/api/app';
 import type { NativeBridge } from './native';
 import type { NativeEventMap, NativeEventName } from './types';
 
@@ -14,6 +15,11 @@ export function createTauriBridge(): NativeBridge {
     flashSavePosition: (position) => invoke('flash_save_position', { position }),
     flashShowText: (text) => invoke('flash_show_text', { text }),
     setShortcuts: (bindings) => invoke('set_shortcuts', { bindings }),
+    getShortcuts: () => invoke('get_shortcuts'),
+    getFlashAppearance: () => invoke('get_flash_appearance'),
+    setFlashAppearance: (appearance) => invoke('set_flash_appearance', { appearance }),
+    checkForUpdate: () => invoke('check_for_update'),
+    getAppVersion: () => getVersion(),
     startStream: (request) => invoke('start_stream', { request }),
     cancelStream: (streamId) => invoke('cancel_stream', { streamId }),
     readClipboard: () => invoke('read_clipboard'),

@@ -12,6 +12,9 @@ import { createAccountClient, trialDaysLeft, type AccountStatus } from '../servi
 import { hatProxyBaseUrl, readAuthConfig } from '../services/auth/config';
 import { RoomsPanel } from '../components/Rooms/RoomsPanel';
 import { Paywall } from '../components/Paywall';
+import { SettingsPanel } from '../components/SettingsPanel';
+
+type MainView = 'rooms' | 'settings';
 
 interface MainPageProps {
   bridge: NativeBridge;
@@ -28,6 +31,7 @@ interface MainPageProps {
  */
 export function MainPage({ bridge, authPort }: MainPageProps) {
   const streamSeq = useRef(0);
+  const [view, setView] = useState<MainView>('rooms');
   const [session, setSession] = useState(() => authPort?.currentSession() ?? null);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -49,10 +53,12 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
     [tokenManager],
   );
 
+  // Sem sessão NÃO há cliente: evita tentar criar/entrar em sala deslogado
+  // (getIdToken lançaria e a UI mostra "conecte sua conta").
   const roomsClient: RoomsClient | null = useMemo(() => {
-    if (!tokenManager) return null;
+    if (!tokenManager || !session) return null;
     return createRoomsClient({ baseUrl: hatProxyBaseUrl(), getIdToken });
-  }, [tokenManager, getIdToken]);
+  }, [tokenManager, session, getIdToken]);
 
   const accountClient = useMemo(() => {
     if (!tokenManager) return null;
@@ -92,7 +98,15 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
         const id = useRoomStore.getState().activeRoomId;
         return id ? { roomId: id, roomShare: true } : null;
       },
-      onError: (e) => console.warn('clipboardFlow:', e),
+      // Sem isto, o Flash fica preso em "Processando…" quando o stream nem
+      // começa (ex.: não logado). Mostra a causa e deixa o auto-hide agir.
+      onError: (e) => {
+        console.warn('clipboardFlow:', e);
+        const msg = e instanceof Error && /not-signed-in|not-configured/.test(e.message)
+          ? 'Entre com sua conta (Google) no Hat para usar o Flash.'
+          : 'Não consegui processar agora. Tente de novo.';
+        void bridge.flashShowText(msg);
+      },
     });
   }, [bridge, getIdToken]);
 
@@ -159,13 +173,26 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
           ♞
         </span>
         <div className="mt-8 flex flex-col items-center gap-7">
-          <span
-            aria-current="page"
-            className="font-mono text-[9.5px] tracking-[0.28em] text-text-primary"
-            style={{ writingMode: 'vertical-rl', borderRight: '1px solid var(--color-text-primary)', paddingRight: 6 }}
-          >
-            SALAS
-          </span>
+          {(['rooms', 'settings'] as const).map((v) => {
+            const active = view === v;
+            return (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                aria-current={active ? 'page' : undefined}
+                className="cursor-pointer border-0 bg-transparent p-0 font-mono text-[9.5px] tracking-[0.28em] transition-colors duration-200"
+                style={{
+                  writingMode: 'vertical-rl',
+                  color: active ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                  borderRight: active ? '1px solid var(--color-text-primary)' : '1px solid transparent',
+                  paddingRight: 6,
+                }}
+              >
+                {v === 'rooms' ? 'SALAS' : 'AJUSTES'}
+              </button>
+            );
+          })}
         </div>
         {pendingCorrections > 0 && (
           <span
@@ -226,7 +253,9 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-hidden">
-          {session && !entitled ? (
+          {view === 'settings' ? (
+            <SettingsPanel bridge={bridge} />
+          ) : session && !entitled ? (
             <Paywall trialEndsAt={account?.trialEndsAt ?? null} onSubscribe={() => void openCheckout()} />
           ) : (
             <RoomsPanel

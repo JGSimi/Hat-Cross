@@ -30,3 +30,55 @@ async fn try_update(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         .await?;
     Ok(())
 }
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCheck {
+    /// "uptodate" | "updated" | "error"
+    pub status: String,
+    pub version: Option<String>,
+    pub message: Option<String>,
+}
+
+/// Verifica e instala atualização sob demanda (botão na tela de Ajustes).
+/// Aplica no próximo start. Best-effort, com status legível para a UI.
+#[tauri::command]
+pub async fn check_for_update(app: AppHandle) -> UpdateCheck {
+    let updater = match app.updater() {
+        Ok(u) => u,
+        Err(e) => {
+            return UpdateCheck {
+                status: "error".into(),
+                version: None,
+                message: Some(e.to_string()),
+            }
+        }
+    };
+    match updater.check().await {
+        Ok(Some(update)) => {
+            let version = update.version.clone();
+            match update.download_and_install(|_, _| {}, || {}).await {
+                Ok(()) => UpdateCheck {
+                    status: "updated".into(),
+                    version: Some(version),
+                    message: None,
+                },
+                Err(e) => UpdateCheck {
+                    status: "error".into(),
+                    version: Some(version),
+                    message: Some(e.to_string()),
+                },
+            }
+        }
+        Ok(None) => UpdateCheck {
+            status: "uptodate".into(),
+            version: None,
+            message: None,
+        },
+        Err(e) => UpdateCheck {
+            status: "error".into(),
+            version: None,
+            message: Some(e.to_string()),
+        },
+    }
+}

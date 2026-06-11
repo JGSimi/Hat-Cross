@@ -136,6 +136,12 @@ fn load_bindings(app: &AppHandle) -> ShortcutBindings {
         .unwrap_or_default()
 }
 
+/// Bindings atuais (para a tela de Ajustes exibir/editar).
+#[tauri::command]
+pub fn get_shortcuts(app: AppHandle) -> ShortcutBindings {
+    load_bindings(&app)
+}
+
 /// Registra os bindings das settings (defaults na primeira execução).
 /// Conflito de registro NÃO derruba o app: emite evento para a UI exibir.
 pub fn register_from_settings(app: &AppHandle) -> tauri::Result<()> {

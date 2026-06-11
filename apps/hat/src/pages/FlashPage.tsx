@@ -8,6 +8,15 @@ interface FlashPageProps {
   bridge: NativeBridge;
 }
 
+/** #rrggbb (ou #rgb) + alpha → rgba(). Fallback ao próprio valor se inválido. */
+function hexToRgba(hex: string, alpha: number): string {
+  let h = hex.trim().replace(/^#/, '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return hex;
+  const n = parseInt(h, 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
 /**
  * Card do flash. A janela já existe (pré-aquecida pelo Rust); este componente
  * só reage a flash:show / stream:chunk e se auto-esconde após o hold.
@@ -54,6 +63,19 @@ export function FlashPage({ bridge }: FlashPageProps) {
 
   const text = errorText ?? streamText ?? payload?.text ?? '';
   const isAnswer = payload?.state === 'answer';
+  const isProcessing = payload?.state === 'processing';
+
+  // Watchdog: o Flash NUNCA pode ficar preso em "Processando…". Se nada chegar
+  // (token falhou, rede caiu, backend travou) em PROCESSING_TIMEOUT_MS, mostra
+  // erro e segue para o auto-hide. Cancelado assim que chega texto/erro.
+  useEffect(() => {
+    if (!isProcessing || streamText || errorText) return;
+    const id = setTimeout(() => {
+      setErrorText('Sem resposta. Verifique sua conexão/login e tente de novo.');
+      setPayload((prev) => (prev ? { ...prev, state: 'answer' } : prev));
+    }, 15000);
+    return () => clearTimeout(id);
+  }, [isProcessing, streamText, errorText, payload]);
 
   useEffect(() => {
     if (!isAnswer) return;
@@ -71,6 +93,9 @@ export function FlashPage({ bridge }: FlashPageProps) {
   // Stealth: opacidade baixíssima por padrão (só o usuário sabe onde está),
   // com um piso para continuar legível de perto. 0–100 → fração.
   const cardOpacity = Math.max(0.12, Math.min(1, (payload.opacity ?? 16) / 100));
+  const showBg = payload.background ?? true;
+  const bgColor = payload.bgColor ?? '#090908';
+  const textColor = errorText ? 'var(--color-divergence)' : (payload.textColor ?? '#f6f6f4');
   // Textos longos: fonte menor e mais linhas. Curto = confortável.
   const long = text.length > 280;
 
@@ -91,10 +116,10 @@ export function FlashPage({ bridge }: FlashPageProps) {
       <div
         data-testid="flash-card"
         style={{
-          // Fundo quase transparente: o contraste vem do texto, não de um
-          // bloco opaco que denunciaria a posição.
-          background: 'rgba(9, 9, 8, 0.35)',
-          color: errorText ? 'var(--color-divergence)' : '#f6f6f4',
+          // Fundo configurável; quando desligado, só o texto aparece (mais
+          // furtivo). A opacidade do wrapper já controla a discrição geral.
+          background: showBg ? hexToRgba(bgColor, 0.35) : 'transparent',
+          color: textColor,
           borderRadius: 10,
           padding: long ? '8px 12px' : '10px 14px',
           fontSize: long ? 12 : 13.5,

@@ -1,9 +1,25 @@
 import type { NativeBridge } from './native';
 import type {
   ClipboardContent,
+  FlashAppearance,
   NativeEventMap,
   NativeEventName,
+  ShortcutBindings,
 } from './types';
+
+const DEFAULT_APPEARANCE: FlashAppearance = {
+  opacity: 16,
+  background: true,
+  bgColor: '#090908',
+  textColor: '#f6f6f4',
+};
+
+const DEFAULT_BINDINGS: ShortcutBindings = {
+  processClipboardFlash: 'CommandOrControl+Shift+F',
+  adjustFlashPosition: 'CommandOrControl+Alt+F',
+  emergencyQuit: 'CommandOrControl+Shift+Q',
+  showCorrection: 'CommandOrControl+Shift+D',
+};
 
 export interface MockBridge extends NativeBridge {
   /** Histórico de chamadas, por método. */
@@ -33,6 +49,23 @@ export function createMockBridge(): MockBridge {
     flashSavePosition: record('flashSavePosition'),
     flashShowText: record('flashShowText'),
     setShortcuts: record('setShortcuts'),
+    getShortcuts: () => {
+      calls.push({ method: 'getShortcuts', args: [] });
+      return Promise.resolve({ ...DEFAULT_BINDINGS });
+    },
+    getFlashAppearance: () => {
+      calls.push({ method: 'getFlashAppearance', args: [] });
+      return Promise.resolve({ ...DEFAULT_APPEARANCE });
+    },
+    setFlashAppearance: record('setFlashAppearance'),
+    checkForUpdate: () => {
+      calls.push({ method: 'checkForUpdate', args: [] });
+      return Promise.resolve({ status: 'uptodate' as const });
+    },
+    getAppVersion: () => {
+      calls.push({ method: 'getAppVersion', args: [] });
+      return Promise.resolve('0.0.0-test');
+    },
     startStream: record('startStream'),
     cancelStream: record('cancelStream'),
     readClipboard: () => {
