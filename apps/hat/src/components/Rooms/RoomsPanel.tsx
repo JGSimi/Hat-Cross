@@ -32,6 +32,10 @@ export function RoomsPanel({ client, myUid, authed }: RoomsPanelProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [demoUid, setDemoUid] = useState<string | null>(null);
   const [code, setCode] = useState('');
+  // null = não criando; string = nome em edição (input inline — webview do
+  // Tauri não tem window.prompt).
+  const [creatingTitle, setCreatingTitle] = useState<string | null>(null);
+  const [createBusy, setCreateBusy] = useState(false);
 
   const effectiveUid = myUid ?? demoUid ?? '';
   const roomList = useMemo(
@@ -81,19 +85,28 @@ export function RoomsPanel({ client, myUid, authed }: RoomsPanelProps) {
     }
   }
 
-  async function createRoom() {
-    if (!client) {
-      requireClient();
-      return;
-    }
-    const title = window.prompt('Nome da sala (ex.: Prova de Cálculo · Turma B):');
-    if (title === null) return;
+  function startCreate() {
+    if (!requireClient()) return;
+    setNotice(null);
+    setCreatingTitle('');
+  }
+
+  async function confirmCreate() {
+    if (!client || creatingTitle === null || createBusy) return;
+    setCreateBusy(true);
     setNotice(null);
     try {
-      const ref = await client.createRoom(title.trim() || 'Sala de questionário');
+      const ref = await client.createRoom(creatingTitle.trim() || 'Sala de questionário');
+      setCreatingTitle(null);
       store.setActiveRoom(ref.roomId);
-    } catch {
-      setNotice('Não consegui criar a sala. Tente de novo.');
+    } catch (error) {
+      setNotice(
+        error instanceof RoomsClientError && error.code === 'insufficientCredits'
+          ? 'Sua conta precisa de assinatura/trial ativo.'
+          : 'Não consegui criar a sala. Tente de novo.',
+      );
+    } finally {
+      setCreateBusy(false);
     }
   }
 
@@ -195,12 +208,48 @@ export function RoomsPanel({ client, myUid, authed }: RoomsPanelProps) {
         </button>
         <button
           type="button"
-          onClick={() => void createRoom()}
+          onClick={startCreate}
           className="cursor-pointer rounded-sm border-0 bg-accent-default px-4 py-2 text-[13px] text-white transition-colors duration-200 hover:bg-accent-hover"
         >
           Nova sala
         </button>
       </form>
+
+      {creatingTitle !== null && (
+        <form
+          className="mt-2 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void confirmCreate();
+          }}
+        >
+          <input
+            autoFocus
+            value={creatingTitle}
+            onChange={(e) => setCreatingTitle(e.target.value)}
+            onKeyDown={(e) => e.key === 'Escape' && setCreatingTitle(null)}
+            placeholder="nome da sala (ex.: Prova de Cálculo · Turma B)"
+            aria-label="Nome da nova sala"
+            data-testid="create-title"
+            className="min-w-0 flex-1 rounded-sm border border-solid border-accent-default bg-surface-raised px-3 py-2 text-[12.5px] text-text-primary outline-none placeholder:text-text-muted"
+          />
+          <button
+            type="submit"
+            disabled={createBusy}
+            data-testid="create-confirm"
+            className="cursor-pointer rounded-sm border-0 bg-accent-default px-4 py-2 text-[13px] text-white transition-colors duration-200 hover:bg-accent-hover disabled:opacity-50"
+          >
+            {createBusy ? 'Criando…' : 'Criar'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreatingTitle(null)}
+            className="cursor-pointer rounded-sm border border-solid border-hairline-strong bg-transparent px-3 py-2 text-[13px] text-text-secondary transition-colors duration-200 hover:text-text-primary"
+          >
+            Cancelar
+          </button>
+        </form>
+      )}
       {joinError && (
         <p role="alert" className="mt-2 mb-0 text-[12px]" style={{ color: 'var(--color-divergence)' }}>
           {joinError}
