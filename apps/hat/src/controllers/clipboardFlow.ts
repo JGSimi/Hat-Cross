@@ -40,9 +40,22 @@ export interface ClipboardFlowDeps {
   onError?: (error: unknown) => void;
 }
 
-const DEFAULT_SYSTEM_PROMPT =
-  'Responda em português do Brasil, de forma direta e útil.';
-const DEFAULT_IMAGE_PROMPT = 'Explique ou resolva o conteúdo desta imagem.';
+// A resposta aparece num overlay PEQUENO e discreto. Regras de formato pensadas
+// para leitura rápida (e economia de tokens):
+// - múltipla escolha → só a letra + início curto da alternativa ("B) ...");
+// - dissertativa → texto humano, corrido, direto, sem markdown.
+const DEFAULT_SYSTEM_PROMPT = [
+  'Você responde questões que aparecem num overlay pequeno; a pessoa precisa',
+  'ler a resposta numa olhada. Responda em português do Brasil.',
+  'Se for questão de múltipla escolha (tem alternativas A, B, C…), responda',
+  'APENAS com a letra correta seguida do começo curto da alternativa, ex.:',
+  '"B) início da alternativa". Nada além disso.',
+  'Se for dissertativa/aberta, responda em texto corrido, humano e direto, no',
+  'máximo 3 frases curtas. NUNCA use markdown (sem **negrito**, listas, títulos,',
+  'blocos de código ou emojis). Seja o mais conciso possível.',
+].join(' ');
+const DEFAULT_IMAGE_PROMPT =
+  'Resolva a questão desta imagem seguindo as regras de formato (múltipla escolha: só a letra e início curto; dissertativa: texto humano curto, sem markdown).';
 
 /**
  * Monta as mensagens a partir do conteúdo do clipboard. Imagem vai em

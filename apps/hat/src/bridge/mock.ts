@@ -79,6 +79,8 @@ export function createMockBridge(): MockBridge {
     setClipboard: (content) => {
       clipboard = content;
     },
+    writeClipboard: record('writeClipboard'),
+    flashResize: record('flashResize'),
     on: (event, handler) => {
       const set = listeners.get(event) ?? new Set();
       set.add(handler as (payload: never) => void);

@@ -45,6 +45,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             flash_window::flash_hide,
             flash_window::flash_show_text,
+            flash_window::flash_resize,
             flash_window::flash_enter_adjust_mode,
             flash_window::flash_save_position,
             flash_window::get_flash_appearance,
@@ -56,6 +57,7 @@ pub fn run() {
             stream::start_stream,
             stream::cancel_stream,
             clipboard::read_clipboard,
+            clipboard::write_clipboard,
             oauth::oauth_run_loopback_flow,
             oauth::open_external,
             updates::check_for_update,

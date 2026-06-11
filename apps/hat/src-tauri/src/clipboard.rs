@@ -65,3 +65,11 @@ fn try_read() -> Option<ClipboardContent> {
 pub fn read_clipboard() -> ClipboardContent {
     SystemClipboard.read()
 }
+
+/// Escreve texto no clipboard do sistema. Usado para colocar a resposta da IA
+/// no clipboard ao fim do stream, para o usuário colar se quiser.
+#[tauri::command]
+pub fn write_clipboard(text: String) -> Result<(), String> {
+    let ctx = ClipboardContext::new().map_err(|e| e.to_string())?;
+    ctx.set_text(text).map_err(|e| e.to_string())
+}

@@ -26,12 +26,15 @@ export function FlashPage({ bridge }: FlashPageProps) {
   const [streamText, setStreamText] = useState('');
   const [errorText, setErrorText] = useState<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const copiedRef = useRef(false);
 
   useEffect(() => {
     const offShow = bridge.on('flash:show', (p) => {
       if (hideTimer.current) clearTimeout(hideTimer.current);
       setStreamText('');
       setErrorText(null);
+      copiedRef.current = false;
       setPayload(p);
     });
     const offChunk = bridge.on('stream:chunk', (chunk) => {
@@ -64,6 +67,22 @@ export function FlashPage({ bridge }: FlashPageProps) {
   const text = errorText ?? streamText ?? payload?.text ?? '';
   const isAnswer = payload?.state === 'answer';
   const isProcessing = payload?.state === 'processing';
+
+  // Resposta da IA → clipboard (uma vez por flash), para o usuário colar.
+  // Só respostas reais (não erro, não estado de correção sem stream local).
+  useEffect(() => {
+    if (isAnswer && !errorText && streamText.trim() && !copiedRef.current) {
+      copiedRef.current = true;
+      void bridge.writeClipboard(streamText.trim()).catch(() => {});
+    }
+  }, [isAnswer, errorText, streamText, bridge]);
+
+  // A resposta sempre cabe: a janela do flash redimensiona à altura do card.
+  useEffect(() => {
+    if (!payload) return;
+    const h = cardRef.current?.scrollHeight;
+    if (h && h > 0) void bridge.flashResize(h + 18).catch(() => {});
+  }, [payload, text, bridge]);
 
   // Watchdog: o Flash NUNCA pode ficar preso em "Processando…". Se nada chegar
   // (token falhou, rede caiu, backend travou) em PROCESSING_TIMEOUT_MS, mostra
@@ -114,6 +133,7 @@ export function FlashPage({ bridge }: FlashPageProps) {
       }}
     >
       <div
+        ref={cardRef}
         data-testid="flash-card"
         style={{
           // Fundo configurável; quando desligado, só o texto aparece (mais

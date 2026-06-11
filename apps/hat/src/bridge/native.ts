@@ -35,6 +35,10 @@ export interface NativeBridge {
   startStream(request: StreamRequest): Promise<void>;
   cancelStream(streamId: number): Promise<void>;
   readClipboard(): Promise<ClipboardContent>;
+  /** Escreve texto no clipboard (resposta da IA, para colar). */
+  writeClipboard(text: string): Promise<void>;
+  /** Ajusta a altura da janela do flash ao conteúdo. */
+  flashResize(height: number): Promise<void>;
   /** Abre uma URL no navegador do sistema (checkout, assinatura). */
   openExternal(url: string): Promise<void>;
   /** Registra listener; retorna função de unsubscribe. */

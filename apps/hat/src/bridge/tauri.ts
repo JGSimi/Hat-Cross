@@ -25,6 +25,8 @@ export function createTauriBridge(): NativeBridge {
     startStream: (request) => invoke('start_stream', { request }),
     cancelStream: (streamId) => invoke('cancel_stream', { streamId }),
     readClipboard: () => invoke('read_clipboard'),
+    writeClipboard: (text) => invoke('write_clipboard', { text }),
+    flashResize: (height) => invoke('flash_resize', { height }),
     openExternal: (url) => invoke('open_external', { url }),
     on: <E extends NativeEventName>(
       event: E,

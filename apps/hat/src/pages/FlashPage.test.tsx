@@ -78,6 +78,31 @@ describe('FlashPage', () => {
     expect(bridge.calls.some((c) => c.method === 'flashHide')).toBe(true);
   });
 
+  it('ao terminar, escreve a resposta no clipboard (uma vez)', () => {
+    render(<FlashPage bridge={bridge} />);
+    act(() => {
+      bridge.emit('flash:show', { state: 'processing', text: '', position: POS });
+      bridge.emit('stream:chunk', { streamId: 1, text: 'B) Paris', isFinished: true, contentType: 'text' });
+    });
+    const writes = bridge.calls.filter((c) => c.method === 'writeClipboard');
+    expect(writes).toHaveLength(1);
+    expect(writes[0]?.args[0]).toBe('B) Paris');
+  });
+
+  it('erro não vai para o clipboard', () => {
+    render(<FlashPage bridge={bridge} />);
+    act(() => {
+      bridge.emit('flash:show', { state: 'processing', text: '', position: POS });
+      bridge.emit('stream:chunk', {
+        streamId: 1,
+        text: 'error:serverError:500:x',
+        isFinished: true,
+        contentType: 'text',
+      });
+    });
+    expect(bridge.calls.some((c) => c.method === 'writeClipboard')).toBe(false);
+  });
+
   it('erro do proxy vira mensagem limpa, sem JSON cru', () => {
     render(<FlashPage bridge={bridge} />);
     act(() => {

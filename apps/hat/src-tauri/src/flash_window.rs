@@ -211,6 +211,16 @@ pub fn flash_hide(app: AppHandle) {
     hide(&app);
 }
 
+/// Ajusta a altura da janela do flash ao conteúdo (a resposta sempre cabe).
+/// Largura fixa; altura limitada para não virar um painel gigante.
+#[tauri::command]
+pub fn flash_resize(app: AppHandle, height: f64) {
+    if let Some(window) = app.get_webview_window(FLASH_LABEL) {
+        let h = height.clamp(56.0, 520.0);
+        let _ = window.set_size(tauri::LogicalSize::new(CARD_W, h));
+    }
+}
+
 /// Mostra o Flash com um texto pronto (correção da sala, sob demanda).
 /// Estado "answer" → a FlashPage aplica o auto-hide pelo holdMs.
 #[tauri::command]
