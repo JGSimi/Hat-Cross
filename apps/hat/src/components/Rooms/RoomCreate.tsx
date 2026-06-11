@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { RoomsClient } from '../../services/rooms/client';
 import { RoomsClientError } from '../../services/rooms/client';
+import { HatLogo } from '../HatLogo';
 
 interface RoomCreateProps {
   client: RoomsClient;
@@ -54,7 +55,7 @@ export function RoomCreate({ client, onClose, onEnter }: RoomCreateProps) {
   if (createdId) {
     return (
       <section className="flex h-full flex-col items-center justify-center px-6 text-center" aria-label="Sala criada">
-        <span aria-hidden className="font-display text-[40px] font-extralight text-consensus">♞</span>
+        <HatLogo size={40} className="text-consensus" />
         <h1 className="font-display mt-3 mb-0 text-[26px] font-extralight tracking-[-0.02em] text-text-primary">
           Sala criada
         </h1>

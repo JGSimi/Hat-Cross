@@ -1,5 +1,6 @@
 import { clusterView, divergenceMessage } from '../../domain/rooms/consensus';
 import type { RoomCluster, RoomEntry } from '../../domain/rooms/types';
+import { HatLogo } from '../HatLogo';
 
 interface RoomConsensusPanelProps {
   clusters: RoomCluster[];
@@ -15,10 +16,8 @@ interface RoomConsensusPanelProps {
 export function RoomConsensusPanel({ clusters, entries, myUid }: RoomConsensusPanelProps) {
   if (clusters.length === 0) {
     return (
-      <div className="px-1 py-10 text-center" data-testid="consensus-empty">
-        <span aria-hidden className="font-display block text-[40px] font-extralight text-text-muted">
-          ♞
-        </span>
+      <div className="flex flex-col items-center px-1 py-10 text-center" data-testid="consensus-empty">
+        <HatLogo size={40} className="text-text-muted" />
         <p className="mt-2 mb-0 text-[12px] text-text-muted">
           O consenso aparece aqui quando a sala começar a perguntar.
         </p>

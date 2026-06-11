@@ -14,6 +14,7 @@ import { hatProxyBaseUrl, readAuthConfig } from '../services/auth/config';
 import { RoomsPanel } from '../components/Rooms/RoomsPanel';
 import { Paywall } from '../components/Paywall';
 import { SettingsPanel } from '../components/SettingsPanel';
+import { HatLogo } from '../components/HatLogo';
 
 type MainView = 'rooms' | 'settings';
 
@@ -198,9 +199,7 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
         aria-label="Navegação principal"
         className="flex w-13 shrink-0 flex-col items-center border-0 border-r border-solid border-r-hairline py-4"
       >
-        <span aria-hidden className="font-display text-[20px] font-extralight text-text-secondary">
-          ♞
-        </span>
+        <HatLogo size={22} className="text-text-secondary" title="Hat" />
         <div className="mt-8 flex flex-col items-center gap-7">
           {(['rooms', 'settings'] as const).map((v) => {
             const active = view === v;

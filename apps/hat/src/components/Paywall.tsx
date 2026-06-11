@@ -1,4 +1,5 @@
 import { trialDaysLeft } from '../services/account';
+import { HatLogo } from './HatLogo';
 
 interface PaywallProps {
   trialEndsAt: number | null;
@@ -15,9 +16,7 @@ export function Paywall({ trialEndsAt, onSubscribe }: PaywallProps) {
 
   return (
     <div className="flex h-full flex-col items-center justify-center px-6 text-center" data-testid="paywall">
-      <span aria-hidden className="font-display text-[44px] font-extralight text-text-secondary">
-        ♞
-      </span>
+      <HatLogo size={56} className="text-text-secondary" />
       <h1 className="font-display mt-4 mb-0 text-[30px] leading-none font-extralight tracking-[-0.02em] text-text-primary">
         Hat ilimitado
       </h1>

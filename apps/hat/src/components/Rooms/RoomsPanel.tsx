@@ -7,6 +7,7 @@ import { RoomCreate } from './RoomCreate';
 import { RoomEntriesFeed } from './RoomEntriesFeed';
 import { RoomConsensusPanel } from './RoomConsensusPanel';
 import { RoomNotifications } from './RoomNotifications';
+import { HatLogo } from '../HatLogo';
 import { seedDemo } from './demoSeed';
 
 interface RoomsPanelProps {
@@ -287,7 +288,7 @@ export function RoomsPanel({ client, myUid, authed }: RoomsPanelProps) {
       <div className="mt-6 min-h-0 flex-1 overflow-y-auto">
         {roomList.length === 0 ? (
           <div className="px-1 py-14 text-center" data-testid="rooms-empty">
-            <span aria-hidden className="font-display block text-[56px] font-extralight text-text-muted">♞</span>
+            <HatLogo size={56} className="mx-auto text-text-muted" />
             <p className="mx-auto mt-3 mb-0 max-w-70 text-[12.5px] leading-relaxed text-text-muted">
               Nenhuma sala por aqui. Crie uma, entre por código —{' '}
               <button
