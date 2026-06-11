@@ -69,10 +69,193 @@
   animation: hat-pulse 2.4s ease-in-out infinite;
 }
 
+/* ── Anel de assinante (avatar) ─────────────────────────────────────────
+   Conic-gradient girando devagar via @property — o "você é especial" do
+   assinante, discreto como o resto do app. Trial: anel estático hairline. */
+@property --hat-ring-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes hat-ring-spin {
+  to {
+    --hat-ring-angle: 360deg;
+  }
+}
+
+.hat-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  isolation: isolate;
+}
+
+.hat-avatar::before {
+  content: '';
+  position: absolute;
+  inset: -2.5px;
+  border-radius: inherit;
+  z-index: -1;
+  background: var(--color-hairline-strong);
+}
+
+.hat-avatar[data-tier='subscriber']::before {
+  background: conic-gradient(
+    from var(--hat-ring-angle),
+    #8b8bf4,
+    #d9a05b 32%,
+    #9db38a 62%,
+    #8b8bf4
+  );
+  animation: hat-ring-spin 6s linear infinite;
+  filter: saturate(0.85);
+}
+
+.hat-avatar[data-tier='trial']::before {
+  background: conic-gradient(
+    from 230deg,
+    var(--color-hairline-strong),
+    rgb(217 160 91 / 0.55),
+    var(--color-hairline-strong)
+  );
+}
+
+/* ── Sistema de botões ───────────────────────────────────────────────────
+   Tátil e silencioso: leve elevação no hover, afunda no clique, foco visível
+   sem gritar. Mesma física em todos. */
+.hat-btn {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1;
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  transition:
+    transform 150ms var(--ease-out-expo),
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.hat-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.hat-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+  transition-duration: 60ms;
+}
+
+.hat-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.hat-btn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1.5px var(--color-surface-base),
+    0 0 0 3.5px rgb(99 102 241 / 0.55);
+}
+
+.hat-btn-primary {
+  background: linear-gradient(180deg, #6d70f3, #5a5de4);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 1px 2px rgb(0 0 0 / 0.35);
+}
+
+.hat-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #7c7ff6, #6366f1);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 4px 14px rgb(99 102 241 / 0.28);
+}
+
+.hat-btn-ghost {
+  background: transparent;
+  border-color: var(--color-hairline-strong);
+  color: var(--color-text-secondary);
+}
+
+.hat-btn-ghost:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  border-color: rgb(244 244 242 / 0.32);
+  background: rgb(244 244 242 / 0.04);
+}
+
+.hat-btn-danger {
+  background: linear-gradient(180deg, #e0a967, #d9a05b);
+  color: #14110b;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22);
+}
+
+.hat-btn-danger:hover:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.26),
+    0 4px 14px rgb(217 160 91 / 0.3);
+}
+
+/* ── Campos ── */
+.hat-field {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-hairline-strong);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+  padding: 9px 12px;
+  outline: none;
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    background-color 200ms ease;
+}
+
+.hat-field::placeholder {
+  color: var(--color-text-muted);
+}
+
+.hat-field:hover {
+  border-color: rgb(244 244 242 / 0.26);
+}
+
+.hat-field:focus {
+  border-color: var(--color-accent-default);
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 0.18);
+  background: rgb(23 23 22 / 0.9);
+}
+
+/* Linhas de lista com presença tátil */
+.hat-row {
+  transition:
+    background-color 200ms ease,
+    padding-left 240ms var(--ease-out-expo);
+}
+
+.hat-row:hover {
+  padding-left: 8px;
+}
+
+/* Atmosfera: brilho superior sutilíssimo na janela principal */
+.hat-atmosphere {
+  background:
+    radial-gradient(120% 60% at 50% -20%, rgb(99 102 241 / 0.06), transparent 60%),
+    var(--color-surface-base);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hat-rise,
-  .hat-pulse {
+  .hat-pulse,
+  .hat-avatar::before {
     animation: none;
+  }
+  .hat-btn,
+  .hat-row {
+    transition: none;
   }
 }
 

@@ -232,7 +232,7 @@ export function SettingsPanel({ bridge }: SettingsPanelProps) {
             data-testid="check-update"
             onClick={() => void checkUpdate()}
             disabled={checking}
-            className="cursor-pointer rounded-sm border border-solid border-hairline-strong bg-transparent px-4 py-2 text-[13px] text-text-secondary transition-colors duration-200 hover:text-text-primary disabled:opacity-50"
+            className="hat-btn hat-btn-ghost"
           >
             {checking ? 'Verificando…' : 'Verificar atualização'}
           </button>

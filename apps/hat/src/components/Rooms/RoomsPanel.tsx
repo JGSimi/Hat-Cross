@@ -206,7 +206,7 @@ export function RoomsPanel({ client, myUid, authed }: RoomsPanelProps) {
                 <button
                   type="button"
                   onClick={() => setConfirmingLeave(false)}
-                  className="cursor-pointer rounded-sm border border-solid border-hairline-strong bg-transparent px-4 py-2 text-[13px] text-text-secondary transition-colors duration-200 hover:text-text-primary"
+                  className="hat-btn hat-btn-ghost"
                 >
                   Cancelar
                 </button>
@@ -215,8 +215,7 @@ export function RoomsPanel({ client, myUid, authed }: RoomsPanelProps) {
                   data-testid="leave-confirm"
                   onClick={() => void leaveRoom()}
                   disabled={leaveBusy}
-                  className="cursor-pointer rounded-sm border-0 px-4 py-2 font-mono text-[13px] text-white transition-opacity duration-200 disabled:opacity-50"
-                  style={{ background: 'var(--color-divergence)' }}
+                  className="hat-btn hat-btn-danger font-mono"
                 >
                   {leaveBusy ? 'Saindo…' : 'Sair da sala'}
                 </button>
@@ -255,13 +254,9 @@ export function RoomsPanel({ client, myUid, authed }: RoomsPanelProps) {
           onChange={(e) => setCode(e.target.value)}
           placeholder="código da sala (ex.: room_ab12cd)"
           aria-label="Código da sala"
-          className="min-w-0 flex-1 rounded-sm border border-solid border-hairline-strong bg-surface-raised px-3 py-2 font-mono text-[12.5px] text-text-primary outline-none placeholder:text-text-muted focus:border-accent-default"
+          className="hat-field min-w-0 flex-1 font-mono text-[12.5px]"
         />
-        <button
-          type="submit"
-          disabled={joinBusy}
-          className="cursor-pointer rounded-sm border border-solid border-hairline-strong bg-transparent px-4 py-2 text-[13px] text-text-secondary transition-colors duration-200 hover:text-text-primary disabled:opacity-50"
-        >
+        <button type="submit" disabled={joinBusy} className="hat-btn hat-btn-ghost">
           {joinBusy ? 'Entrando…' : 'Entrar'}
         </button>
         <button
@@ -269,7 +264,7 @@ export function RoomsPanel({ client, myUid, authed }: RoomsPanelProps) {
           onClick={() => {
             if (requireClient()) setView('create');
           }}
-          className="cursor-pointer rounded-sm border-0 bg-accent-default px-4 py-2 text-[13px] text-white transition-colors duration-200 hover:bg-accent-hover"
+          className="hat-btn hat-btn-primary"
         >
           Nova sala
         </button>

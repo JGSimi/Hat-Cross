@@ -37,7 +37,7 @@ export function Paywall({ trialEndsAt, onSubscribe }: PaywallProps) {
         type="button"
         data-testid="paywall-subscribe"
         onClick={onSubscribe}
-        className="mt-7 cursor-pointer rounded-sm border-0 bg-accent-default px-6 py-2.5 font-mono text-[13px] tracking-[0.04em] text-white transition-colors duration-200 hover:bg-accent-hover"
+        className="hat-btn hat-btn-primary mt-7 px-7 py-3 font-mono tracking-[0.04em]"
       >
         Assinar →
       </button>

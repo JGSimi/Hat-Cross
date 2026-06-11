@@ -25,7 +25,7 @@ export function RoomList({ rooms, onOpen }: RoomListProps) {
             <button
               type="button"
               onClick={() => onOpen(room.id)}
-              className="group flex w-full items-baseline gap-3 border-0 border-b border-solid border-b-hairline bg-transparent px-1 py-3.5 text-left transition-colors duration-200 hover:bg-surface-raised"
+              className="hat-row group flex w-full cursor-pointer items-baseline gap-3 border-0 border-b border-solid border-b-hairline bg-transparent px-1 py-3.5 text-left hover:bg-surface-raised"
             >
               <span
                 aria-hidden

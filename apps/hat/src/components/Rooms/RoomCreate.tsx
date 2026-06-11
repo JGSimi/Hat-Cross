@@ -69,10 +69,14 @@ export function RoomCreate({ client, onClose, onEnter }: RoomCreateProps) {
           onClick={() => void copyCode()}
           data-testid="room-code"
           title="Copiar código"
-          className="mt-6 cursor-pointer rounded-md border border-solid border-hairline-strong bg-surface-raised px-5 py-3 font-mono text-[18px] tracking-[0.06em] text-text-primary transition-colors duration-200 hover:border-accent-default"
+          className="hat-btn mt-6 rounded-md border-hairline-strong bg-surface-raised px-5 py-3 font-mono text-[18px] tracking-[0.06em] text-text-primary"
+          style={{ borderColor: copied ? 'var(--color-consensus)' : undefined }}
         >
           {createdId}
-          <span className="ml-3 font-mono text-[10px] tracking-[0.12em] text-text-muted uppercase">
+          <span
+            className="ml-3 font-mono text-[10px] tracking-[0.12em] uppercase transition-colors duration-200"
+            style={{ color: copied ? 'var(--color-consensus)' : 'var(--color-text-muted)' }}
+          >
             {copied ? 'copiado ✓' : 'copiar'}
           </span>
         </button>
@@ -80,7 +84,7 @@ export function RoomCreate({ client, onClose, onEnter }: RoomCreateProps) {
         <button
           type="button"
           onClick={() => onEnter(createdId)}
-          className="mt-7 cursor-pointer rounded-sm border-0 bg-accent-default px-6 py-2.5 text-[13px] text-white transition-colors duration-200 hover:bg-accent-hover"
+          className="hat-btn hat-btn-primary mt-7 px-6 py-2.5"
         >
           Entrar na sala →
         </button>
@@ -122,7 +126,7 @@ export function RoomCreate({ client, onClose, onEnter }: RoomCreateProps) {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Prova de Cálculo · Turma B"
           data-testid="create-title"
-          className="mt-2 w-full rounded-sm border border-solid border-hairline-strong bg-surface-raised px-3.5 py-2.5 text-[14px] text-text-primary outline-none placeholder:text-text-muted focus:border-accent-default"
+          className="hat-field mt-2 w-full px-3.5 py-2.5 text-[14px]"
         />
         <p className="mt-2 mb-0 text-[11.5px] leading-relaxed text-text-muted">
           Você recebe um código para convidar o grupo. Entrar é grátis.
@@ -139,15 +143,11 @@ export function RoomCreate({ client, onClose, onEnter }: RoomCreateProps) {
             type="submit"
             disabled={busy}
             data-testid="create-confirm"
-            className="cursor-pointer rounded-sm border-0 bg-accent-default px-5 py-2.5 text-[13px] text-white transition-colors duration-200 hover:bg-accent-hover disabled:opacity-50"
+            className="hat-btn hat-btn-primary px-5 py-2.5"
           >
             {busy ? 'Criando…' : 'Criar sala'}
           </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="cursor-pointer rounded-sm border border-solid border-hairline-strong bg-transparent px-5 py-2.5 text-[13px] text-text-secondary transition-colors duration-200 hover:text-text-primary"
-          >
+          <button type="button" onClick={onClose} className="hat-btn hat-btn-ghost px-5 py-2.5">
             Cancelar
           </button>
         </div>

@@ -15,6 +15,7 @@ import { RoomsPanel } from '../components/Rooms/RoomsPanel';
 import { Paywall } from '../components/Paywall';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { HatLogo } from '../components/HatLogo';
+import { UserBadge } from '../components/UserBadge';
 
 type MainView = 'rooms' | 'settings';
 
@@ -234,8 +235,8 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
         )}
       </nav>
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden px-8 pt-3 pb-7">
-        <div className="mb-2 flex h-6 shrink-0 items-center justify-end gap-3">
+      <main className="hat-atmosphere flex min-w-0 flex-1 flex-col overflow-hidden px-8 pt-3 pb-7">
+        <div className="mb-2 flex h-8 shrink-0 items-center justify-end gap-3">
           {authError && (
             <span role="alert" className="text-[11px]" style={{ color: 'var(--color-divergence)' }}>
               {authError}
@@ -246,27 +247,12 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
               sem credenciais — modo local
             </span>
           ) : session ? (
-            <>
-              {subscribed ? (
-                <span className="font-mono text-[10px] tracking-[0.12em] text-state-success uppercase">
-                  assinante
-                </span>
-              ) : daysLeft > 0 ? (
-                <span className="font-mono text-[10px] tracking-[0.12em] text-text-muted uppercase">
-                  trial · {daysLeft}d
-                </span>
-              ) : null}
-              <span className="font-mono text-[11px] text-text-secondary" data-testid="session-email">
-                {session.email ?? session.displayName ?? session.uid}
-              </span>
-              <button
-                type="button"
-                onClick={() => void authPort.signOut()}
-                className="cursor-pointer border-0 bg-transparent p-0 font-mono text-[10px] tracking-[0.12em] text-text-muted uppercase transition-colors duration-200 hover:text-text-primary"
-              >
-                sair
-              </button>
-            </>
+            <UserBadge
+              session={session}
+              tier={subscribed ? 'subscriber' : daysLeft > 0 ? 'trial' : 'none'}
+              trialDaysLeft={daysLeft}
+              onSignOut={() => void authPort.signOut()}
+            />
           ) : (
             <button
               type="button"
