@@ -144,12 +144,13 @@ export function RoomsPanel({ client, myUid, authed }: RoomsPanelProps) {
         <header className="flex items-center gap-3 border-0 border-b border-solid border-b-hairline pb-3">
           <button
             type="button"
-            onClick={() => store.setActiveRoom(null)}
-            aria-label="Voltar para a lista de salas"
-            title="Voltar (continua na sala)"
-            className="cursor-pointer border-0 bg-transparent p-0 font-mono text-[13px] text-text-muted transition-colors duration-200 hover:text-text-primary"
+            onClick={() => (client ? setConfirmingLeave(true) : store.setActiveRoom(null))}
+            data-testid="leave-room"
+            aria-label="Sair da sala"
+            title="Sair da sala"
+            className="shrink-0 cursor-pointer border-0 bg-transparent p-0 font-mono text-[12px] text-text-muted transition-colors duration-200 hover:text-text-primary"
           >
-            ←
+            ← sair
           </button>
           <h2 className="m-0 min-w-0 flex-1 truncate text-[15px] font-medium text-text-primary">
             {activeRoom.title}
@@ -166,17 +167,6 @@ export function RoomsPanel({ client, myUid, authed }: RoomsPanelProps) {
           <span className="shrink-0 font-mono text-[10.5px] tracking-[0.1em] text-text-muted tabular-nums">
             {activeRoom.memberCount} {activeRoom.memberCount === 1 ? 'membro' : 'membros'}
           </span>
-          {client && (
-            <button
-              type="button"
-              onClick={() => setConfirmingLeave(true)}
-              data-testid="leave-room"
-              className="shrink-0 cursor-pointer border-0 bg-transparent p-0 font-mono text-[10px] tracking-[0.12em] uppercase transition-colors duration-200"
-              style={{ color: 'var(--color-divergence)' }}
-            >
-              sair
-            </button>
-          )}
         </header>
 
         <div className="mt-2">

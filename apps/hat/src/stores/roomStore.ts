@@ -27,6 +27,8 @@ export interface RoomStoreState {
   upsertNotifications: (incoming: RoomNotification[]) => void;
   /** Marca a notificação como lida (seta readAt). Idempotente: não sobrescreve readAt existente. */
   markNotificationRead: (id: string) => void;
+  /** Zera tudo (ex.: logout) — sai da sala ativa e limpa caches. */
+  reset: () => void;
 }
 
 export const useRoomStore = create<RoomStoreState>((set) => ({
@@ -74,4 +76,7 @@ export const useRoomStore = create<RoomStoreState>((set) => ({
       });
       return changed ? { notifications } : {};
     }),
+
+  reset: () =>
+    set({ activeRoomId: null, rooms: {}, entries: {}, clusters: {}, notifications: [] }),
 }));

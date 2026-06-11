@@ -87,6 +87,21 @@ describe('roomStore clusters e notificações', () => {
     useRoomStore.getState().markNotificationRead('notif-1');
     expect(useRoomStore.getState().notifications[0]?.readAt).toBeDefined();
   });
+
+  it('reset() zera sala ativa e caches (logout)', () => {
+    useRoomStore.getState().upsertRoom(makeRoom());
+    useRoomStore.getState().setActiveRoom('room-1');
+    useRoomStore.getState().upsertEntries('room-1', [makeEntry()]);
+    useRoomStore.getState().upsertNotifications([makeNotification()]);
+
+    useRoomStore.getState().reset();
+
+    const s = useRoomStore.getState();
+    expect(s.activeRoomId).toBeNull();
+    expect(Object.keys(s.rooms)).toHaveLength(0);
+    expect(Object.keys(s.entries)).toHaveLength(0);
+    expect(s.notifications).toHaveLength(0);
+  });
 });
 
 describe('roomStore', () => {

@@ -72,6 +72,16 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
     return authPort.onAuthChange(setSession);
   }, [authPort]);
 
+  // Logout: sai da sala ativa, limpa o store e volta para a lista/estado
+  // deslogado. (Os listeners realtime já desinscrevem por dependerem de session.)
+  useEffect(() => {
+    if (!session) {
+      useRoomStore.getState().reset();
+      setView('rooms');
+      void bridge.gabaritoHide().catch(() => {});
+    }
+  }, [session, bridge]);
+
   // Status da conta (assinatura/trial) ao logar
   useEffect(() => {
     if (!session || !accountClient) {
