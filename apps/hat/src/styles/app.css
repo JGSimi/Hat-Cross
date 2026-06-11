@@ -240,6 +240,40 @@
   padding-left: 8px;
 }
 
+/* ── Transição de telas (troca de tab / entrada de views) ──────────────
+   Remontagem por key={view}: cada tela entra com fade + leve subida.
+   Curta o bastante para parecer resposta, não espera. */
+@keyframes hat-view-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.hat-view-in {
+  animation: hat-view-in 320ms var(--ease-out-expo) both;
+}
+
+/* Barra de uso "ilimitado": preenchimento com brilho que respira */
+@keyframes hat-bar-breathe {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.hat-usage-fill {
+  background: linear-gradient(90deg, var(--color-accent-default), var(--color-consensus));
+  animation: hat-bar-breathe 3.2s ease-in-out infinite;
+}
+
 /* Atmosfera: brilho superior sutilíssimo na janela principal */
 .hat-atmosphere {
   background:
@@ -250,7 +284,9 @@
 @media (prefers-reduced-motion: reduce) {
   .hat-rise,
   .hat-pulse,
-  .hat-avatar::before {
+  .hat-avatar::before,
+  .hat-view-in,
+  .hat-usage-fill {
     animation: none;
   }
   .hat-btn,

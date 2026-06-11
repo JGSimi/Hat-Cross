@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { AuthSession } from '../bridge/auth';
+import { firstNameOf, greetingFor } from '../domain/greeting';
 
 export type UserTier = 'subscriber' | 'trial' | 'none';
 
@@ -8,7 +9,10 @@ interface UserBadgeProps {
   tier: UserTier;
   /** Dias restantes de trial (mostrado só quando tier === 'trial'). */
   trialDaysLeft?: number;
-  onSignOut: () => void;
+  /** Abre a tela de Perfil (avatar é o botão). */
+  onOpenProfile: () => void;
+  /** Hora atual (injetável em testes). */
+  hour?: number;
 }
 
 function initials(session: AuthSession): string {
@@ -20,36 +24,47 @@ function initials(session: AuthSession): string {
 }
 
 /**
- * Identidade do usuário no topo: avatar com anel — girando em gradiente para
- * assinantes (o detalhe "você é especial"), âmbar estático no trial. Foto do
- * Google quando existe; iniciais como fallback. Hover revela o sair.
+ * Identidade no topo: saudação humana ("Boa noite, João") + avatar com anel
+ * de assinante (gradiente girando) ou trial (âmbar estático). O anel fala por
+ * si — sem rótulo "assinante". Clicar no avatar abre o Perfil.
  */
-export function UserBadge({ session, tier, trialDaysLeft, onSignOut }: UserBadgeProps) {
+export function UserBadge({
+  session,
+  tier,
+  trialDaysLeft,
+  onOpenProfile,
+  hour = new Date().getHours(),
+}: UserBadgeProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const photo = !imgFailed && session.photoURL ? session.photoURL : null;
-  const tierLabel =
-    tier === 'subscriber' ? 'assinante' : tier === 'trial' ? `trial · ${trialDaysLeft ?? 0}d` : null;
+  const name = firstNameOf(session.displayName, session.email);
 
   return (
-    <div className="group flex items-center gap-2.5" data-testid="user-badge">
-      {tierLabel && (
+    <div className="flex items-center gap-3" data-testid="user-badge">
+      {tier === 'trial' && (
         <span
           data-testid="tier-label"
-          className="font-mono text-[10px] tracking-[0.12em] uppercase transition-colors duration-200"
-          style={{
-            color: tier === 'subscriber' ? 'var(--color-consensus)' : 'var(--color-text-muted)',
-          }}
+          className="font-mono text-[10px] tracking-[0.12em] text-text-muted uppercase"
         >
-          {tierLabel}
+          trial · {trialDaysLeft ?? 0}d
         </span>
       )}
-      <span className="font-mono text-[11px] text-text-secondary" data-testid="session-email">
-        {session.email ?? session.displayName ?? session.uid}
+      <span className="text-[12.5px] text-text-secondary" data-testid="greeting">
+        {greetingFor(hour)}
+        {name ? (
+          <>
+            , <span className="text-text-primary">{name}</span>
+          </>
+        ) : null}
       </span>
-      <span
-        className="hat-avatar size-7 shrink-0"
+      <button
+        type="button"
+        onClick={onOpenProfile}
+        data-testid="open-profile"
+        aria-label="Abrir perfil"
+        title="Seu perfil"
+        className="hat-avatar size-7 shrink-0 cursor-pointer border-0 bg-transparent p-0 transition-transform duration-200 hover:scale-110"
         data-tier={tier}
-        title={tier === 'subscriber' ? 'Assinante Hat — obrigado por apoiar' : undefined}
       >
         {photo ? (
           <img
@@ -67,13 +82,6 @@ export function UserBadge({ session, tier, trialDaysLeft, onSignOut }: UserBadge
             {initials(session)}
           </span>
         )}
-      </span>
-      <button
-        type="button"
-        onClick={onSignOut}
-        className="cursor-pointer border-0 bg-transparent p-0 font-mono text-[10px] tracking-[0.12em] text-text-muted uppercase opacity-60 transition-all duration-200 group-hover:opacity-100 hover:text-text-primary"
-      >
-        sair
       </button>
     </div>
   );

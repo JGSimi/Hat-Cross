@@ -11,26 +11,37 @@ const session: AuthSession = {
 };
 
 describe('UserBadge', () => {
-  it('assinante: anel data-tier=subscriber + selo', () => {
-    render(<UserBadge session={session} tier="subscriber" onSignOut={vi.fn()} />);
-    expect(document.querySelector('.hat-avatar')?.getAttribute('data-tier')).toBe('subscriber');
-    expect(screen.getByTestId('tier-label')).toHaveTextContent('assinante');
+  it('saudação por hora com primeiro nome (sem email, sem "assinante")', () => {
+    render(
+      <UserBadge session={session} tier="subscriber" onOpenProfile={vi.fn()} hour={21} />,
+    );
+    expect(screen.getByTestId('greeting')).toHaveTextContent('Boa noite, João');
+    expect(screen.queryByText(/joao@x\.com/)).toBeNull();
+    expect(screen.queryByText(/assinante/i)).toBeNull();
+    expect(screen.queryByText(/^sair$/i)).toBeNull();
+  });
+
+  it('bom dia de manhã', () => {
+    render(<UserBadge session={session} tier="none" onOpenProfile={vi.fn()} hour={9} />);
+    expect(screen.getByTestId('greeting')).toHaveTextContent('Bom dia, João');
+  });
+
+  it('anel data-tier=subscriber no avatar', () => {
+    render(<UserBadge session={session} tier="subscriber" onOpenProfile={vi.fn()} />);
+    expect(screen.getByTestId('open-profile').getAttribute('data-tier')).toBe('subscriber');
   });
 
   it('trial mostra dias restantes', () => {
-    render(<UserBadge session={session} tier="trial" trialDaysLeft={5} onSignOut={vi.fn()} />);
+    render(
+      <UserBadge session={session} tier="trial" trialDaysLeft={5} onOpenProfile={vi.fn()} />,
+    );
     expect(screen.getByTestId('tier-label')).toHaveTextContent('trial · 5d');
   });
 
-  it('sem foto usa iniciais do nome', () => {
-    render(<UserBadge session={session} tier="none" onSignOut={vi.fn()} />);
-    expect(screen.getByText('JS')).toBeInTheDocument();
-  });
-
-  it('sair chama onSignOut', () => {
-    const onSignOut = vi.fn();
-    render(<UserBadge session={session} tier="subscriber" onSignOut={onSignOut} />);
-    fireEvent.click(screen.getByText('sair'));
-    expect(onSignOut).toHaveBeenCalledOnce();
+  it('clicar no avatar abre o perfil', () => {
+    const onOpenProfile = vi.fn();
+    render(<UserBadge session={session} tier="subscriber" onOpenProfile={onOpenProfile} />);
+    fireEvent.click(screen.getByTestId('open-profile'));
+    expect(onOpenProfile).toHaveBeenCalledOnce();
   });
 });

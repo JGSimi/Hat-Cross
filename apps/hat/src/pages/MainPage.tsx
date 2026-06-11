@@ -16,8 +16,9 @@ import { Paywall } from '../components/Paywall';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { HatLogo } from '../components/HatLogo';
 import { UserBadge } from '../components/UserBadge';
+import { ProfilePanel } from '../components/ProfilePanel';
 
-type MainView = 'rooms' | 'settings';
+type MainView = 'rooms' | 'settings' | 'profile';
 
 interface MainPageProps {
   bridge: NativeBridge;
@@ -190,9 +191,20 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
     }
   }
 
+  async function openPortal() {
+    if (!accountClient) return;
+    try {
+      const url = await accountClient.portalUrl();
+      await bridge.openExternal(url);
+    } catch (e) {
+      console.warn('portal:', e);
+    }
+  }
+
   const entitled = account?.entitled ?? true; // otimista até carregar
   const daysLeft = trialDaysLeft(account?.trialEndsAt ?? null);
   const subscribed = account?.subscription?.status === 'active' || account?.subscription?.status === 'trialing';
+  const tier = subscribed ? ('subscriber' as const) : daysLeft > 0 ? ('trial' as const) : ('none' as const);
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-base text-text-primary">
@@ -249,9 +261,9 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
           ) : session ? (
             <UserBadge
               session={session}
-              tier={subscribed ? 'subscriber' : daysLeft > 0 ? 'trial' : 'none'}
+              tier={tier}
               trialDaysLeft={daysLeft}
-              onSignOut={() => void authPort.signOut()}
+              onOpenProfile={() => setView('profile')}
             />
           ) : (
             <button
@@ -266,8 +278,20 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
           )}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden">
-          {view === 'settings' ? (
+        <div key={view} className="hat-view-in min-h-0 flex-1 overflow-hidden">
+          {view === 'profile' && session ? (
+            <ProfilePanel
+              session={session}
+              account={account}
+              tier={tier}
+              onManageSubscription={() => void openPortal()}
+              onSubscribe={() => void openCheckout()}
+              onSignOut={() => {
+                setView('rooms');
+                void authPort?.signOut();
+              }}
+            />
+          ) : view === 'settings' ? (
             <SettingsPanel bridge={bridge} />
           ) : session && !entitled ? (
             <Paywall trialEndsAt={account?.trialEndsAt ?? null} onSubscribe={() => void openCheckout()} />

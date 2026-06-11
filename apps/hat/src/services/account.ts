@@ -7,6 +7,8 @@ export interface AccountStatus {
   entitled: boolean;
   subscription: { status: string; plan: string | null; currentPeriodEnd: number | null };
   trialEndsAt: number | null;
+  /** Uso acumulado (unidades internas) — alimenta a barra "∞" do Perfil. */
+  creditsSpent?: number;
 }
 
 export interface AccountClientDeps {
