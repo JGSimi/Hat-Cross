@@ -1,6 +1,27 @@
 @import 'tailwindcss';
 
 /*
+ * Fontes da marca EMBARCADAS (self-hosted, variable). Sem isto o app caía em
+ * system-ui → SF Pro no macOS e Segoe UI no Windows: telas diferentes por OS.
+ * Variable woff2 = 1 arquivo cobre todos os pesos. Self-hosted (não CDN):
+ * app desktop stealth não pode vazar request de rede nem quebrar offline.
+ */
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/general-sans.woff2') format('woff2');
+  font-weight: 200 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/jetbrains-mono.woff2') format('woff2');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/*
  * Tokens do design system (subconjunto V1 dos 24 tokens semânticos do
  * docs/design-system.md). Tailwind v4 CSS-first: @theme é a fonte única.
  */

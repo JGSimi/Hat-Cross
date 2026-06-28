@@ -1,20 +1,28 @@
-name: Windows Smoke
+name: Windows Smoke (instalação)
+
+# Builda o instalador NSIS do app REAL (apps/hat, Tauri v2) no Windows,
+# instala em modo silencioso e abre o app headless para garantir que ele
+# sobrevive ao boot. Pega "instalador quebrado" e "app crasha ao abrir"
+# automaticamente — sem precisar de uma máquina Windows.
+#
+# LIMITES (o que este smoke NÃO reproduz, por rodar num runner limpo):
+#   - SmartScreen/antivírus bloqueando (o .exe não tem mark-of-the-web aqui)
+#   - Máquina SEM WebView2 (o runner já vem com WebView2 instalado)
+#   - Firewall corporativo bloqueando o download do WebView2
+# Para esses, ver a recomendação de webviewInstallMode=offlineInstaller.
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
       - '.github/workflows/windows-smoke.yml'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'src/**'
-      - 'src-tauri/**'
+      - 'apps/hat/**'
 
 jobs:
   windows-smoke:
-    name: Windows smoke
+    name: Windows smoke (instalação)
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
 
     env:
       VITE_GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.VITE_GOOGLE_OAUTH_CLIENT_ID }}
@@ -23,6 +31,10 @@ jobs:
       VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
       VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
       VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+      # Chave minisign do updater — o conf tem createUpdaterArtifacts:true,
+      # então o build precisa assinar os artefatos como no release real.
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
@@ -32,30 +44,102 @@ jobs:
         with:
           node-version: lts/*
           cache: npm
+          cache-dependency-path: apps/hat/package-lock.json
 
-      - name: Install Rust 1.94.1
-        uses: dtolnay/rust-toolchain@1.94.1
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/hat/src-tauri
 
       - name: Install frontend dependencies
-        run: npm install
+        working-directory: apps/hat
+        run: npm ci
 
       - name: Validate auth build secrets
         run: |
           node -e "const required=['VITE_GOOGLE_OAUTH_CLIENT_ID','VITE_GOOGLE_OAUTH_CLIENT_SECRET','VITE_FIREBASE_API_KEY','VITE_FIREBASE_AUTH_DOMAIN','VITE_FIREBASE_PROJECT_ID','VITE_FIREBASE_APP_ID']; const missing=required.filter((name)=>!process.env[name]); if (missing.length) { console.error('Missing Windows smoke secrets: '+missing.join(', ')); process.exit(1); }"
 
       - name: Typecheck and build frontend
+        working-directory: apps/hat
         run: npm run build
 
       - name: Run frontend tests
+        working-directory: apps/hat
         run: npm test
 
       - name: Check Tauri Rust
-        working-directory: src-tauri
+        working-directory: apps/hat/src-tauri
         run: cargo check
 
       - name: Run Tauri Rust tests
-        working-directory: src-tauri
+        working-directory: apps/hat/src-tauri
         run: cargo test
 
-      - name: Compile Tauri app on Windows
-        run: npx tauri build --no-bundle
+      - name: Build NSIS installer
+        working-directory: apps/hat
+        run: npx tauri build --target x86_64-pc-windows-msvc --bundles nsis
+
+      - name: Install silently and smoke-launch the app
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $setup = Get-ChildItem -Path "apps/hat/src-tauri/target" -Recurse -Filter "*-setup.exe" |
+            Select-Object -First 1
+          if (-not $setup) { throw "Instalador NSIS (*-setup.exe) não encontrado no target." }
+          Write-Host "Instalador encontrado: $($setup.FullName) ($([math]::Round($setup.Length/1MB,1)) MB)"
+
+          # WebView2 presente no runner? (registro do runtime Evergreen)
+          $wvKey = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+          $wv = Get-ItemProperty -Path $wvKey -ErrorAction SilentlyContinue
+          if ($wv -and $wv.pv) { Write-Host "WebView2 runtime: $($wv.pv)" }
+          else { Write-Host "::warning::WebView2 runtime NÃO detectado no runner." }
+
+          # Instalação silenciosa (NSIS): /S
+          Write-Host "Instalando em modo silencioso (/S)..."
+          $inst = Start-Process -FilePath $setup.FullName -ArgumentList "/S" -PassThru -Wait
+          if ($inst.ExitCode -ne 0) { throw "Instalador retornou exit code $($inst.ExitCode)." }
+          Write-Host "Instalação concluída (exit 0)."
+
+          # Localiza o Hat.exe instalado
+          $roots = @($env:LOCALAPPDATA, $env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { $_ }
+          $exe = $roots |
+            ForEach-Object { Get-ChildItem -Path $_ -Recurse -Filter "Hat.exe" -ErrorAction SilentlyContinue } |
+            Select-Object -First 1
+          if (-not $exe) { throw "Hat.exe não encontrado após a instalação." }
+          Write-Host "App instalado em: $($exe.FullName)"
+
+          # Self-check determinístico: HAT_SMOKE=1 faz o app provar que as 3
+          # janelas (main + overlays stealth flash/gabarito) subiram neste
+          # Windows e sair por exit code. Sinal positivo, não só "ficou vivo".
+          Write-Host "Boot self-check (HAT_SMOKE=1)..."
+          $env:HAT_SMOKE = "1"
+          $smoke = Start-Process -FilePath $exe.FullName -PassThru -Wait
+          Remove-Item Env:\HAT_SMOKE
+          if ($smoke.ExitCode -ne 0) {
+            throw "Boot self-check falhou (exit $($smoke.ExitCode)) — alguma janela stealth não subiu no Windows."
+          }
+          Write-Host "OK: main + flash + gabarito subiram no Windows."
+
+          # Abre headless (sem o env) e confirma que sobrevive ao boot normal
+          Write-Host "Abrindo o app por 20s..."
+          $app = Start-Process -FilePath $exe.FullName -PassThru
+          Start-Sleep -Seconds 20
+          if ($app.HasExited) {
+            throw "O Hat saiu sozinho em 20s (exit $($app.ExitCode)) — boot quebrado."
+          }
+          Stop-Process -Id $app.Id -Force
+          Write-Host "OK: o Hat instalou e sobreviveu ao boot headless."
+
+      - name: Upload installer artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hat-windows-setup
+          path: apps/hat/src-tauri/target/**/release/bundle/nsis/*-setup.exe
+          if-no-files-found: warn
