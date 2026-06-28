@@ -12,7 +12,12 @@ use serde::Serialize;
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ClipboardContent {
     Text { text: String },
-    Image { base64_png: String },
+    // `rename_all` no enum só renomeia as VARIANTES; o campo precisa do rename
+    // explícito para casar com o contrato TS (bridge/types.ts: base64Png).
+    Image {
+        #[serde(rename = "base64Png")]
+        base64_png: String,
+    },
     Empty,
 }
 
@@ -72,4 +77,32 @@ pub fn read_clipboard() -> ClipboardContent {
 pub fn write_clipboard(text: String) -> Result<(), String> {
     let ctx = ClipboardContext::new().map_err(|e| e.to_string())?;
     ctx.set_text(text).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// O shape do JSON é contrato de IPC com bridge/types.ts — campos em
+    /// camelCase, tag `kind` minúscula. Quebrar isto quebra o fluxo de imagem.
+    #[test]
+    fn clipboard_content_serializes_to_ts_contract() {
+        let text = serde_json::to_value(ClipboardContent::Text {
+            text: "oi".into(),
+        })
+        .unwrap();
+        assert_eq!(text, serde_json::json!({ "kind": "text", "text": "oi" }));
+
+        let image = serde_json::to_value(ClipboardContent::Image {
+            base64_png: "QUFBQQ==".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            image,
+            serde_json::json!({ "kind": "image", "base64Png": "QUFBQQ==" })
+        );
+
+        let empty = serde_json::to_value(ClipboardContent::Empty).unwrap();
+        assert_eq!(empty, serde_json::json!({ "kind": "empty" }));
+    }
 }

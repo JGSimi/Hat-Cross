@@ -114,7 +114,19 @@ jobs:
           if (-not $exe) { throw "Hat.exe não encontrado após a instalação." }
           Write-Host "App instalado em: $($exe.FullName)"
 
-          # Abre headless e confirma que sobrevive ao boot
+          # Self-check determinístico: HAT_SMOKE=1 faz o app provar que as 3
+          # janelas (main + overlays stealth flash/gabarito) subiram neste
+          # Windows e sair por exit code. Sinal positivo, não só "ficou vivo".
+          Write-Host "Boot self-check (HAT_SMOKE=1)..."
+          $env:HAT_SMOKE = "1"
+          $smoke = Start-Process -FilePath $exe.FullName -PassThru -Wait
+          Remove-Item Env:\HAT_SMOKE
+          if ($smoke.ExitCode -ne 0) {
+            throw "Boot self-check falhou (exit $($smoke.ExitCode)) — alguma janela stealth não subiu no Windows."
+          }
+          Write-Host "OK: main + flash + gabarito subiram no Windows."
+
+          # Abre headless (sem o env) e confirma que sobrevive ao boot normal
           Write-Host "Abrindo o app por 20s..."
           $app = Start-Process -FilePath $exe.FullName -PassThru
           Start-Sleep -Seconds 20

@@ -33,6 +33,22 @@ pub fn run() {
             // Auto-update em background (sem licença de dev — minisign).
             updates::spawn_check(handle);
 
+            // Smoke headless (CI Windows): prova que as 3 janelas — principal +
+            // os 2 overlays stealth — subiram NESTE OS, e sai por exit code
+            // (stdout não é confiável em app windows_subsystem). Sinal POSITIVO
+            // e determinístico, melhor que "não crashou em 20s".
+            if std::env::var_os("HAT_SMOKE").is_some() {
+                let missing: Vec<&str> = ["main", flash_window::FLASH_LABEL, flash_window::GABARITO_LABEL]
+                    .into_iter()
+                    .filter(|label| tauri::Manager::get_webview_window(handle, label).is_none())
+                    .collect();
+                if missing.is_empty() {
+                    std::process::exit(0);
+                }
+                eprintln!("HAT_SMOKE_FAIL: janelas ausentes: {}", missing.join(", "));
+                std::process::exit(1);
+            }
+
             // Conveniência de dev: abre a janela principal no boot. Em release
             // o app fica só na bandeja (comportamento stealth do produto).
             #[cfg(debug_assertions)]
