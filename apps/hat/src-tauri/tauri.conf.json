@@ -17,8 +17,8 @@
         "title": "Hat",
         "width": 900,
         "height": 440,
-        "minWidth": 680,
-        "minHeight": 360,
+        "minWidth": 820,
+        "minHeight": 420,
         "visible": false
       }
     ],
