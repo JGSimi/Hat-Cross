@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import type { AuthSession } from '../bridge/auth';
 import type { AccountStatus } from '../services/account';
 import { trialDaysLeft } from '../services/account';
@@ -116,10 +117,13 @@ export function ProfilePanel({
               role="img"
               aria-label="Uso em relação ao limite: ilimitado"
             >
-              <div
+              <motion.div
                 data-testid="usage-fill"
-                className="hat-grow-x absolute inset-y-0 left-0 rounded-full"
-                style={{ width: `${usageBarPct(spent)}%`, background: '#007bff' }}
+                className="absolute inset-y-0 left-0 rounded-full"
+                style={{ background: '#007bff' }}
+                initial={{ width: '0%' }}
+                animate={{ width: `${usageBarPct(spent)}%` }}
+                transition={{ type: 'spring', stiffness: 120, damping: 20, delay: 0.15 }}
               />
             </div>
             <span

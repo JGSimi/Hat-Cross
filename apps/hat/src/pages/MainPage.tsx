@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
 import type { NativeBridge } from '../bridge/native';
 import type { AuthPort } from '../bridge/auth';
 import { startAccountWatch } from '../controllers/accountWatch';
@@ -173,9 +174,15 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
     </button>
   );
 
-  if (showProfile && session) {
-    return (
-      <div className="flex h-screen flex-col overflow-hidden px-8 pt-4 pb-6" style={{ background: '#141414', color: '#f4f4f2' }}>
+  // Gate de assinatura: conta sem acesso vê a despedida (cancelou) ou o paywall
+  // (nunca assinou / trial vencido) no lugar da home. O Flash já é bloqueado à
+  // parte por blockedFlashMsg. Perfil abre por cima via avatar.
+  const screenKey =
+    showProfile && session ? 'profile' : session && !entitled && canceled ? 'farewell' : session && !entitled ? 'paywall' : 'home';
+
+  const screenNode =
+    screenKey === 'profile' && session ? (
+      <div className="flex h-full flex-col overflow-hidden px-8 pt-4 pb-6">
         <button
           type="button"
           data-testid="close-profile"
@@ -199,31 +206,39 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
           />
         </div>
       </div>
-    );
-  }
-
-  // Gate de assinatura: conta sem acesso vê a despedida (cancelou) ou o paywall
-  // (nunca assinou / trial vencido) no lugar da home. O Flash já é bloqueado à
-  // parte por blockedFlashMsg — aqui é só a tela.
-  const screen =
-    session && !entitled && canceled ? (
+    ) : screenKey === 'farewell' && session ? (
       <Farewell name={firstNameOf(session.displayName, session.email)} onResubscribe={() => void openCheckout()} />
-    ) : session && !entitled ? (
+    ) : screenKey === 'paywall' ? (
       <Paywall trialEndsAt={account?.trialEndsAt ?? null} onSubscribe={() => void openCheckout()} />
     ) : (
       <HatHome bridge={bridge} />
     );
 
   return (
-    <div className="relative h-screen overflow-hidden" style={{ background: '#141414' }}>
-      {authError && (
-        <span role="alert" className="absolute left-1/2 top-2 z-30 -translate-x-1/2 text-[11px]" style={{ color: '#ff453a' }}>
-          {authError}
-        </span>
-      )}
-      {/* Avatar/entrada — overlay global: perfil e "sair" acessíveis em qualquer tela. */}
-      {profileSlot && <div className="absolute left-4 top-4 z-20">{profileSlot}</div>}
-      {screen}
-    </div>
+    <MotionConfig reducedMotion="user">
+      <div className="relative h-screen overflow-hidden" style={{ background: '#141414' }}>
+        {authError && (
+          <span role="alert" className="absolute left-1/2 top-2 z-30 -translate-x-1/2 text-[11px]" style={{ color: '#ff453a' }}>
+            {authError}
+          </span>
+        )}
+        {/* Avatar/entrada — overlay global (some no perfil, que tem "← voltar"). */}
+        {profileSlot && screenKey !== 'profile' && <div className="absolute left-4 top-4 z-20">{profileSlot}</div>}
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={screenKey}
+            className="absolute inset-0"
+            initial={{ opacity: 0, y: 12, scale: 0.99 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.99 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            style={{ background: '#141414', color: '#f4f4f2' }}
+          >
+            {screenNode}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </MotionConfig>
   );
 }

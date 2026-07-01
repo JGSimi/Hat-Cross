@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import type { NativeBridge } from '../bridge/native';
 import type { FlashAppearance, ShortcutBindings } from '../bridge/types';
 import { displayLabel, fromKeyboardEvent, normalize, type Platform } from '../domain/shortcuts/accelerator';
@@ -43,6 +44,7 @@ export function HatHome({ bridge }: HatHomeProps) {
   // reinicia o app já atualizado. Zero verificação manual.
   const [updateReady, setUpdateReady] = useState(false);
   const [relaunching, setRelaunching] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const colorRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -126,13 +128,18 @@ export function HatHome({ bridge }: HatHomeProps) {
       {/* Update — canto superior direito. Só aparece quando há atualização
           baixada e pronta; o clique reinicia o app atualizado. */}
       {updateReady && (
-        <button
+        <motion.button
           type="button"
           data-testid="apply-update"
           onClick={applyUpdate}
           disabled={relaunching}
           title="Atualização pronta — reiniciar agora"
-          className="absolute right-4 top-4 z-10 grid size-11 cursor-pointer place-items-center rounded-[14px] border-0 transition-transform duration-150 disabled:cursor-default active:scale-95"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.9 }}
+          className="absolute right-4 top-4 z-10 grid size-11 cursor-pointer place-items-center rounded-[14px] border-0 disabled:cursor-default"
           style={{ background: '#007bff', boxShadow: '0 6px 20px rgb(0 123 255 / 0.45)' }}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -144,7 +151,7 @@ export function HatHome({ bridge }: HatHomeProps) {
             className="absolute -right-1 -top-1 size-3 rounded-full"
             style={{ background: '#ff3b30', boxShadow: '0 0 0 2px #141414' }}
           />
-        </button>
+        </motion.button>
       )}
 
       {/* Mascote — metade esquerda. */}
@@ -159,11 +166,13 @@ export function HatHome({ bridge }: HatHomeProps) {
         </p>
 
         {/* Atalho */}
-        <button
+        <motion.button
           type="button"
           data-testid="shortcut-capture"
           onClick={() => setCapturing((c) => !c)}
           onBlur={() => setCapturing(false)}
+          whileTap={{ scale: 0.985 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
           className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-[16px] border-0 px-6 py-4 text-left"
           style={{ background: '#3d3d3d' }}
         >
@@ -176,7 +185,7 @@ export function HatHome({ bridge }: HatHomeProps) {
           >
             {capturing ? 'pressione…' : `${mods} + ${key}`}
           </span>
-        </button>
+        </motion.button>
 
         {/* Opacidade + Cor */}
         <div className="flex min-w-0 flex-col gap-3">
@@ -188,11 +197,14 @@ export function HatHome({ bridge }: HatHomeProps) {
               <span className="leading-none" style={{ ...DIGITAL, fontSize: 'clamp(16px, 3vh, 26px)' }}>
                 cor
               </span>
-              <button
+              <motion.button
                 type="button"
                 data-testid="text-color"
                 onClick={() => colorRef.current?.click()}
                 title="Cor do texto do Flash"
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 20 }}
                 className="size-9 shrink-0 cursor-pointer rounded-[10px] border-solid p-0"
                 style={{ background: textColor, borderWidth: 4, borderColor: '#949494' }}
               />
@@ -207,20 +219,26 @@ export function HatHome({ bridge }: HatHomeProps) {
             </span>
           </div>
           <div className="flex min-w-0 items-center gap-3">
-            <span
+            <motion.span
               className="shrink-0 leading-none tabular-nums"
-              style={{ ...DIGITAL, fontSize: 'clamp(16px, 3vh, 26px)', minWidth: '2.8em' }}
+              style={{ ...DIGITAL, fontSize: 'clamp(16px, 3vh, 26px)', minWidth: '2.8em', transformOrigin: 'left center' }}
+              animate={{ scale: dragging ? 1.12 : 1, color: dragging ? '#4da3ff' : '#ffffff' }}
+              transition={{ type: 'spring', stiffness: 400, damping: 22 }}
             >
               {opacity}%
-            </span>
+            </motion.span>
             <input
               type="range"
               min={4}
               max={100}
               value={opacity}
               onChange={(e) => patchOpacity(Number(e.target.value))}
+              onPointerDown={() => setDragging(true)}
+              onPointerUp={() => setDragging(false)}
+              onPointerCancel={() => setDragging(false)}
+              onBlur={() => setDragging(false)}
               aria-label="Opacidade do Flash"
-              className="hat-opacity min-w-0"
+              className={`hat-opacity min-w-0${dragging ? ' hat-opacity-active' : ''}`}
               style={{ ['--fill' as string]: `${((opacity - 4) / 96) * 100}%` }}
             />
           </div>
