@@ -65,6 +65,7 @@ export function createMockBridge(): MockBridge {
       calls.push({ method: 'checkForUpdate', args: [] });
       return Promise.resolve({ status: 'uptodate' as const });
     },
+    relaunchApp: record('relaunchApp'),
     getAppVersion: () => {
       calls.push({ method: 'getAppVersion', args: [] });
       return Promise.resolve('0.0.0-test');

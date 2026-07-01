@@ -21,6 +21,7 @@ export function createTauriBridge(): NativeBridge {
     getFlashAppearance: () => invoke('get_flash_appearance'),
     setFlashAppearance: (appearance) => invoke('set_flash_appearance', { appearance }),
     checkForUpdate: () => invoke('check_for_update'),
+    relaunchApp: () => invoke('relaunch_app'),
     getAppVersion: () => getVersion(),
     startStream: (request) => invoke('start_stream', { request }),
     cancelStream: (streamId) => invoke('cancel_stream', { streamId }),

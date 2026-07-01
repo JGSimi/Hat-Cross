@@ -30,6 +30,8 @@ export interface NativeBridge {
   setFlashAppearance(appearance: FlashAppearance): Promise<void>;
   /** Verifica/instala atualização sob demanda (aplica no próximo start). */
   checkForUpdate(): Promise<UpdateCheck>;
+  /** Reinicia o app para aplicar a atualização já baixada (não retorna). */
+  relaunchApp(): Promise<void>;
   /** Versão do app (ex.: "2.0.0"). */
   getAppVersion(): Promise<string>;
   startStream(request: StreamRequest): Promise<void>;

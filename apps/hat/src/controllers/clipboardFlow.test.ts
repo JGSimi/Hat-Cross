@@ -123,6 +123,92 @@ describe('startClipboardFlow', () => {
     expect(bridge.calls.some((c) => c.method === 'startStream')).toBe(false);
   });
 
+  it('sala ativa: request leva roomId, roomShare e sourceMessageId', async () => {
+    wire({
+      getRoomContext: () => ({ roomId: 'room-7', roomShare: true }),
+      newSourceMessageId: () => 'src-1',
+    });
+    bridge.emit('clipboard:captured', { kind: 'text', text: 'pergunta' });
+    await vi.waitFor(() => expect(lastStartStream).not.toThrow());
+
+    const req = lastStartStream();
+    expect(req.roomId).toBe('room-7');
+    expect(req.roomShare).toBe(true);
+    expect(req.sourceMessageId).toBe('src-1');
+  });
+
+  it('sem sala ativa: nada de roomId/sourceMessageId nem thumbnail', async () => {
+    const onRoomImageShared = vi.fn();
+    wire({ getRoomContext: () => null, onRoomImageShared });
+    bridge.emit('clipboard:captured', { kind: 'image', base64Png: 'PNG' });
+    await vi.waitFor(() => expect(lastStartStream).not.toThrow());
+
+    const req = lastStartStream();
+    expect(req.roomId).toBeUndefined();
+    expect(req.sourceMessageId).toBeUndefined();
+    expect(onRoomImageShared).not.toHaveBeenCalled();
+  });
+
+  it('imagem + sala: entrega o thumbnail local com o mesmo sourceMessageId', async () => {
+    const onRoomImageShared = vi.fn();
+    wire({
+      getRoomContext: () => ({ roomId: 'room-7', roomShare: true }),
+      newSourceMessageId: () => 'src-img',
+      onRoomImageShared,
+    });
+    bridge.emit('clipboard:captured', { kind: 'image', base64Png: 'PNGB64' });
+    await vi.waitFor(() => expect(lastStartStream).not.toThrow());
+
+    expect(onRoomImageShared).toHaveBeenCalledOnce();
+    expect(onRoomImageShared).toHaveBeenCalledWith('src-img', 'PNGB64');
+    expect(lastStartStream().sourceMessageId).toBe('src-img');
+  });
+
+  it('texto + sala: não chama onRoomImageShared', async () => {
+    const onRoomImageShared = vi.fn();
+    wire({
+      getRoomContext: () => ({ roomId: 'room-7', roomShare: true }),
+      onRoomImageShared,
+    });
+    bridge.emit('clipboard:captured', { kind: 'text', text: 'pergunta' });
+    await vi.waitFor(() => expect(lastStartStream).not.toThrow());
+    expect(onRoomImageShared).not.toHaveBeenCalled();
+  });
+
+  it('acesso cortado: mostra a despedida no Flash e NÃO inicia stream', async () => {
+    wire({ getBlockedMessage: () => 'Sua assinatura terminou — foi bom ter você.' });
+    bridge.emit('clipboard:captured', { kind: 'text', text: 'pergunta' });
+
+    await vi.waitFor(() => {
+      const flash = bridge.calls.find((c) => c.method === 'flashShowText');
+      expect(flash?.args[0]).toBe('Sua assinatura terminou — foi bom ter você.');
+    });
+    expect(bridge.calls.some((c) => c.method === 'startStream')).toBe(false);
+  });
+
+  it('acesso cortado vale também para captura de imagem', async () => {
+    const onRoomImageShared = vi.fn();
+    wire({
+      getBlockedMessage: () => 'bloqueado',
+      getRoomContext: () => ({ roomId: 'room-7', roomShare: true }),
+      onRoomImageShared,
+    });
+    bridge.emit('clipboard:captured', { kind: 'image', base64Png: 'PNG' });
+
+    await vi.waitFor(() =>
+      expect(bridge.calls.some((c) => c.method === 'flashShowText')).toBe(true),
+    );
+    expect(bridge.calls.some((c) => c.method === 'startStream')).toBe(false);
+    expect(onRoomImageShared).not.toHaveBeenCalled();
+  });
+
+  it('getBlockedMessage devolvendo null não bloqueia nada', async () => {
+    wire({ getBlockedMessage: () => null });
+    bridge.emit('clipboard:captured', { kind: 'text', text: 'pergunta' });
+    await vi.waitFor(() => expect(lastStartStream).not.toThrow());
+    expect(bridge.calls.some((c) => c.method === 'flashShowText')).toBe(false);
+  });
+
   it('respeita mode/systemPrompt/imagePrompt customizados', async () => {
     wire({ mode: 'hat-pro', systemPrompt: 'SP', imagePrompt: 'IP' });
     bridge.emit('clipboard:captured', { kind: 'image', base64Png: 'B' });

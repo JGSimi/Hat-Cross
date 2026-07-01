@@ -6,44 +6,65 @@ interface PaywallProps {
   onSubscribe: () => void;
 }
 
+const DIGITAL: React.CSSProperties = { fontFamily: 'var(--font-digital)', textTransform: 'uppercase' };
+
 /**
- * Tela de bloqueio quando o trial acabou e não há assinatura. Plano único:
- * R$50/mês, acesso ilimitado. Mantém a voz de instrumento do app.
+ * Bloqueio de quem nunca assinou / trial vencido. Redesign na linguagem da
+ * HatHome (#141414, azul #007bff, fonte de 7-segmentos nos números), layout
+ * landscape que cabe na janela curta: mascote à esquerda, oferta à direita.
  */
 export function Paywall({ trialEndsAt, onSubscribe }: PaywallProps) {
   const everHadTrial = typeof trialEndsAt === 'number';
   const daysLeft = trialDaysLeft(trialEndsAt);
 
   return (
-    <div className="flex h-full flex-col items-center justify-center px-6 text-center" data-testid="paywall">
-      <HatLogo size={56} className="text-text-secondary" />
-      <h1 className="font-display mt-4 mb-0 text-[30px] leading-none font-extralight tracking-[-0.02em] text-text-primary">
-        Hat ilimitado
-      </h1>
-      <p className="mt-3 mb-0 max-w-90 text-[13px] leading-relaxed text-text-secondary">
-        {everHadTrial && daysLeft === 0
-          ? 'Seu período de teste terminou. Assine para continuar com salas e o Flash.'
-          : 'Assine para usar salas e o Flash sem limites.'}
-      </p>
-
-      <div className="mt-7 flex items-baseline gap-2">
-        <span className="font-display text-[56px] leading-none font-extralight tracking-[-0.03em] text-text-primary tabular-nums">
-          R$50
-        </span>
-        <span className="text-[13px] text-text-muted">/mês · ilimitado</span>
+    <div
+      className="flex h-full w-full items-center overflow-hidden"
+      style={{ background: '#141414', color: '#fff' }}
+      data-testid="paywall"
+    >
+      {/* Mascote — metade esquerda. */}
+      <div
+        className="flex flex-1 items-center justify-center border-0 border-r border-solid"
+        style={{ borderColor: 'rgb(255 255 255 / 0.14)' }}
+      >
+        <HatLogo size={200} style={{ color: '#fff', maxHeight: '58%', width: 'auto' }} title="Hat" />
       </div>
 
-      <button
-        type="button"
-        data-testid="paywall-subscribe"
-        onClick={onSubscribe}
-        className="hat-btn hat-btn-primary mt-7 px-7 py-3 font-mono tracking-[0.04em]"
-      >
-        Assinar →
-      </button>
-      <p className="mt-3 mb-0 font-mono text-[10px] tracking-[0.12em] text-text-muted uppercase">
-        abre o checkout seguro no navegador
-      </p>
+      {/* Oferta — metade direita. */}
+      <div className="flex flex-1 flex-col justify-center gap-4 px-[7%] py-6">
+        <p className="m-0 leading-none" style={{ ...DIGITAL, fontSize: 'clamp(24px, 5vh, 44px)', letterSpacing: '0.06em' }}>
+          ilimitado
+        </p>
+        <p className="m-0 max-w-[34ch] text-[13px] leading-relaxed" style={{ color: 'rgb(255 255 255 / 0.66)' }}>
+          {everHadTrial && daysLeft === 0
+            ? 'Seu período de teste terminou. Assine para continuar usando o Flash.'
+            : 'Assine para usar o Flash sem limites.'}
+        </p>
+
+        <div className="flex items-baseline gap-2">
+          <span className="leading-none tabular-nums" style={{ ...DIGITAL, fontSize: 'clamp(40px, 9vh, 72px)' }}>
+            R$50
+          </span>
+          <span className="text-[12px]" style={{ color: 'rgb(255 255 255 / 0.5)' }}>
+            /mês
+          </span>
+        </div>
+
+        <div className="mt-1 flex items-center gap-3">
+          <button
+            type="button"
+            data-testid="paywall-subscribe"
+            onClick={onSubscribe}
+            className="hat-btn hat-btn-blue px-7 py-3 font-mono tracking-[0.04em]"
+          >
+            Assinar →
+          </button>
+          <span className="font-mono text-[10px] tracking-[0.1em] uppercase" style={{ color: 'rgb(255 255 255 / 0.4)' }}>
+            checkout seguro
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

@@ -77,6 +77,7 @@ pub fn run() {
             oauth::oauth_run_loopback_flow,
             oauth::open_external,
             updates::check_for_update,
+            updates::relaunch_app,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Hat");

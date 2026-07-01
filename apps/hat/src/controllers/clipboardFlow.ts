@@ -12,6 +12,7 @@ import type {
   ConversationTurn,
   StreamRequest,
 } from '../bridge/types';
+import { IMAGE_QUESTION_PREFIX } from '../domain/rooms/imageQuestion';
 
 export interface RoomContext {
   roomId: string;
@@ -36,6 +37,24 @@ export interface ClipboardFlowDeps {
    * Lido a cada captura (não no setup) para refletir a sala atual.
    */
   getRoomContext?: () => RoomContext | null;
+  /**
+   * Id estável da captura compartilhada (vira entry.sourceMessageId no
+   * backend). Necessário para casar a entry com dados locais (ex.: thumbnail
+   * de imagem). Default: newIdempotencyKey.
+   */
+  newSourceMessageId?: () => string;
+  /**
+   * Captura de IMAGEM compartilhada com a sala: entrega o base64 + o
+   * sourceMessageId para a UI guardar um thumbnail local (a imagem em si
+   * nunca sobe — só a resposta vira entry; o preview é só deste device).
+   */
+  onRoomImageShared?: (sourceMessageId: string, base64Png: string) => void;
+  /**
+   * Corte de acesso (assinatura cancelada / trial encerrado): quando devolve
+   * uma mensagem, ela aparece no Flash NO LUGAR do stream — o caminho quente
+   * fica bloqueado no mesmo instante, sem esperar o backend rejeitar.
+   */
+  getBlockedMessage?: () => string | null;
   /** Reporta falhas (auth, build do request) para a UI. */
   onError?: (error: unknown) => void;
 }
@@ -54,8 +73,10 @@ const DEFAULT_SYSTEM_PROMPT = [
   'máximo 3 frases curtas. NUNCA use markdown (sem **negrito**, listas, títulos,',
   'blocos de código ou emojis). Seja o mais conciso possível.',
 ].join(' ');
-const DEFAULT_IMAGE_PROMPT =
-  'Resolva a questão desta imagem seguindo as regras de formato (múltipla escolha: só a letra e início curto; dissertativa: texto humano curto, sem markdown).';
+// Começa com IMAGE_QUESTION_PREFIX de propósito: é assim que a UI das salas
+// reconhece entries nascidas de imagem (o backend grava este texto como
+// questionText da entry).
+const DEFAULT_IMAGE_PROMPT = `${IMAGE_QUESTION_PREFIX} seguindo as regras de formato (múltipla escolha: só a letra e início curto; dissertativa: texto humano curto, sem markdown).`;
 
 /**
  * Monta as mensagens a partir do conteúdo do clipboard. Imagem vai em
@@ -92,10 +113,21 @@ export function startClipboardFlow(deps: ClipboardFlowDeps): () => void {
     const built = buildStreamMessages(content, imagePrompt);
     if (built === null) return;
 
+    // Acesso cortado (cancelamento/fim de trial): despedida no Flash, sem stream.
+    const blockedMessage = deps.getBlockedMessage?.() ?? null;
+    if (blockedMessage !== null) {
+      void deps.bridge.flashShowText(blockedMessage).catch(() => {});
+      return;
+    }
+
     void (async () => {
       try {
         const idToken = await deps.getIdToken();
         const room = deps.getRoomContext?.() ?? null;
+        const sharing = !!(room && room.roomShare && room.roomId);
+        const sourceMessageId = sharing
+          ? (deps.newSourceMessageId ?? deps.newIdempotencyKey)()
+          : undefined;
         const request: StreamRequest = {
           streamId: deps.newStreamId(),
           messages: built.messages,
@@ -106,10 +138,13 @@ export function startClipboardFlow(deps: ClipboardFlowDeps): () => void {
           images: built.images,
           idToken,
           idempotencyKey: deps.newIdempotencyKey(),
-          ...(room && room.roomShare && room.roomId
-            ? { roomId: room.roomId, roomShare: true }
+          ...(sharing && room
+            ? { roomId: room.roomId, roomShare: true, sourceMessageId }
             : {}),
         };
+        if (sharing && sourceMessageId && content.kind === 'image') {
+          deps.onRoomImageShared?.(sourceMessageId, content.base64Png);
+        }
         await deps.bridge.startStream(request);
       } catch (error) {
         deps.onError?.(error);

@@ -7,7 +7,7 @@
 //! Não força restart (o app é de bandeja, inicia no login) — a nova versão
 //! passa a valer no próximo start. Falhas são silenciosas (sem rede, etc.).
 
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use tauri_plugin_updater::UpdaterExt;
 
 pub fn spawn_check(app: &AppHandle) {
@@ -24,11 +24,21 @@ async fn try_update(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let Some(update) = updater.check().await? else {
         return Ok(()); // já na última versão
     };
+    let version = update.version.clone();
     // Baixa e instala silenciosamente; aplica no próximo start.
     update
         .download_and_install(|_chunk, _total| {}, || {})
         .await?;
+    // Instalada e pronta: avisa o front para revelar o botão "reiniciar para
+    // atualizar" (usuário não verifica manual — o sistema avisa, ele só clica).
+    let _ = app.emit("update:ready", serde_json::json!({ "version": version }));
     Ok(())
+}
+
+/// Reinicia o app para aplicar a atualização já baixada. Diverge (não retorna).
+#[tauri::command]
+pub fn relaunch_app(app: AppHandle) {
+    app.restart();
 }
 
 #[derive(serde::Serialize)]

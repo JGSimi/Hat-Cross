@@ -110,6 +110,8 @@ export type NativeEventMap = {
   'gabarito:show': GabaritoShowPayload;
   'shortcut:registration-failed': { binding: string; code: string };
   'settings:changed': void;
+  /** Atualização baixada+instalada em background; pronta para aplicar no restart. */
+  'update:ready': { version: string };
 };
 
 export type NativeEventName = keyof NativeEventMap;

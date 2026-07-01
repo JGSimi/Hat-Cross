@@ -1,24 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NativeBridge } from '../bridge/native';
 import type { AuthPort } from '../bridge/auth';
+import { startAccountWatch } from '../controllers/accountWatch';
 import { startClipboardFlow } from '../controllers/clipboardFlow';
-import { startCorrectionsFlow } from '../controllers/correctionsFlow';
-import { startGabaritoFlow } from '../controllers/gabaritoFlow';
 import { createTokenManager, type TokenManager } from '../domain/auth/tokenManager';
-import { unreadCount } from '../domain/rooms/corrections';
-import { useRoomStore } from '../stores/roomStore';
-import { createRoomsClient, type RoomsClient } from '../services/rooms/client';
-import { subscribeMyRooms, subscribeRoom } from '../services/rooms/realtime';
 import { createAccountClient, trialDaysLeft, type AccountStatus } from '../services/account';
-import { hatProxyBaseUrl, readAuthConfig } from '../services/auth/config';
-import { RoomsPanel } from '../components/Rooms/RoomsPanel';
-import { Paywall } from '../components/Paywall';
-import { SettingsPanel } from '../components/SettingsPanel';
-import { HatLogo } from '../components/HatLogo';
-import { UserBadge } from '../components/UserBadge';
+import { hatProxyBaseUrl } from '../services/auth/config';
+import { firstNameOf } from '../domain/greeting';
+import { HatHome } from '../components/HatHome';
 import { ProfilePanel } from '../components/ProfilePanel';
-
-type MainView = 'rooms' | 'settings' | 'profile';
+import { Paywall } from '../components/Paywall';
+import { Farewell } from '../components/Farewell';
 
 interface MainPageProps {
   bridge: NativeBridge;
@@ -26,26 +18,21 @@ interface MainPageProps {
 }
 
 /**
- * Janela principal (pivot Salas+Flash, sem chat). Orquestra:
- * - auth + token (refresh proativo);
- * - cliente de salas real + listeners Firestore → roomStore;
- * - caminho quente do clipboard compartilhando com a sala ativa;
- * - correções da IA no Flash sob demanda + badge;
- * - paywall (trial / assinar / bloqueio).
+ * Janela principal — redesign simples (Figma "a risca"): a tela HatHome
+ * (mascote + atalho + opacidade + cor + update). Salas saíram do produto.
+ * Ainda orquestra: auth + token (refresh proativo), status da conta
+ * (trial/assinatura) e o caminho quente do clipboard → Flash. Perfil vive
+ * atrás do avatar no canto.
  */
 export function MainPage({ bridge, authPort }: MainPageProps) {
   const streamSeq = useRef(0);
-  const [view, setView] = useState<MainView>('rooms');
+  // Mensagem de corte do Flash (assinatura cancelada / trial encerrado).
+  const blockedFlashMsg = useRef<string | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
   const [session, setSession] = useState(() => authPort?.currentSession() ?? null);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [account, setAccount] = useState<AccountStatus | null>(null);
-
-  const activeRoomId = useRoomStore((s) => s.activeRoomId);
-  const notifications = useRoomStore((s) => s.notifications);
-  const pendingCorrections = unreadCount(notifications);
-
-  const firebaseConfig = useMemo(() => readAuthConfig()?.firebase ?? null, []);
 
   const tokenManager: TokenManager | null = useMemo(() => {
     if (!authPort) return null;
@@ -56,13 +43,6 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
     () => (tokenManager ? tokenManager.getToken() : Promise.reject(new Error('auth:not-configured'))),
     [tokenManager],
   );
-
-  // Sem sessão NÃO há cliente: evita tentar criar/entrar em sala deslogado
-  // (getIdToken lançaria e a UI mostra "conecte sua conta").
-  const roomsClient: RoomsClient | null = useMemo(() => {
-    if (!tokenManager || !session) return null;
-    return createRoomsClient({ baseUrl: hatProxyBaseUrl(), getIdToken });
-  }, [tokenManager, session, getIdToken]);
 
   const accountClient = useMemo(() => {
     if (!tokenManager) return null;
@@ -75,45 +55,33 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
     return authPort.onAuthChange(setSession);
   }, [authPort]);
 
-  // Logout: sai da sala ativa, limpa o store e volta para a lista/estado
-  // deslogado. (Os listeners realtime já desinscrevem por dependerem de session.)
+  // Logout: volta para a home.
   useEffect(() => {
-    if (!session) {
-      useRoomStore.getState().reset();
-      setView('rooms');
-      void bridge.gabaritoHide().catch(() => {});
-    }
-  }, [session, bridge]);
+    if (!session) setShowProfile(false);
+  }, [session]);
 
-  // Status da conta (assinatura/trial) ao logar
+  // Status da conta (assinatura/trial): watch contínuo — corta o Flash no
+  // instante em que um cancelamento entra. Erros de rede mantêm o último status.
   useEffect(() => {
     if (!session || !accountClient) {
       setAccount(null);
       return;
     }
-    let alive = true;
-    accountClient
-      .fetchStatus()
-      .then((s) => alive && setAccount(s))
-      .catch(() => alive && setAccount(null));
-    return () => {
-      alive = false;
-    };
+    return startAccountWatch({
+      fetchStatus: () => accountClient.fetchStatus(),
+      onStatus: setAccount,
+      onError: (e) => console.warn('accountWatch:', e),
+    });
   }, [session, accountClient]);
 
-  // Caminho quente do clipboard → compartilha com a sala ativa
+  // Caminho quente do clipboard → Flash (sem salas: nunca compartilha).
   useEffect(() => {
     return startClipboardFlow({
       bridge,
       getIdToken,
       newStreamId: () => (streamSeq.current += 1),
       newIdempotencyKey: () => crypto.randomUUID(),
-      getRoomContext: () => {
-        const id = useRoomStore.getState().activeRoomId;
-        return id ? { roomId: id, roomShare: true } : null;
-      },
-      // Sem isto, o Flash fica preso em "Processando…" quando o stream nem
-      // começa (ex.: não logado). Mostra a causa e deixa o auto-hide agir.
+      getBlockedMessage: () => blockedFlashMsg.current,
       onError: (e) => {
         console.warn('clipboardFlow:', e);
         const msg = e instanceof Error && /not-signed-in|not-configured/.test(e.message)
@@ -123,46 +91,6 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
       },
     });
   }, [bridge, getIdToken]);
-
-  // Correções da sala no Flash sob demanda (atalho dedicado)
-  useEffect(() => {
-    return startCorrectionsFlow({
-      bridge,
-      getNotifications: () => useRoomStore.getState().notifications,
-      markRead: (id) => useRoomStore.getState().markNotificationRead(id),
-      onError: (e) => console.warn('correctionsFlow:', e),
-    });
-  }, [bridge]);
-
-  // Gabarito (respostas corrigidas) — toggle por atalho, abaixo do flash.
-  useEffect(() => {
-    return startGabaritoFlow({
-      bridge,
-      getRoomData: () => {
-        const s = useRoomStore.getState();
-        const roomId = s.activeRoomId;
-        if (!roomId) return null;
-        return {
-          clusters: s.clusters[roomId] ?? [],
-          entries: s.entries[roomId] ?? [],
-          myUid: session?.uid ?? '',
-        };
-      },
-      onError: (e) => console.warn('gabaritoFlow:', e),
-    });
-  }, [bridge, session]);
-
-  // Lista de salas do usuário (realtime)
-  useEffect(() => {
-    if (!session || !firebaseConfig) return;
-    return subscribeMyRooms(firebaseConfig, session.uid);
-  }, [session, firebaseConfig]);
-
-  // Realtime da sala ativa (entries + clusters + minhas correções)
-  useEffect(() => {
-    if (!session || !firebaseConfig || !activeRoomId) return;
-    return subscribeRoom(firebaseConfig, activeRoomId, session.uid);
-  }, [session, firebaseConfig, activeRoomId]);
 
   async function handleSignIn() {
     if (!authPort || authBusy) return;
@@ -184,8 +112,7 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
   async function openCheckout() {
     if (!accountClient) return;
     try {
-      const url = await accountClient.checkoutUrl();
-      await bridge.openExternal(url);
+      await bridge.openExternal(await accountClient.checkoutUrl());
     } catch (e) {
       console.warn('checkout:', e);
     }
@@ -194,8 +121,7 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
   async function openPortal() {
     if (!accountClient) return;
     try {
-      const url = await accountClient.portalUrl();
-      await bridge.openExternal(url);
+      await bridge.openExternal(await accountClient.portalUrl());
     } catch (e) {
       console.warn('portal:', e);
     }
@@ -205,106 +131,99 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
   const daysLeft = trialDaysLeft(account?.trialEndsAt ?? null);
   const subscribed = account?.subscription?.status === 'active' || account?.subscription?.status === 'trialing';
   const tier = subscribed ? ('subscriber' as const) : daysLeft > 0 ? ('trial' as const) : ('none' as const);
+  const canceled = !!account && !entitled && account.subscription?.status === 'canceled';
+  blockedFlashMsg.current =
+    session && account && !entitled
+      ? canceled
+        ? 'Sua assinatura terminou — foi bom ter você. Assine de novo no Hat para voltar.'
+        : 'Seu acesso terminou. Assine no Hat para continuar.'
+      : null;
+
+  const photo = session?.photoURL ?? null;
+  const initial = (session?.displayName || session?.email || '?').slice(0, 1).toUpperCase();
+
+  // Avatar/entrada no canto superior esquerdo da home.
+  const profileSlot = !authPort ? null : session ? (
+    <button
+      type="button"
+      data-testid="open-profile"
+      onClick={() => setShowProfile(true)}
+      title="Seu perfil"
+      className="hat-avatar size-9 cursor-pointer border-0 bg-transparent p-0"
+      data-tier={tier}
+    >
+      {photo ? (
+        <img src={photo} alt="" referrerPolicy="no-referrer" className="size-9 rounded-full object-cover" />
+      ) : (
+        <span className="grid size-9 place-items-center rounded-full font-mono text-[13px]" style={{ background: '#3d3d3d', color: '#f4f4f2' }}>
+          {initial}
+        </span>
+      )}
+    </button>
+  ) : (
+    <button
+      type="button"
+      data-testid="sign-in"
+      onClick={() => void handleSignIn()}
+      disabled={authBusy}
+      className="cursor-pointer rounded-full border-0 px-3 py-1.5 font-mono text-[10px] tracking-[0.12em] uppercase disabled:opacity-50"
+      style={{ background: '#3d3d3d', color: '#f4f4f2' }}
+    >
+      {authBusy ? 'abrindo…' : 'entrar'}
+    </button>
+  );
+
+  if (showProfile && session) {
+    return (
+      <div className="flex h-screen flex-col overflow-hidden px-8 pt-4 pb-6" style={{ background: '#141414', color: '#f4f4f2' }}>
+        <button
+          type="button"
+          data-testid="close-profile"
+          onClick={() => setShowProfile(false)}
+          className="mb-4 shrink-0 cursor-pointer self-start border-0 bg-transparent p-0 font-mono text-[10px] tracking-[0.12em] uppercase"
+          style={{ color: '#a8a8a3' }}
+        >
+          ← voltar
+        </button>
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <ProfilePanel
+            session={session}
+            account={account}
+            tier={tier}
+            onManageSubscription={() => void openPortal()}
+            onSubscribe={() => void openCheckout()}
+            onSignOut={() => {
+              setShowProfile(false);
+              void authPort?.signOut();
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Gate de assinatura: conta sem acesso vê a despedida (cancelou) ou o paywall
+  // (nunca assinou / trial vencido) no lugar da home. O Flash já é bloqueado à
+  // parte por blockedFlashMsg — aqui é só a tela.
+  const screen =
+    session && !entitled && canceled ? (
+      <Farewell name={firstNameOf(session.displayName, session.email)} onResubscribe={() => void openCheckout()} />
+    ) : session && !entitled ? (
+      <Paywall trialEndsAt={account?.trialEndsAt ?? null} onSubscribe={() => void openCheckout()} />
+    ) : (
+      <HatHome bridge={bridge} />
+    );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-base text-text-primary">
-      <nav
-        aria-label="Navegação principal"
-        className="flex w-13 shrink-0 flex-col items-center border-0 border-r border-solid border-r-hairline py-4"
-      >
-        <HatLogo size={22} className="text-text-secondary" title="Hat" />
-        <div className="mt-8 flex flex-col items-center gap-7">
-          {(['rooms', 'settings'] as const).map((v) => {
-            const active = view === v;
-            return (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setView(v)}
-                aria-current={active ? 'page' : undefined}
-                className="cursor-pointer border-0 bg-transparent p-0 font-mono text-[9.5px] tracking-[0.28em] transition-colors duration-200"
-                style={{
-                  writingMode: 'vertical-rl',
-                  color: active ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-                  borderRight: active ? '1px solid var(--color-text-primary)' : '1px solid transparent',
-                  paddingRight: 6,
-                }}
-              >
-                {v === 'rooms' ? 'SALAS' : 'AJUSTES'}
-              </button>
-            );
-          })}
-        </div>
-        {pendingCorrections > 0 && (
-          <span
-            data-testid="corrections-badge"
-            title={`${pendingCorrections} correções — atalho ⌘⇧D`}
-            className="hat-pulse mt-auto inline-flex size-5 items-center justify-center rounded-full font-mono text-[10px] tabular-nums text-white"
-            style={{ background: 'var(--color-divergence)' }}
-          >
-            {pendingCorrections}
-          </span>
-        )}
-      </nav>
-
-      <main className="hat-atmosphere flex min-w-0 flex-1 flex-col overflow-hidden px-8 pt-3 pb-7">
-        <div className="mb-2 flex h-8 shrink-0 items-center justify-end gap-3">
-          {authError && (
-            <span role="alert" className="text-[11px]" style={{ color: 'var(--color-divergence)' }}>
-              {authError}
-            </span>
-          )}
-          {!authPort ? (
-            <span className="font-mono text-[10px] tracking-[0.12em] text-text-muted uppercase">
-              sem credenciais — modo local
-            </span>
-          ) : session ? (
-            <UserBadge
-              session={session}
-              tier={tier}
-              trialDaysLeft={daysLeft}
-              onOpenProfile={() => setView('profile')}
-            />
-          ) : (
-            <button
-              type="button"
-              data-testid="sign-in"
-              onClick={() => void handleSignIn()}
-              disabled={authBusy}
-              className="cursor-pointer border-0 bg-transparent p-0 font-mono text-[10px] tracking-[0.12em] text-text-secondary uppercase transition-colors duration-200 hover:text-text-primary disabled:cursor-default disabled:opacity-50"
-            >
-              {authBusy ? 'abrindo o google…' : 'entrar com google →'}
-            </button>
-          )}
-        </div>
-
-        <div key={view} className="hat-view-in min-h-0 flex-1 overflow-hidden">
-          {view === 'profile' && session ? (
-            <ProfilePanel
-              session={session}
-              account={account}
-              tier={tier}
-              onManageSubscription={() => void openPortal()}
-              onSubscribe={() => void openCheckout()}
-              onSignOut={() => {
-                setView('rooms');
-                void authPort?.signOut();
-              }}
-            />
-          ) : view === 'settings' ? (
-            <SettingsPanel bridge={bridge} />
-          ) : session && !entitled ? (
-            <Paywall trialEndsAt={account?.trialEndsAt ?? null} onSubscribe={() => void openCheckout()} />
-          ) : (
-            <RoomsPanel
-              client={roomsClient}
-              credits={null}
-              myUid={session?.uid ?? null}
-              authed={!!session}
-            />
-          )}
-        </div>
-      </main>
+    <div className="relative h-screen overflow-hidden" style={{ background: '#141414' }}>
+      {authError && (
+        <span role="alert" className="absolute left-1/2 top-2 z-30 -translate-x-1/2 text-[11px]" style={{ color: '#ff453a' }}>
+          {authError}
+        </span>
+      )}
+      {/* Avatar/entrada — overlay global: perfil e "sair" acessíveis em qualquer tela. */}
+      {profileSlot && <div className="absolute left-4 top-4 z-20">{profileSlot}</div>}
+      {screen}
     </div>
   );
 }

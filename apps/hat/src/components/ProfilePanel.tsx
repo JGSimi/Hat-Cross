@@ -3,8 +3,10 @@ import type { AuthSession } from '../bridge/auth';
 import type { AccountStatus } from '../services/account';
 import { trialDaysLeft } from '../services/account';
 import { firstNameOf, greetingFor } from '../domain/greeting';
+import { useCountUp } from '../hooks/useCountUp';
 import { HatLogo } from './HatLogo';
-import type { UserTier } from './UserBadge';
+
+export type UserTier = 'subscriber' | 'trial' | 'none';
 
 interface ProfilePanelProps {
   session: AuthSession;
@@ -21,6 +23,8 @@ interface ProfilePanelProps {
 
 const dateFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long' });
 const numberFmt = new Intl.NumberFormat('pt-BR');
+const DIGITAL: React.CSSProperties = { fontFamily: 'var(--font-digital)', textTransform: 'uppercase' };
+const MUTED = 'rgb(255 255 255 / 0.5)';
 
 /** Largura da barra de uso: log-scale, nunca encosta no ∞ (a piada é essa). */
 export function usageBarPct(creditsSpent: number): number {
@@ -29,10 +33,13 @@ export function usageBarPct(creditsSpent: number): number {
   return Math.max(8, Math.min(82, pct));
 }
 
+const stagger = (step: number) => ({ animationDelay: `${step * 90}ms` });
+
 /**
- * Perfil: identidade + uso (com limite ∞, ironicamente) + assinatura.
- * Assinante gerencia; não-assinante recebe o convite premium. O "sair"
- * vive aqui, discreto, longe de cliques acidentais.
+ * Perfil — redesign landscape na linguagem da HatHome (#141414, azul #007bff,
+ * fonte de 7-segmentos nos números): identidade + uso à esquerda, assinatura à
+ * direita. Cabe na janela curta sem scroll. Assinante gerencia; não-assinante
+ * recebe o convite. O "sair" fica discreto, longe de cliques acidentais.
  */
 export function ProfilePanel({
   session,
@@ -47,101 +54,113 @@ export function ProfilePanel({
   const photo = !imgFailed && session.photoURL ? session.photoURL : null;
   const name = firstNameOf(session.displayName, session.email);
   const spent = account?.creditsSpent ?? 0;
+  const animatedSpent = useCountUp(spent);
   const daysLeft = trialDaysLeft(account?.trialEndsAt ?? null);
   const periodEnd = account?.subscription?.currentPeriodEnd;
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-y-auto" aria-label="Perfil">
-      {/* ── Identidade ── */}
-      <div className="flex items-center gap-5">
-        <span className="hat-avatar size-16 shrink-0" data-tier={tier}>
-          {photo ? (
-            <img
-              src={photo}
-              alt=""
-              referrerPolicy="no-referrer"
-              onError={() => setImgFailed(true)}
-              className="size-16 rounded-full object-cover"
-            />
-          ) : (
-            <span
-              aria-hidden
-              className="flex size-16 items-center justify-center rounded-full bg-surface-raised font-mono text-[18px] text-text-secondary"
-            >
-              {(name || '?').slice(0, 1).toUpperCase()}
+    <section
+      className="mx-auto flex h-full min-h-0 w-full max-w-[880px] flex-col gap-6 sm:flex-row sm:items-center sm:gap-10"
+      aria-label="Perfil"
+      style={{ color: '#fff' }}
+    >
+      {/* ── Coluna esquerda: identidade + uso ── */}
+      <div className="flex min-w-0 flex-1 flex-col justify-center">
+        <div className="hat-rise flex items-center gap-4" style={stagger(0)}>
+          <span className="hat-avatar size-14 shrink-0" data-tier={tier}>
+            {photo ? (
+              <img
+                src={photo}
+                alt=""
+                referrerPolicy="no-referrer"
+                onError={() => setImgFailed(true)}
+                className="size-14 rounded-full object-cover"
+              />
+            ) : (
+              <span
+                aria-hidden
+                className="flex size-14 items-center justify-center rounded-full font-mono text-[17px]"
+                style={{ background: '#3d3d3d', color: '#fff' }}
+              >
+                {(name || '?').slice(0, 1).toUpperCase()}
+              </span>
+            )}
+          </span>
+          <div className="min-w-0">
+            <h1 className="m-0 truncate text-[24px] leading-tight font-light tracking-[-0.01em]">
+              {greetingFor(hour)}
+              {name ? `, ${name}` : ''}
+            </h1>
+            <p className="mt-1 mb-0 truncate font-mono text-[11px]" style={{ color: MUTED }}>
+              {session.email ?? session.uid}
+            </p>
+          </div>
+        </div>
+
+        <div className="hat-rise mt-8" style={stagger(1)}>
+          <h2 className="m-0 mb-3 font-mono text-[10px] tracking-[0.2em] uppercase" style={{ color: MUTED }}>
+            Seu uso
+          </h2>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="leading-none tabular-nums" style={{ ...DIGITAL, fontSize: 'clamp(30px, 7vh, 44px)' }}>
+              {numberFmt.format(animatedSpent)}
             </span>
-          )}
-        </span>
-        <div className="min-w-0">
-          <h1 className="font-display m-0 truncate text-[30px] leading-tight font-extralight tracking-[-0.02em] text-text-primary">
-            {greetingFor(hour)}
-            {name ? `, ${name}` : ''}
-          </h1>
-          <p className="mt-1 mb-0 truncate font-mono text-[11px] text-text-muted">
-            {session.email ?? session.uid}
+            <span className="text-[12px]" style={{ color: MUTED }}>
+              unidades até hoje
+            </span>
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            <div
+              className="relative h-1.5 flex-1 overflow-hidden rounded-full"
+              style={{ background: 'rgb(255 255 255 / 0.1)' }}
+              role="img"
+              aria-label="Uso em relação ao limite: ilimitado"
+            >
+              <div
+                data-testid="usage-fill"
+                className="hat-grow-x absolute inset-y-0 left-0 rounded-full"
+                style={{ width: `${usageBarPct(spent)}%`, background: '#007bff' }}
+              />
+            </div>
+            <span
+              data-testid="usage-infinity"
+              className="hat-infinity text-[24px] leading-none font-light"
+              style={{ color: 'rgb(255 255 255 / 0.7)' }}
+              title="Seu limite"
+            >
+              ∞
+            </span>
+          </div>
+          <p className="mt-2 mb-0 text-[11.5px]" style={{ color: MUTED }}>
+            Todo o caminho até seu limite. Spoiler: você nunca chega lá.
           </p>
         </div>
       </div>
 
-      {/* ── Uso ── */}
-      <h2 className="mt-9 mb-1 font-mono text-[10px] tracking-[0.2em] text-text-muted uppercase">
-        Seu uso
-      </h2>
-      <div className="border-0 border-t border-solid border-t-hairline pt-4">
-        <div className="flex items-baseline justify-between">
-          <span className="font-display text-[34px] leading-none font-extralight tracking-[-0.02em] text-text-primary tabular-nums">
-            {numberFmt.format(spent)}
-          </span>
-          <span className="text-[12px] text-text-muted">unidades de uso até hoje</span>
-        </div>
-        <div className="mt-4 flex items-center gap-3">
-          <div
-            className="relative h-1.5 flex-1 overflow-hidden rounded-full"
-            style={{ background: 'var(--color-hairline)' }}
-            role="img"
-            aria-label="Uso em relação ao limite: ilimitado"
-          >
-            <div
-              data-testid="usage-fill"
-              className="hat-usage-fill absolute inset-y-0 left-0 rounded-full"
-              style={{ width: `${usageBarPct(spent)}%` }}
-            />
-          </div>
-          <span
-            data-testid="usage-infinity"
-            className="font-display text-[26px] leading-none font-extralight text-text-secondary"
-            title="Seu limite"
-          >
-            ∞
-          </span>
-        </div>
-        <p className="mt-2 mb-0 text-[11.5px] text-text-muted">
-          Esse é todo o caminho até o seu limite. Spoiler: você nunca chega lá.
-        </p>
-      </div>
-
-      {/* ── Assinatura ── */}
-      <h2 className="mt-9 mb-1 font-mono text-[10px] tracking-[0.2em] text-text-muted uppercase">
-        Assinatura
-      </h2>
-      <div className="border-0 border-t border-solid border-t-hairline pt-4 pb-2">
+      {/* ── Coluna direita: assinatura + sair ── */}
+      <div className="hat-rise flex w-full flex-col justify-center sm:w-[46%]" style={stagger(2)}>
         {tier === 'subscriber' ? (
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="m-0 text-[14px] text-text-primary">
-                Hat Ilimitado <span className="text-consensus">· ativo</span>
-              </p>
-              <p className="mt-1 mb-0 text-[11.5px] text-text-muted">
-                {typeof periodEnd === 'number' && periodEnd > 0
-                  ? `próxima renovação em ${dateFmt.format(periodEnd)}`
-                  : 'obrigado por apoiar o Hat'}
-              </p>
-            </div>
+          <div
+            className="rounded-[16px] p-6"
+            style={{ background: '#1c1c1c', border: '1px solid rgb(255 255 255 / 0.1)' }}
+          >
+            <p className="m-0 font-mono text-[9.5px] tracking-[0.22em] uppercase" style={{ color: MUTED }}>
+              Assinatura
+            </p>
+            <p className="mt-3 mb-0 text-[15px]">
+              Hat Ilimitado <span style={{ color: '#4da3ff' }}>· ativo</span>
+            </p>
+            <p className="mt-1 mb-0 text-[11.5px]" style={{ color: MUTED }}>
+              {typeof periodEnd === 'number' && periodEnd > 0
+                ? `próxima renovação em ${dateFmt.format(periodEnd)}`
+                : 'obrigado por apoiar o Hat'}
+            </p>
             <button
               type="button"
               data-testid="manage-subscription"
               onClick={onManageSubscription}
-              className="hat-btn hat-btn-ghost"
+              className="hat-btn hat-btn-ghost mt-5 w-full"
+              style={{ borderColor: 'rgb(255 255 255 / 0.16)', color: 'rgb(255 255 255 / 0.75)' }}
             >
               Gerenciar assinatura
             </button>
@@ -149,37 +168,39 @@ export function ProfilePanel({
         ) : (
           <div
             data-testid="subscribe-hero"
-            className="hat-rise relative overflow-hidden rounded-lg border border-solid border-hairline-strong p-6"
+            className="hat-hero relative overflow-hidden rounded-[16px] p-6"
             style={{
-              background:
-                'radial-gradient(120% 140% at 85% -20%, rgb(99 102 241 / 0.14), transparent 55%), var(--color-surface-raised)',
+              background: 'radial-gradient(120% 140% at 85% -20%, rgb(0 123 255 / 0.22), transparent 55%), #1c1c1c',
+              border: '1px solid rgb(255 255 255 / 0.1)',
             }}
           >
-            <div className="flex items-start justify-between gap-6">
+            <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="m-0 font-mono text-[9.5px] tracking-[0.22em] text-text-muted uppercase">
+                <p className="m-0 font-mono text-[9.5px] tracking-[0.22em] uppercase" style={{ color: MUTED }}>
                   Hat Ilimitado
                 </p>
                 <div className="mt-2 flex items-baseline gap-2">
-                  <span className="font-display text-[44px] leading-none font-extralight tracking-[-0.03em] text-text-primary tabular-nums">
+                  <span className="leading-none tabular-nums" style={{ ...DIGITAL, fontSize: 'clamp(34px, 8vh, 48px)' }}>
                     R$50
                   </span>
-                  <span className="text-[12px] text-text-muted">/mês</span>
+                  <span className="text-[12px]" style={{ color: MUTED }}>
+                    /mês
+                  </span>
                 </div>
-                <ul className="mt-4 mb-0 flex list-none flex-col gap-1.5 p-0 text-[12.5px] text-text-secondary">
-                  <li>Flash e salas sem nenhum limite</li>
-                  <li>IA da sala corrigindo o grupo em tempo real</li>
+                <ul className="mt-3 mb-0 flex list-none flex-col gap-1 p-0 text-[12px]" style={{ color: 'rgb(255 255 255 / 0.72)' }}>
+                  <li>Flash sem nenhum limite</li>
+                  <li>Respostas na hora, direto no overlay</li>
                   <li>O anel. Você vai entender.</li>
                 </ul>
                 {tier === 'trial' && (
-                  <p className="mt-3 mb-0 font-mono text-[10px] tracking-[0.12em] text-text-muted uppercase">
+                  <p className="mt-3 mb-0 font-mono text-[10px] tracking-[0.12em] uppercase" style={{ color: MUTED }}>
                     seu teste termina em {daysLeft}d
                   </p>
                 )}
               </div>
-              <span className="hat-avatar mt-1 size-12 shrink-0" data-tier="subscriber">
-                <span className="flex size-12 items-center justify-center rounded-full bg-surface-overlay">
-                  <HatLogo size={26} className="text-text-primary" />
+              <span className="hat-avatar mt-1 size-11 shrink-0" data-tier="subscriber">
+                <span className="flex size-11 items-center justify-center rounded-full" style={{ background: '#141414' }}>
+                  <HatLogo size={24} style={{ color: '#fff' }} />
                 </span>
               </span>
             </div>
@@ -187,24 +208,24 @@ export function ProfilePanel({
               type="button"
               data-testid="profile-subscribe"
               onClick={onSubscribe}
-              className="hat-btn hat-btn-primary mt-5 w-full py-3 font-mono tracking-[0.04em]"
+              className="hat-btn hat-btn-blue mt-5 w-full py-3 font-mono tracking-[0.04em]"
             >
               Assinar agora →
             </button>
           </div>
         )}
-      </div>
 
-      {/* ── Sair ── */}
-      <div className="mt-auto flex justify-end pt-8 pb-2">
-        <button
-          type="button"
-          data-testid="sign-out"
-          onClick={onSignOut}
-          className="cursor-pointer border-0 bg-transparent p-0 font-mono text-[10px] tracking-[0.12em] text-text-muted uppercase transition-colors duration-200 hover:text-text-primary"
-        >
-          sair da conta
-        </button>
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            data-testid="sign-out"
+            onClick={onSignOut}
+            className="cursor-pointer border-0 bg-transparent p-0 font-mono text-[10px] tracking-[0.12em] uppercase transition-colors duration-200"
+            style={{ color: MUTED }}
+          >
+            sair da conta
+          </button>
+        </div>
       </div>
     </section>
   );

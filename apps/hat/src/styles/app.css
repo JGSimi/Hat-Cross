@@ -20,6 +20,16 @@
   font-style: normal;
   font-display: swap;
 }
+/* Display de 7/14 segmentos da tela principal (HAT/ATALHO/OPACIDADE/67%).
+   DSEG (SIL OFL) só tem glifos segmentados; símbolos ausentes (⌘⇧) caem no
+   fallback mono via a font stack --font-digital. */
+@font-face {
+  font-family: 'HatDigital';
+  src: url('/fonts/dseg14.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 /*
  * Tokens do design system (subconjunto V1 dos 24 tokens semânticos do
@@ -30,6 +40,8 @@
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   /* Display ultraleve — mesma voz do DisguiseClock/saldos do produto. */
   --font-display: 'General Sans', system-ui, sans-serif;
+  /* Voz de 7-segmentos da tela principal; mono cobre símbolos fora do DSEG. */
+  --font-digital: 'HatDigital', 'JetBrains Mono', ui-monospace, monospace;
 
   --color-surface-base: #0e0e0d;
   --color-surface-raised: #171716;
@@ -198,6 +210,22 @@
     0 4px 14px rgb(99 102 241 / 0.28);
 }
 
+/* Primário azul do redesign (#007bff) — CTA das telas de gate/perfil. */
+.hat-btn-blue {
+  background: #007bff;
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 6px 20px rgb(0 123 255 / 0.35);
+}
+
+.hat-btn-blue:hover:not(:disabled) {
+  background: #1a8cff;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.24),
+    0 8px 26px rgb(0 123 255 / 0.45);
+}
+
 .hat-btn-ghost {
   background: transparent;
   border-color: var(--color-hairline-strong);
@@ -295,6 +323,103 @@
   animation: hat-bar-breathe 3.2s ease-in-out infinite;
 }
 
+/* Crescimento horizontal no mount (barra de uso): escala, não width — barato
+   e composável com o breathe acima (animações em propriedades distintas). */
+@keyframes hat-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.hat-grow-x {
+  transform-origin: left center;
+  animation:
+    hat-grow-x 1100ms var(--ease-out-expo) 200ms backwards,
+    hat-bar-breathe 3.2s ease-in-out infinite;
+}
+
+/* O ∞ do limite: respira devagar, de canto — piada contada baixinho. */
+@keyframes hat-infinity-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.hat-infinity {
+  animation: hat-infinity-breathe 4.5s ease-in-out infinite;
+}
+
+/* Hero de assinatura: convite que responde ao hover sem gritar. */
+.hat-hero {
+  transition:
+    transform 240ms var(--ease-out-expo),
+    border-color 240ms ease,
+    box-shadow 240ms ease;
+}
+
+.hat-hero:hover {
+  transform: translateY(-2px);
+  border-color: rgb(99 102 241 / 0.45);
+  box-shadow: 0 12px 32px rgb(99 102 241 / 0.12);
+}
+
+/* Thumbnail local de captura por imagem (feed da sala) */
+.hat-thumb {
+  transition: transform 240ms var(--ease-out-expo);
+}
+
+.hat-thumb:hover {
+  transform: scale(1.03);
+}
+
+/* ── Slider de opacidade da tela principal ───────────────────────────────
+   Trilho escuro com preenchimento azul (#007bff) e thumb quadrado branco
+   contornado de preto — réplica do design. O preenchimento é um gradiente
+   controlado por --fill (0–100%). */
+.hat-opacity {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  border-radius: 8px;
+  background:
+    linear-gradient(#007bff, #007bff) left / var(--fill, 67%) 100% no-repeat,
+    #3d3d3d;
+  box-shadow: inset 0 6px 10px rgb(0 0 0 / 0.5);
+  outline: none;
+  cursor: pointer;
+}
+.hat-opacity::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 22px;
+  border-radius: 6px;
+  background: #fff;
+  border: 3px solid #000;
+  box-sizing: border-box;
+}
+.hat-opacity::-moz-range-thumb {
+  width: 16px;
+  height: 22px;
+  border-radius: 6px;
+  background: #fff;
+  border: 3px solid #000;
+  box-sizing: border-box;
+}
+.hat-opacity:focus-visible {
+  box-shadow:
+    inset 0 6px 10px rgb(0 0 0 / 0.5),
+    0 0 0 3px rgb(0 123 255 / 0.4);
+}
+
 /* Atmosfera: brilho superior sutilíssimo na janela principal */
 .hat-atmosphere {
   background:
@@ -307,11 +432,15 @@
   .hat-pulse,
   .hat-avatar::before,
   .hat-view-in,
-  .hat-usage-fill {
+  .hat-usage-fill,
+  .hat-grow-x,
+  .hat-infinity {
     animation: none;
   }
   .hat-btn,
-  .hat-row {
+  .hat-row,
+  .hat-hero,
+  .hat-thumb {
     transition: none;
   }
 }
