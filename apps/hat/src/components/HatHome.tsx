@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { NativeBridge } from '../bridge/native';
 import type { FlashAppearance, ShortcutBindings } from '../bridge/types';
@@ -45,7 +45,6 @@ export function HatHome({ bridge }: HatHomeProps) {
   const [updateReady, setUpdateReady] = useState(false);
   const [relaunching, setRelaunching] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const colorRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let alive = true;
@@ -197,24 +196,15 @@ export function HatHome({ bridge }: HatHomeProps) {
               <span className="leading-none" style={{ ...DIGITAL, fontSize: 'clamp(16px, 3vh, 26px)' }}>
                 cor
               </span>
-              <motion.button
-                type="button"
-                data-testid="text-color"
-                onClick={() => colorRef.current?.click()}
-                title="Cor do texto do Flash"
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.9 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-                className="size-9 shrink-0 cursor-pointer rounded-[10px] border-solid p-0"
-                style={{ background: textColor, borderWidth: 4, borderColor: '#949494' }}
-              />
               <input
-                ref={colorRef}
                 type="color"
+                data-testid="text-color"
                 value={textColor}
                 onChange={(e) => patchTextColor(e.target.value)}
+                title="Cor do texto do Flash"
                 aria-label="Cor do texto do Flash"
-                className="pointer-events-none absolute size-0 opacity-0"
+                className="hat-swatch size-9 shrink-0 rounded-[10px] border-solid"
+                style={{ borderWidth: 4, borderColor: '#949494', background: 'transparent' }}
               />
             </span>
           </div>

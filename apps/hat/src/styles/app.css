@@ -425,6 +425,36 @@
   transition: box-shadow 120ms ease;
 }
 
+/* ── Swatch de cor (input type=color como o próprio botão) ───────────────
+   O <input type=color> É o swatch visível: clicar abre o color panel nativo
+   direto (o proxy .click() num input escondido não abre no WKWebView/Tauri).
+   Pseudo-elementos preenchem e arredondam o miolo colorido. */
+.hat-swatch {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 150ms var(--ease-out-expo);
+}
+.hat-swatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.hat-swatch::-webkit-color-swatch {
+  border: none;
+  border-radius: 6px;
+}
+.hat-swatch:hover {
+  transform: scale(1.08);
+}
+.hat-swatch:active {
+  transform: scale(0.92);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hat-swatch {
+    transition: none;
+  }
+}
+
 /* Atmosfera: brilho superior sutilíssimo na janela principal */
 .hat-atmosphere {
   background:
