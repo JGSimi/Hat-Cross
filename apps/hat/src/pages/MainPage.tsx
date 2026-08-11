@@ -111,20 +111,47 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
   }
 
   async function openCheckout() {
-    if (!accountClient) return;
+    setAuthError(null);
+    if (!session && authPort) {
+      void openGoogleLogin();
+      return;
+    }
+    if (!accountClient) {
+      setAuthError('Entre com sua conta Google para assinar.');
+      if (authPort) void openGoogleLogin();
+      return;
+    }
     try {
-      await bridge.openExternal(await accountClient.checkoutUrl());
+      const url = await accountClient.checkoutUrl();
+      if (!url) throw new Error('Checkout indisponível.');
+      try {
+        await bridge.openExternal(url);
+      } catch {
+        if (typeof window !== 'undefined') window.open(url, '_blank');
+      }
     } catch (e) {
-      console.warn('checkout:', e);
+      console.warn('checkout error:', e);
+      setAuthError(e instanceof Error ? e.message : 'Erro ao abrir o checkout.');
     }
   }
 
   async function openPortal() {
-    if (!accountClient) return;
+    setAuthError(null);
+    if (!accountClient) {
+      setAuthError('Entre com sua conta Google para gerenciar sua assinatura.');
+      return;
+    }
     try {
-      await bridge.openExternal(await accountClient.portalUrl());
+      const url = await accountClient.portalUrl();
+      if (!url) throw new Error('Portal indisponível.');
+      try {
+        await bridge.openExternal(url);
+      } catch {
+        if (typeof window !== 'undefined') window.open(url, '_blank');
+      }
     } catch (e) {
-      console.warn('portal:', e);
+      console.warn('portal error:', e);
+      setAuthError(e instanceof Error ? e.message : 'Erro ao abrir o portal.');
     }
   }
 

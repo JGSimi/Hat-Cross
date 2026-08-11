@@ -82,7 +82,7 @@ describe('ProfilePanel', () => {
         onSignOut={noop}
       />,
     );
-    expect(screen.getByTestId('subscribe-hero')).toHaveTextContent('R$50');
+    expect(screen.getByTestId('subscribe-hero')).toHaveTextContent('R$30');
     fireEvent.click(screen.getByTestId('profile-subscribe'));
     expect(onSubscribe).toHaveBeenCalledOnce();
   });

@@ -2,6 +2,8 @@ import type { BillingSession, BillingStore, CheckoutCommand, PortalCommand, Stri
 
 export interface StripeEnv {
   STRIPE_SECRET_KEY?: string;
+  STRIPE_PRICE_UNLIMITED?: string;
+  STRIPE_PRICE_MONTHLY?: string;
   STRIPE_PRICE_GO?: string;
   STRIPE_PRICE_PRO?: string;
   STRIPE_PRICE_ULTRA?: string;
@@ -28,9 +30,13 @@ function customerUIDKey(customerID: string) {
 }
 
 function priceIDForPlan(env: StripeEnv, planKey: SubscriptionPlanKey) {
-  if (planKey === 'go') return required(env.STRIPE_PRICE_GO, 'STRIPE_PRICE_GO');
-  if (planKey === 'pro') return required(env.STRIPE_PRICE_PRO, 'STRIPE_PRICE_PRO');
-  return required(env.STRIPE_PRICE_ULTRA, 'STRIPE_PRICE_ULTRA');
+  if (planKey === 'unlimited') {
+    const p = env.STRIPE_PRICE_UNLIMITED || env.STRIPE_PRICE_GO || env.STRIPE_PRICE_PRO || env.STRIPE_PRICE_MONTHLY || env.STRIPE_PRICE_ULTRA;
+    return required(p, 'STRIPE_PRICE_UNLIMITED / STRIPE_PRICE_GO');
+  }
+  if (planKey === 'go') return required(env.STRIPE_PRICE_GO || env.STRIPE_PRICE_UNLIMITED || env.STRIPE_PRICE_MONTHLY, 'STRIPE_PRICE_GO');
+  if (planKey === 'pro') return required(env.STRIPE_PRICE_PRO || env.STRIPE_PRICE_UNLIMITED, 'STRIPE_PRICE_PRO');
+  return required(env.STRIPE_PRICE_ULTRA || env.STRIPE_PRICE_PRO || env.STRIPE_PRICE_UNLIMITED, 'STRIPE_PRICE_ULTRA');
 }
 
 async function stripePost<T>(

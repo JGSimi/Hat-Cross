@@ -1,4 +1,4 @@
-export type SubscriptionPlanKey = 'go' | 'pro' | 'ultra';
+export type SubscriptionPlanKey = 'unlimited' | 'go' | 'pro' | 'ultra';
 export type SubscriptionStatusName = 'none' | 'active' | 'trialing' | 'past_due' | 'incomplete' | 'canceled' | 'paused';
 
 export interface AuthenticatedUser {

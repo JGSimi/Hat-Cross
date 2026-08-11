@@ -27,9 +27,21 @@ function uidByCustomerKey(customerID: string) {
 }
 
 function planFromPriceID(env: StripeEnv, priceID: unknown): SubscriptionPlanKey | null {
-  if (priceID === env.STRIPE_PRICE_GO) return 'go';
-  if (priceID === env.STRIPE_PRICE_PRO) return 'pro';
-  if (priceID === env.STRIPE_PRICE_ULTRA) return 'ultra';
+  if (typeof priceID !== 'string' || !priceID) return null;
+  if (env.STRIPE_PRICE_UNLIMITED && priceID === env.STRIPE_PRICE_UNLIMITED) return 'unlimited';
+  if (env.STRIPE_PRICE_GO && priceID === env.STRIPE_PRICE_GO) return 'go';
+  if (env.STRIPE_PRICE_PRO && priceID === env.STRIPE_PRICE_PRO) return 'pro';
+  if (env.STRIPE_PRICE_ULTRA && priceID === env.STRIPE_PRICE_ULTRA) return 'ultra';
+  if (env.STRIPE_PRICE_MONTHLY && priceID === env.STRIPE_PRICE_MONTHLY) return 'unlimited';
+  // Fallback: any active configured price resolves to unlimited
+  const knownPrices = [
+    env.STRIPE_PRICE_UNLIMITED,
+    env.STRIPE_PRICE_GO,
+    env.STRIPE_PRICE_PRO,
+    env.STRIPE_PRICE_ULTRA,
+    env.STRIPE_PRICE_MONTHLY,
+  ].filter(Boolean);
+  if (knownPrices.includes(priceID)) return 'unlimited';
   return null;
 }
 
