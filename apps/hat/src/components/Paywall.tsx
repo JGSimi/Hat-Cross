@@ -43,15 +43,7 @@ export function Paywall({ trialEndsAt, onSubscribe }: PaywallProps) {
         </p>
 
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span className="rounded border border-[#007bff]/40 bg-[#007bff]/20 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#4da3ff]">
-              DESCONTO ESPECIAL
-            </span>
-          </div>
           <div className="flex items-baseline gap-3">
-            <span className="font-mono text-[24px] opacity-40 line-through" style={{ color: 'rgb(255 255 255 / 0.5)' }}>
-              R$50
-            </span>
             <span className="leading-none tabular-nums text-[#007bff]" style={{ ...DIGITAL, fontSize: 'clamp(40px, 9vh, 72px)' }}>
               R$30
             </span>

@@ -182,15 +182,7 @@ export function ProfilePanel({
                   Hat Ilimitado
                 </p>
                 <div className="mt-2 flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="rounded border border-[#007bff]/40 bg-[#007bff]/20 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-[#4da3ff]">
-                      DESCONTO ESPECIAL
-                    </span>
-                  </div>
                   <div className="flex items-baseline gap-2">
-                    <span className="font-mono text-[18px] opacity-40 line-through" style={{ color: MUTED }}>
-                      R$50
-                    </span>
                     <span className="leading-none tabular-nums text-[#007bff]" style={{ ...DIGITAL, fontSize: 'clamp(34px, 8vh, 48px)' }}>
                       R$30
                     </span>
@@ -199,13 +191,8 @@ export function ProfilePanel({
                     </span>
                   </div>
                 </div>
-                <ul className="mt-3 mb-0 flex list-none flex-col gap-1 p-0 text-[12px]" style={{ color: 'rgb(255 255 255 / 0.72)' }}>
-                  <li>Flash sem nenhum limite</li>
-                  <li>Respostas na hora, direto no overlay</li>
-                  <li>O anel. Você vai entender.</li>
-                </ul>
                 {tier === 'trial' && (
-                  <p className="mt-3 mb-0 font-mono text-[10px] tracking-[0.12em] uppercase" style={{ color: MUTED }}>
+                  <p className="mt-2 mb-0 font-mono text-[10px] tracking-[0.12em] uppercase" style={{ color: MUTED }}>
                     seu teste termina em {daysLeft}d
                   </p>
                 )}
