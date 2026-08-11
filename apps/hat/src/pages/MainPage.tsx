@@ -113,12 +113,12 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
   async function openCheckout() {
     setAuthError(null);
     if (!session && authPort) {
-      void openGoogleLogin();
+      void handleSignIn();
       return;
     }
     if (!accountClient) {
       setAuthError('Entre com sua conta Google para assinar.');
-      if (authPort) void openGoogleLogin();
+      if (authPort) void handleSignIn();
       return;
     }
     try {
