@@ -1,4 +1,4 @@
-# Hat — Salas + Flash
+# Hat — Flash
 
 Assistente de IA rápido e simples, sem a necessidade de sair da tela que você está.
 A IA responde discretamente no canto da tela
