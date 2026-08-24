@@ -102,10 +102,10 @@
     "secondary": "Desativar recurso"
   },
   "credits-insufficient": {
-    "title": "Créditos no zero",
-    "body": "Recarrega via PIX em segundos — volta pro fluxo sem sair do Hat.",
-    "primary": "Recarregar",
-    "secondary": "Mudar pra modo leve"
+    "title": "Assinatura necessária",
+    "body": "Escolha um plano para continuar aproveitando os recursos do Hat.",
+    "primary": "Assinar plano",
+    "secondary": "Ver planos"
   },
   "retrying": "Tentando de novo… ({{attempt}}/{{max}})"
 }

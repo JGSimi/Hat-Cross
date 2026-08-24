@@ -138,11 +138,19 @@ describe('migrate', () => {
         toggleGabarito: 'CommandOrControl+Shift+5',
       },
       flash: {
-        position: { x: 10, y: 200, monitorLabel: 'DELL U2723QE' },
+        position: { x: 10, y: 200, quadrant: 'top-right', monitorLabel: 'DELL U2723QE' },
         opacity: 70,
       },
     };
     expect(migrate(completo)).toEqual(completo);
+  });
+
+  it('preserva quadrant válido e descarta quadrant inválido caindo para default', () => {
+    const comValido = migrate({ flash: { position: { quadrant: 'bottom-right' } } });
+    expect(comValido.flash.position.quadrant).toBe('bottom-right');
+
+    const comInvalido = migrate({ flash: { position: { quadrant: 'center' } } });
+    expect(comInvalido.flash.position.quadrant).toBe('top-left');
   });
 
   it('language com valor fora do enum cai para default', () => {

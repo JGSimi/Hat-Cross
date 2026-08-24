@@ -6,7 +6,7 @@ import { parseErrorCode } from './assembler';
 
 const MESSAGES: Record<string, string> = {
   sessionExpired: 'Sua sessão expirou. Entre de novo para continuar.',
-  insufficientCredits: 'Seus créditos acabaram. Recarregue para continuar usando.',
+  insufficientCredits: 'Assine um plano para continuar usando o Hat.',
   rateLimited: 'Muitas perguntas em sequência. Espere alguns segundos e tente de novo.',
   serverError: 'O serviço de IA está indisponível no momento. Tente de novo em instantes.',
   unknownError: 'Algo deu errado. Tente de novo.',

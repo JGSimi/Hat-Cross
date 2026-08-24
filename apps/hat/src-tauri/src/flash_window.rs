@@ -19,9 +19,12 @@ const SETTINGS_STORE: &str = "settings.json";
 const POSITION_KEY: &str = "flash.position";
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct FlashPosition {
     pub x: f64,
     pub y: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quadrant: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub monitor_label: Option<String>,
 }
@@ -147,6 +150,7 @@ fn saved_position(app: &AppHandle) -> FlashPosition {
     let fallback = FlashPosition {
         x: 24.0,
         y: 24.0,
+        quadrant: Some("top-left".into()),
         monitor_label: None,
     };
     let Ok(store) = app.store(SETTINGS_STORE) else {
@@ -156,6 +160,11 @@ fn saved_position(app: &AppHandle) -> FlashPosition {
         .get(POSITION_KEY)
         .and_then(|v| serde_json::from_value(v).ok())
         .unwrap_or(fallback)
+}
+
+#[tauri::command]
+pub fn get_flash_position(app: AppHandle) -> FlashPosition {
+    saved_position(&app)
 }
 
 /// Caminho quente: posiciona, reaplica flags topmost/protected (idempotente),
@@ -168,16 +177,40 @@ pub fn show(app: &AppHandle, state: &str, text: &str) {
     if let Ok(Some(monitor)) = window.current_monitor() {
         let size = monitor.size();
         let scale = monitor.scale_factor();
-        let (x, y) = hat_core::flash::clamp_position(
-            position.x,
-            position.y,
-            CARD_W,
-            CARD_H,
-            size.width as f64 / scale,
-            size.height as f64 / scale,
-        );
-        position.x = x;
-        position.y = y;
+        let monitor_w = size.width as f64 / scale;
+        let monitor_h = size.height as f64 / scale;
+
+        if let Some(ref q) = position.quadrant {
+            match q.as_str() {
+                "top-right" => {
+                    position.x = (monitor_w - CARD_W - 24.0).max(0.0);
+                    position.y = 24.0;
+                }
+                "bottom-left" => {
+                    position.x = 24.0;
+                    position.y = (monitor_h - CARD_H - 24.0).max(0.0);
+                }
+                "bottom-right" => {
+                    position.x = (monitor_w - CARD_W - 24.0).max(0.0);
+                    position.y = (monitor_h - CARD_H - 24.0).max(0.0);
+                }
+                _ => {
+                    position.x = 24.0;
+                    position.y = 24.0;
+                }
+            }
+        } else {
+            let (x, y) = hat_core::flash::clamp_position(
+                position.x,
+                position.y,
+                CARD_W,
+                CARD_H,
+                monitor_w,
+                monitor_h,
+            );
+            position.x = x;
+            position.y = y;
+        }
     }
 
     let _ = window.set_position(tauri::LogicalPosition::new(position.x, position.y));

@@ -14,6 +14,12 @@ const DEFAULT_APPEARANCE: FlashAppearance = {
   textColor: '#f6f6f4',
 };
 
+const DEFAULT_POSITION = {
+  x: 24,
+  y: 24,
+  quadrant: 'top-left' as const,
+};
+
 const DEFAULT_BINDINGS: ShortcutBindings = {
   processClipboardFlash: 'CommandOrControl+Shift+F',
   adjustFlashPosition: 'CommandOrControl+Alt+F',
@@ -48,6 +54,10 @@ export function createMockBridge(): MockBridge {
     flashHide: record('flashHide'),
     flashEnterAdjustMode: record('flashEnterAdjustMode'),
     flashSavePosition: record('flashSavePosition'),
+    getFlashPosition: () => {
+      calls.push({ method: 'getFlashPosition', args: [] });
+      return Promise.resolve({ ...DEFAULT_POSITION });
+    },
     flashShowText: record('flashShowText'),
     gabaritoShow: record('gabaritoShow'),
     gabaritoHide: record('gabaritoHide'),

@@ -9,7 +9,7 @@ describe('friendlyErrorMessage', () => {
 
   it('mapeia códigos conhecidos para pt-BR', () => {
     expect(friendlyErrorMessage('error:sessionExpired')).toMatch(/sessão expirou/i);
-    expect(friendlyErrorMessage('error:insufficientCredits')).toMatch(/créditos acabaram/i);
+    expect(friendlyErrorMessage('error:insufficientCredits')).toMatch(/assine um plano/i);
     expect(friendlyErrorMessage('error:rateLimited')).toMatch(/muitas perguntas/i);
   });
 

@@ -19,6 +19,7 @@ export interface NativeBridge {
   flashHide(): Promise<void>;
   flashEnterAdjustMode(): Promise<void>;
   flashSavePosition(position: FlashPosition): Promise<void>;
+  getFlashPosition(): Promise<FlashPosition>;
   /** Mostra o Flash com um texto arbitrário (correção da sala, sob demanda). */
   flashShowText(text: string): Promise<void>;
   /** Mostra o gabarito (overlay abaixo do flash) com os itens dados. */

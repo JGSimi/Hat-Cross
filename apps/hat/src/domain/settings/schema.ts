@@ -3,6 +3,8 @@
  * Módulo de domínio PURO: sem imports de Tauri, zustand ou React.
  */
 
+import type { FlashQuadrant } from '../../bridge/types';
+
 export interface Settings {
   version: number;
   language: 'pt-BR' | 'en';
@@ -15,7 +17,7 @@ export interface Settings {
     toggleGabarito: string;
   };
   flash: {
-    position: { x: number; y: number; monitorLabel?: string };
+    position: { x: number; y: number; quadrant?: FlashQuadrant; monitorLabel?: string };
     /** 0–100. Default baixíssimo: o card é quase invisível (stealth). */
     opacity: number;
   };
@@ -35,7 +37,7 @@ export const defaultSettings: Settings = {
     toggleGabarito: 'CommandOrControl+Shift+G',
   },
   flash: {
-    position: { x: 24, y: 24 },
+    position: { x: 24, y: 24, quadrant: 'top-left' },
     // Quase invisível por padrão (stealth): só o usuário sabe onde está.
     opacity: 16,
   },
@@ -98,9 +100,17 @@ function migrateFlash(value: unknown): Settings['flash'] {
       ? rawPosition['monitorLabel']
       : undefined;
 
+  const rawQuadrant = rawPosition['quadrant'];
+  const validQuadrants: FlashQuadrant[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+  const quadrant =
+    typeof rawQuadrant === 'string' && validQuadrants.includes(rawQuadrant as FlashQuadrant)
+      ? (rawQuadrant as FlashQuadrant)
+      : defaults.position.quadrant;
+
   const position: Settings['flash']['position'] = {
     x: asFiniteNumber(rawPosition['x'], defaults.position.x),
     y: asFiniteNumber(rawPosition['y'], defaults.position.y),
+    ...(quadrant ? { quadrant } : {}),
   };
   if (monitorLabel !== undefined) {
     position.monitorLabel = monitorLabel;

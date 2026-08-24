@@ -13,6 +13,7 @@ export function createTauriBridge(): NativeBridge {
     flashHide: () => invoke('flash_hide'),
     flashEnterAdjustMode: () => invoke('flash_enter_adjust_mode'),
     flashSavePosition: (position) => invoke('flash_save_position', { position }),
+    getFlashPosition: () => invoke('get_flash_position'),
     flashShowText: (text) => invoke('flash_show_text', { text }),
     gabaritoShow: (items) => invoke('gabarito_show', { items }),
     gabaritoHide: () => invoke('gabarito_hide'),

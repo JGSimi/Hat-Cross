@@ -45,4 +45,11 @@ describe('createAccountClient', () => {
     const fetchFn = vi.fn(async () => new Response('nope', { status: 500 })) as unknown as typeof fetch;
     await expect(client(fetchFn).fetchStatus()).rejects.toThrow('HTTP 500');
   });
+
+  it('extrai mensagem de erro customizada do JSON', async () => {
+    const fetchFn = vi.fn(async () =>
+      new Response(JSON.stringify({ error: 'Stripe indisponivel.' }), { status: 500 }),
+    ) as unknown as typeof fetch;
+    await expect(client(fetchFn).checkoutUrl()).rejects.toThrow('Stripe indisponivel.');
+  });
 });

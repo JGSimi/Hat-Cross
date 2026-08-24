@@ -34,9 +34,12 @@ export interface StreamRequest {
   idempotencyKey: string;
 }
 
+export type FlashQuadrant = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+
 export interface FlashPosition {
   x: number;
   y: number;
+  quadrant?: FlashQuadrant;
   monitorLabel?: string;
 }
 

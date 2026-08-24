@@ -1,6 +1,6 @@
 [package]
 name = "hat"
-version = "2.0.0"
+version = "2.1.4"
 description = "Hat — assistente de IA stealth na bandeja do sistema"
 edition = "2021"
 

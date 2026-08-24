@@ -35,7 +35,10 @@ export function createAccountClient(deps: AccountClientDeps): AccountClient {
       ...init,
       headers: { ...(init?.headers ?? {}), Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(data?.error || `HTTP ${res.status}`);
+    }
     return res.json().catch(() => null);
   }
 

@@ -64,6 +64,7 @@ pub fn run() {
             flash_window::flash_resize,
             flash_window::flash_enter_adjust_mode,
             flash_window::flash_save_position,
+            flash_window::get_flash_position,
             flash_window::get_flash_appearance,
             flash_window::set_flash_appearance,
             flash_window::gabarito_show,

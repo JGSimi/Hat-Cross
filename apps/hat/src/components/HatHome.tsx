@@ -1,12 +1,32 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { NativeBridge } from '../bridge/native';
-import type { FlashAppearance, ShortcutBindings } from '../bridge/types';
+import type { FlashAppearance, FlashPosition, FlashQuadrant, ShortcutBindings } from '../bridge/types';
 import { displayLabel, fromKeyboardEvent, normalize, type Platform } from '../domain/shortcuts/accelerator';
 import { HatLogo } from './HatLogo';
 
 interface HatHomeProps {
   bridge: NativeBridge;
+}
+
+const QUADRANTS: { id: FlashQuadrant; label: string; coords: { x: number; y: number } }[] = [
+  { id: 'top-left', label: 'Superior esquerdo', coords: { x: 24, y: 24 } },
+  { id: 'top-right', label: 'Superior direito', coords: { x: 1456, y: 24 } },
+  { id: 'bottom-left', label: 'Inferior esquerdo', coords: { x: 24, y: 856 } },
+  { id: 'bottom-right', label: 'Inferior direito', coords: { x: 1456, y: 856 } },
+];
+
+function getActiveQuadrant(pos: FlashPosition | null | undefined): FlashQuadrant {
+  if (!pos) return 'top-left';
+  if (pos.quadrant && ['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(pos.quadrant)) {
+    return pos.quadrant;
+  }
+  const isRight = pos.x > 300;
+  const isBottom = pos.y > 300;
+  if (isRight && isBottom) return 'bottom-right';
+  if (isRight) return 'top-right';
+  if (isBottom) return 'bottom-left';
+  return 'top-left';
 }
 
 function detectPlatform(): Platform {
@@ -29,13 +49,15 @@ function splitBinding(binding: string, platform: Platform): { mods: string; key:
 
 /**
  * Tela principal do Hat (redesign "a risca" do Figma): mascote à esquerda,
- * "HAT" + atalho + opacidade + cor à direita. Toda a lógica reaproveita o
- * bridge nativo (aparência do Flash, atalhos, atualização) — nada de rede/auth
- * aqui, então funciona offline e deslogado. Salas ficaram de fora do produto.
+ * "HAT" + seletor de quadrante do flash + atalho + opacidade + cor à direita.
+ * Toda a lógica reaproveita o bridge nativo (posição e aparência do Flash,
+ * atalhos, atualização) — nada de rede/auth aqui, então funciona offline
+ * e deslogado. Salas ficaram de fora do produto.
  */
 export function HatHome({ bridge }: HatHomeProps) {
   const platform = detectPlatform();
   const [appearance, setAppearance] = useState<FlashAppearance | null>(null);
+  const [position, setPosition] = useState<FlashPosition | null>(null);
   const [bindings, setBindings] = useState<ShortcutBindings | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
@@ -48,10 +70,15 @@ export function HatHome({ bridge }: HatHomeProps) {
 
   useEffect(() => {
     let alive = true;
-    void Promise.allSettled([bridge.getFlashAppearance(), bridge.getShortcuts()]).then(([a, s]) => {
+    void Promise.allSettled([
+      bridge.getFlashAppearance(),
+      bridge.getShortcuts(),
+      bridge.getFlashPosition(),
+    ]).then(([a, s, p]) => {
       if (!alive) return;
       if (a.status === 'fulfilled') setAppearance(a.value);
       if (s.status === 'fulfilled') setBindings(s.value);
+      if (p.status === 'fulfilled') setPosition(p.value);
     });
     const offFail = bridge.on('shortcut:registration-failed', ({ binding, code }) => {
       setShortcutError(code === 'conflict' ? `${binding} já está em uso.` : `Não registrei ${binding}.`);
@@ -91,6 +118,20 @@ export function HatHome({ bridge }: HatHomeProps) {
     return () => window.removeEventListener('keydown', handler, true);
   }, [capturing, platform, bridge]);
 
+  function handleSelectQuadrant(quadrantId: FlashQuadrant) {
+    const target = QUADRANTS.find((q) => q.id === quadrantId);
+    const nextPos: FlashPosition = {
+      x: target?.coords.x ?? 24,
+      y: target?.coords.y ?? 24,
+      quadrant: quadrantId,
+      ...(position?.monitorLabel ? { monitorLabel: position.monitorLabel } : {}),
+    };
+    setPosition(nextPos);
+    void bridge.flashSavePosition(nextPos).then(() => {
+      void bridge.flashShowText('Hat Flash');
+    });
+  }
+
   function patchOpacity(opacity: number) {
     setAppearance((prev) => {
       if (!prev) return prev;
@@ -114,6 +155,7 @@ export function HatHome({ bridge }: HatHomeProps) {
     void bridge.relaunchApp().catch(() => setRelaunching(false));
   }
 
+  const currentQuadrant = getActiveQuadrant(position);
   const opacity = appearance?.opacity ?? 67;
   const textColor = appearance?.textColor ?? '#ffffff';
   const binding = bindings?.processClipboardFlash ?? 'CommandOrControl+Shift+F';
@@ -160,9 +202,51 @@ export function HatHome({ bridge }: HatHomeProps) {
 
       {/* Controles — metade direita. */}
       <div className="flex flex-1 flex-col justify-center gap-7 px-[6%] py-6">
-        <p className="m-0 leading-none" style={{ ...DIGITAL, fontSize: 'clamp(48px, 11vh, 96px)', letterSpacing: '0.14em' }}>
-          HAT
-        </p>
+        {/* Header: HAT + Seletor de quadrante */}
+        <div className="flex items-center justify-between">
+          <p className="m-0 leading-none" style={{ ...DIGITAL, fontSize: 'clamp(48px, 11vh, 96px)', letterSpacing: '0.14em' }}>
+            HAT
+          </p>
+
+          <div
+            data-testid="flash-location-picker"
+            role="radiogroup"
+            aria-label="Posição do Flash na tela"
+            className="grid grid-cols-2 grid-rows-2 gap-1 rounded-[14px] p-1.5"
+            style={{
+              background: '#242424',
+              border: '2px solid #383838',
+              width: '84px',
+              height: '52px',
+              boxSizing: 'border-box',
+            }}
+          >
+            {QUADRANTS.map((q) => {
+              const isSelected = currentQuadrant === q.id;
+              return (
+                <motion.button
+                  key={q.id}
+                  type="button"
+                  data-testid={`quadrant-${q.id}`}
+                  role="radio"
+                  aria-checked={isSelected}
+                  aria-label={q.label}
+                  title={q.label}
+                  onClick={() => handleSelectQuadrant(q.id)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.92 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                  className="cursor-pointer rounded-[6px] border-0 p-0 outline-none transition-colors"
+                  style={{
+                    background: isSelected ? 'rgba(0, 123, 255, 0.28)' : '#161616',
+                    border: isSelected ? '2px solid #007bff' : '2px solid transparent',
+                    boxShadow: isSelected ? '0 0 10px rgba(0, 123, 255, 0.45)' : 'none',
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
 
         {/* Atalho */}
         <motion.button
