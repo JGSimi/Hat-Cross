@@ -1,44 +1,153 @@
-# Hat — Flash
+# Hat
 
-Assistente de IA rápido e simples, sem a necessidade de sair da tela que você está.
-A IA responde discretamente no canto da tela
+**A cross-platform AI assistant designed to stay out of your way.**
 
-## Download e instalação
+Hat is a native desktop application for macOS and Windows that provides contextual AI assistance without forcing users to leave what they are doing.
 
-Baixe a última versão em [Releases](https://github.com/JGSimi/Hat-Cross/releases/latest):
+Instead of living in another browser tab, Hat stays available from the desktop and can quickly process text, clipboard content and contextual information.
 
-| Plataforma | Arquivo |
-|---|---|
-| **macOS Apple Silicon** (M1+) | `Hat_X.Y.Z_aarch64.dmg` |
-| **macOS Intel** | `Hat_X.Y.Z_x64.dmg` |
-| **Windows 64-bit** | `Hat_X.Y.Z_x64-setup.exe` |
+## Highlights
 
-O app **não é assinado/notarizado** (sem licença Apple/Microsoft). É seguro; o
-SO só não reconhece o certificado pago.
+- Cross-platform desktop application for **macOS and Windows**
+- AI responses streamed directly into the desktop client
+- Native system tray integration
+- Google OAuth and Firebase authentication
+- Clipboard integration
+- Native Windows image clipboard support
+- Persistent local settings and conversation history
+- Background startup support
+- Desktop-focused UI with a lightweight interaction model
+- Automated build and release infrastructure
 
-- **macOS (Apple Silicon e Intel):** abra o `.dmg`, arraste o **Hat** para
-  Aplicativos e rode **uma vez** no Terminal:
+## Tech Stack
 
-  ```bash
-  xattr -cr /Applications/Hat.app
-  ```
+### Desktop
+- **Go**
+- **Wails v3**
+- Native platform integrations
 
-  Depois abra normal (duplo-clique). Esse passo é necessário porque o macOS põe
-  o app em "quarentena" ao baixar e, sem notarização, mostra **"Hat está
-  danificado"** — o `xattr -cr` remove a quarentena (não é vírus; é só o
-  certificado pago que falta). O "botão direito → Abrir" **não** resolve o
-  "danificado" no Apple Silicon; use o comando acima.
-- **Windows:** rode o instalador; no SmartScreen, **Mais informações →
-  Executar mesmo assim**.
+### Frontend
+- **React**
+- **TypeScript**
+- **Vite**
+- **Zustand**
 
-### Atualizações — automáticas
+### Backend & Infrastructure
+- **Firebase Authentication**
+- AI requests routed through a dedicated backend proxy
+- **Cloudflare Workers**
+- **Stripe** billing infrastructure
+- GitHub Actions for builds and releases
 
-Depois de instalado, o Hat se **atualiza sozinho**: a cada início ele verifica
-o GitHub Releases e baixa/instala a nova versão em segundo plano (aplicada no
-próximo start). A verificação usa uma assinatura **minisign** própria do app —
-**não depende de licença de dev**. O atrito do certificado existe só na 1ª
-instalação manual.
+## Architecture
 
-## Assinatura
+The desktop application follows a layered architecture designed to keep platform-specific code isolated from business logic.
 
-Plano único: **R$ 30/mês, ilimitado**. Cobrança via Stripe.
+```text
+apps/hat-flash/
+├── internal/
+│   ├── controllers/     # Wails API surface
+│   ├── services/        # Application behavior
+│   ├── repositories/    # Local persistence
+│   └── models/          # Request, response and settings models
+│
+├── frontend/
+│   └── src/
+│       ├── pages/
+│       ├── components/
+│       ├── services/
+│       └── bridge/      # Typed interface with Wails bindings
+│
+└── main.go              # Desktop bootstrap, windows and tray
+```
+
+Controllers remain intentionally thin, while application behavior lives in services and persistence is isolated behind repositories.
+
+## Native Integrations
+
+Hat uses native desktop capabilities where browser applications cannot provide the same experience.
+
+Current integrations include:
+
+- System tray
+- Desktop windows
+- Clipboard access
+- Windows image clipboard access through Win32
+- System-browser OAuth flow with local callback
+- Application autostart
+- Local settings persistence
+
+## Authentication
+
+Authentication is handled using **Google OAuth + Firebase**.
+
+The desktop OAuth flow opens the user's system browser and receives the authorization result through a local callback before transferring the authenticated session to the native application.
+
+No production credentials are stored directly in the repository.
+
+## AI Infrastructure
+
+LLM requests are routed through the Hat backend rather than exposing provider credentials inside the desktop client.
+
+This keeps provider API credentials server-side and separates the desktop application from the AI infrastructure.
+
+## Development
+
+### Requirements
+
+- Go
+- Node.js
+- Wails v3
+
+Install frontend dependencies and start development:
+
+```bash
+npm install
+npm run dev
+```
+
+Run the complete test suite:
+
+```bash
+npm test
+```
+
+Build the desktop application:
+
+```bash
+npm run build
+```
+
+## Testing
+
+The repository includes automated testing across multiple layers:
+
+- React component and frontend tests
+- Go tests
+- Billing infrastructure tests
+- Build environment validation
+- Desktop smoke-test workflows
+
+## Platforms
+
+| Platform | Status |
+| --- | --- |
+| macOS Apple Silicon | Supported |
+| macOS Intel | Supported |
+| Windows x64 | Supported |
+
+Pre-built releases are available through **GitHub Releases**.
+
+## Why I Built It
+
+Most AI assistants require switching applications, opening another tab or interrupting the current workflow.
+
+Hat explores a different interaction model: an AI assistant that behaves more like an operating-system utility than a website.
+
+The project also serves as an exploration of cross-platform desktop engineering, native OS integrations, authentication, AI infrastructure and shipping a complete software product.
+
+## Author
+
+**João Gabriel Simi de Oliveira**
+
+Software Engineer focused on full-stack applications, desktop software, AI-powered products and automation.
