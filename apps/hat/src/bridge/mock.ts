@@ -71,6 +71,8 @@ export function createMockBridge(): MockBridge {
       return Promise.resolve({ ...DEFAULT_APPEARANCE });
     },
     setFlashAppearance: record('setFlashAppearance'),
+    getCaptureProtection: async () => true,
+    setCaptureProtection: record('setCaptureProtection'),
     checkForUpdate: () => {
       calls.push({ method: 'checkForUpdate', args: [] });
       return Promise.resolve({ status: 'uptodate' as const });

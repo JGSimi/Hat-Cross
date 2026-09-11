@@ -22,7 +22,7 @@ jobs:
         include:
           - os: macos-14        # Apple Silicon (arm64)
             target: aarch64-apple-darwin
-          - os: macos-13        # Intel (x86_64)
+          - os: macos-15-intel  # Intel (x86_64)
             target: x86_64-apple-darwin
           - os: windows-latest  # Windows x64
             target: x86_64-pc-windows-msvc
@@ -57,6 +57,10 @@ jobs:
         working-directory: apps/hat
         run: npm ci
 
+      - name: Test frontend
+        working-directory: apps/hat
+        run: npm test
+
       - name: Build + release (Tauri, não-assinado, minisign)
         uses: tauri-apps/tauri-action@v0
         env:
@@ -87,6 +91,6 @@ jobs:
             Executar mesmo assim**.
 
             As **atualizações** depois disso são automáticas (assinatura minisign).
-          releaseDraft: false
+          releaseDraft: true
           prerelease: false
           includeUpdaterJson: true

@@ -57,6 +57,9 @@ function splitBinding(binding: string, platform: Platform): { mods: string; key:
 export function HatHome({ bridge }: HatHomeProps) {
   const platform = detectPlatform();
   const [appearance, setAppearance] = useState<FlashAppearance | null>(null);
+  const [captureProtection, setCaptureProtection] = useState<boolean | null>(null);
+  const [savingCaptureProtection, setSavingCaptureProtection] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
   const [position, setPosition] = useState<FlashPosition | null>(null);
   const [bindings, setBindings] = useState<ShortcutBindings | null>(null);
   const [capturing, setCapturing] = useState(false);
@@ -74,11 +77,14 @@ export function HatHome({ bridge }: HatHomeProps) {
       bridge.getFlashAppearance(),
       bridge.getShortcuts(),
       bridge.getFlashPosition(),
-    ]).then(([a, s, p]) => {
+      bridge.getCaptureProtection(),
+    ]).then(([a, s, p, c]) => {
       if (!alive) return;
       if (a.status === 'fulfilled') setAppearance(a.value);
       if (s.status === 'fulfilled') setBindings(s.value);
       if (p.status === 'fulfilled') setPosition(p.value);
+      if (c.status === 'fulfilled') setCaptureProtection(c.value);
+      else setCaptureError('Não foi possível carregar a proteção de captura. Reabra o Hat.');
     });
     const offFail = bridge.on('shortcut:registration-failed', ({ binding, code }) => {
       setShortcutError(code === 'conflict' ? `${binding} já está em uso.` : `Não registrei ${binding}.`);
@@ -318,6 +324,33 @@ export function HatHome({ bridge }: HatHomeProps) {
           </div>
         </div>
 
+        <button
+          type="button"
+          role="switch"
+          aria-checked={captureProtection ?? true}
+          aria-label="Esconder em capturas de tela"
+          disabled={captureProtection === null || savingCaptureProtection}
+          className="flex items-center gap-3 self-start rounded-lg border-0 bg-transparent px-0 py-1 text-[12px] text-white disabled:opacity-50"
+          onClick={async () => {
+            if (captureProtection === null || savingCaptureProtection) return;
+            setSavingCaptureProtection(true);
+            setCaptureError(null);
+            try {
+              await bridge.setCaptureProtection(!captureProtection);
+              setCaptureProtection(!captureProtection);
+            } catch {
+              setCaptureError('Não foi possível alterar a proteção de captura. Tente novamente.');
+            } finally {
+              setSavingCaptureProtection(false);
+            }
+          }}
+        >
+          <span aria-hidden="true" className={`flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 ${(captureProtection ?? true) ? 'bg-blue-500' : 'bg-neutral-600'}`}>
+            <span className={`h-4 w-4 rounded-full bg-white transition-transform ${(captureProtection ?? true) ? 'translate-x-4' : ''}`} />
+          </span>
+          Esconder em capturas de tela
+        </button>
+        {captureError && <p role="alert" className="m-0 text-[12px] text-red-400">{captureError}</p>}
         {shortcutError && (
           <p role="alert" className="m-0 text-[12px]" style={{ color: '#ff453a' }}>
             {shortcutError}

@@ -1,4 +1,5 @@
 mod clipboard;
+mod capture_protection;
 mod flash_window;
 mod macos_overlay;
 mod oauth;
@@ -28,6 +29,8 @@ pub fn run() {
             // Janela flash pré-aquecida: criada AGORA, oculta. O caminho do
             // atalho só mostra/posiciona — nunca cria janela (orçamento p95).
             flash_window::create_prewarmed(handle)?;
+            capture_protection::apply(handle, capture_protection::enabled(handle))
+                .map_err(std::io::Error::other)?;
             tray::create(handle)?;
             shortcuts::register_from_settings(handle)?;
             // Auto-update em background (sem licença de dev — minisign).
@@ -59,6 +62,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            capture_protection::get_capture_protection,
+            capture_protection::set_capture_protection,
             flash_window::flash_hide,
             flash_window::flash_show_text,
             flash_window::flash_resize,

@@ -16,6 +16,8 @@ import type {
  * `createMockBridge()` de ./mock.
  */
 export interface NativeBridge {
+  getCaptureProtection(): Promise<boolean>;
+  setCaptureProtection(enabled: boolean): Promise<void>;
   flashHide(): Promise<void>;
   flashEnterAdjustMode(): Promise<void>;
   flashSavePosition(position: FlashPosition): Promise<void>;

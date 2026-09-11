@@ -20,6 +20,8 @@ export function createTauriBridge(): NativeBridge {
     setShortcuts: (bindings) => invoke('set_shortcuts', { bindings }),
     getShortcuts: () => invoke('get_shortcuts'),
     getFlashAppearance: () => invoke('get_flash_appearance'),
+    getCaptureProtection: () => invoke('get_capture_protection'),
+    setCaptureProtection: (enabled) => invoke('set_capture_protection', { enabled }),
     setFlashAppearance: (appearance) => invoke('set_flash_appearance', { appearance }),
     checkForUpdate: () => invoke('check_for_update'),
     relaunchApp: () => invoke('relaunch_app'),

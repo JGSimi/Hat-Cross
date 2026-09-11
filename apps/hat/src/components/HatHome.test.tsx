@@ -15,6 +15,34 @@ describe('HatHome — Flash location selector', () => {
     await act(() => Promise.resolve());
   }
 
+  it('permite desligar e religar a proteção de captura', async () => {
+    render(<HatHome bridge={bridge} />);
+    await flush();
+    const toggle = screen.getByRole('switch', { name: 'Esconder em capturas de tela' });
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(toggle);
+    await flush();
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(toggle);
+    await flush();
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    expect(bridge.calls.filter(c => c.method === 'setCaptureProtection').map(c => c.args)).toEqual([[false], [true]]);
+  });
+
+  it('carrega a preferência desligada e mantém o estado se salvar falhar', async () => {
+    bridge.getCaptureProtection = async () => false;
+    bridge.setCaptureProtection = async () => { throw new Error('native error'); };
+    render(<HatHome bridge={bridge} />);
+    await flush();
+    const toggle = screen.getByRole('switch', { name: 'Esconder em capturas de tela' });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(toggle);
+    await flush();
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(toggle).not.toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível alterar');
+  });
+
   it('renderiza o seletor de localização do flash com 4 quadrantes', async () => {
     render(<HatHome bridge={bridge} />);
     await flush();

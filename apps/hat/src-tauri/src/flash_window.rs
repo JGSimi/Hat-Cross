@@ -131,7 +131,7 @@ fn build_overlay(
         .shadow(false)
         .accept_first_mouse(false)
         .visible_on_all_workspaces(true)
-        .content_protected(true)
+        .content_protected(crate::capture_protection::enabled(app))
         .build()?;
     let _ = window.set_ignore_cursor_events(true);
     apply_fullscreen_overlay(&window, OverlayLevel::Top);
@@ -216,7 +216,7 @@ pub fn show(app: &AppHandle, state: &str, text: &str) {
     let _ = window.set_position(tauri::LogicalPosition::new(position.x, position.y));
     // Reaplicação paranoica a cada show (lição do legado/pesquisa).
     let _ = window.set_always_on_top(true);
-    let _ = window.set_content_protected(true);
+    let _ = window.set_content_protected(crate::capture_protection::enabled(app));
     let _ = window.set_ignore_cursor_events(true);
     apply_fullscreen_overlay(&window, OverlayLevel::Top);
     let _ = window.show();
@@ -305,7 +305,7 @@ pub fn gabarito_show(app: AppHandle, items: Vec<GabaritoItem>) {
     }
     let _ = window.set_position(tauri::LogicalPosition::new(x, y));
     let _ = window.set_always_on_top(true);
-    let _ = window.set_content_protected(true);
+    let _ = window.set_content_protected(crate::capture_protection::enabled(&app));
     let _ = window.set_ignore_cursor_events(true);
     apply_fullscreen_overlay(&window, OverlayLevel::Top);
     let _ = window.show();
