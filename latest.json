@@ -1,15 +1,19 @@
 {
-  "version": "2.2.0-beta.7",
-  "notes": "Beta experimental do Hat.\n\nEsta versão é instalada separadamente e não substitui o Hat estável.\nA partir desta versão, atualizações Beta são baixadas automaticamente\npelo canal Beta e nunca pelo canal Stable.",
-  "pub_date": "2026-09-21T23:18:21.382Z",
+  "version": "2.2.0-beta.8",
+  "notes": "Hat Beta: Acessibilidade nativa, Core Graphics e canal Beta autom\u00e1tico.",
+  "pub_date": "2026-09-21T23:47:15.590042Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTak1MVmNud0toMnpEcTVDd0VXTGFQczJVYUwyU3o4K0t3ZnpYM2loQzJUYzZ3S2tRR2VFdXcyVGRPelc2OWRmd1J2TWlXUG15QWpWNnNzQXY1VUUwcmNQcjIvZ2prZndzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDMyNjk5CWZpbGU6SGF0IEJldGFfMi4yLjAtYmV0YS43X3g2NC1zZXR1cC5leGUKT1hOb1ZVdTlvT3pjbWRZalZnU0lLanhWbVhoY0d1TkxNQU9nak1qR0grTlp5UmY0NzNXaUx3YUU0bzlBUUtWakxrZzBRZmVaYWRKZzhkY2RjWnlpREE9PQo=",
-      "url": "https://github.com/JGSimi/Hat-Cross/releases/download/hat-beta-v2.2.0-beta.7/Hat.Beta_2.2.0-beta.7_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTak1MVmNud0toMnpVR0VqUjBvUXZwLzdBVnZBeDMxbDhnejRVVVlZY2I2WUxlbCtqWUUvQUsvWnEyKzI3Wm9tRmFhUExrckwzUitZK2ZidklKSXpuZGc2RzlsRDlsMkE4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDM0MTUwCWZpbGU6SGF0IEJldGFfMi4yLjAtYmV0YS44X3g2NC1zZXR1cC5leGUKT1RQdGpSdkVIUllpek9ybTlVYVVPbHhkMG5KYnJXajFvVE41OXcrMVg2bUNVUE9QQ1Rnd2tWZXRJckhWa3h6eGNhMXM2Vjh4UjdIblZPVjBzR2xTRFE9PQo=",
+      "url": "https://github.com/JGSimi/Hat-Cross/releases/download/hat-beta-v2.2.0-beta.8/Hat.Beta_2.2.0-beta.8_x64-setup.exe"
     },
-    "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTak1MVmNud0toMnpEcTVDd0VXTGFQczJVYUwyU3o4K0t3ZnpYM2loQzJUYzZ3S2tRR2VFdXcyVGRPelc2OWRmd1J2TWlXUG15QWpWNnNzQXY1VUUwcmNQcjIvZ2prZndzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDMyNjk5CWZpbGU6SGF0IEJldGFfMi4yLjAtYmV0YS43X3g2NC1zZXR1cC5leGUKT1hOb1ZVdTlvT3pjbWRZalZnU0lLanhWbVhoY0d1TkxNQU9nak1qR0grTlp5UmY0NzNXaUx3YUU0bzlBUUtWakxrZzBRZmVaYWRKZzhkY2RjWnlpREE9PQo=",
-      "url": "https://github.com/JGSimi/Hat-Cross/releases/download/hat-beta-v2.2.0-beta.7/Hat.Beta_2.2.0-beta.7_x64-setup.exe"
+    "darwin-aarch64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTak1MVmNud0toMjZGREpVK0ZmY2JWR0dZMHpwaTBJOXUzbjdUcVROVTBJUHMrNnczRDdGKzlQRFFHOCsvRXY2ejZlME5KVzhsY0l6L0NYSmp5VUNkMzY5R2JvMW0xNmcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDMzOTUwCWZpbGU6SGF0IEJldGEuYXBwLnRhci5negoxcU54RUNTcVFodUVrMExQSmZESms0NGVMQ1ExRG52cFVTL0IzOGRTZXdKZ2VwTm9CNC9BQWViUmZjSWFNcW9sYW85NG5kWE9oREdEMXRYRlc1MTRCQT09Cg==",
+      "url": "https://github.com/JGSimi/Hat-Cross/releases/download/hat-beta-v2.2.0-beta.8/Hat.Beta_aarch64.app.tar.gz"
+    },
+    "darwin-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTak1MVmNud0toMjVWYWtFZzFuM0cwS2w5UFhoa1FSM1hsTm95LzhZbEtCK004T1pEa2FPcXdsNlkzYWxkMW8vdDFiTjNBaTBsN3JyZGwrMzNpTkI5Qy9LbGZDc2NJNXdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDM0MzIwCWZpbGU6SGF0IEJldGEuYXBwLnRhci5negoveDduNjlVbTRnSkdPL016MzNXVUFRbHN5bTlQcUFob3RnNWJzbWVVQWJkVEVDVFdORGF4bDd6T3ZWNnVxTjhRSUdNNWNhVTZ1MVFtaXJQVGUvRUJCZz09Cg==",
+      "url": "https://github.com/JGSimi/Hat-Cross/releases/download/hat-beta-v2.2.0-beta.8/Hat.Beta_x64.app.tar.gz"
     }
   }
 }
