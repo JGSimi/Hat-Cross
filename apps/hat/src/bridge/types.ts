@@ -89,6 +89,8 @@ export interface ShortcutBindings {
   showCorrection: string;
   /** Mostra/esconde o gabarito (respostas corrigidas) abaixo do Flash. */
   toggleGabarito: string;
+  /** Resolve e preenche as questões visíveis na tela. Hat Beta only. */
+  betaScreenSolve: string;
 }
 
 export interface GabaritoItem {

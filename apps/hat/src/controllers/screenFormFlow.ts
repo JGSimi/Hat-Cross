@@ -65,12 +65,20 @@ export interface ScreenFormFlowDeps {
   onError?: (error: unknown) => void;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function transientFeedback(bridge: NativeBridge, text: string, duration = 1200): Promise<void> {
+  await bridge.flashShowText(text);
+  await sleep(duration);
+  await bridge.flashHide().catch(() => {});
+}
+
 export function startScreenFormFlow(deps: ScreenFormFlowDeps): () => void {
   return deps.bridge.on('beta:screen-solve', () => {
     void (async () => {
       try {
         const [capture, idToken] = await Promise.all([deps.bridge.captureScreen(), deps.getIdToken()]);
-        await deps.bridge.flashShowText('Analisando tela…');
+        await deps.bridge.flashShowText('• lendo tela');
         const base = {
           streamId: deps.newStreamId(),
           mode: 'hat' as const,
@@ -81,13 +89,15 @@ export function startScreenFormFlow(deps: ScreenFormFlowDeps): () => void {
         const raw = await deps.bridge.completeStream(request(base, PARSER_PROMPT, [capture.base64Png]));
         const parsed = parseScreen(raw);
         if (!parsed.questions.length) {
-          await deps.bridge.flashShowText('Nenhuma questão detectada.');
+          await transientFeedback(deps.bridge, '• nada encontrado', 1400);
           return;
         }
 
-        await deps.bridge.flashShowText(`${parsed.questions.length} questões detectadas…`);
+        await deps.bridge.flashShowText(`• ${parsed.questions.length} questões`);
         let filled = 0;
-        for (const q of parsed.questions) {
+        for (let index = 0; index < parsed.questions.length; index += 1) {
+          const q = parsed.questions[index];
+          await deps.bridge.flashShowText(`• resolvendo ${index + 1}/${parsed.questions.length}`);
           if (q.type === 'multiple_choice' && q.options?.length) {
             const answer = await deps.bridge.completeStream(request(
               { ...base, streamId: deps.newStreamId(), idempotencyKey: deps.newIdempotencyKey() },
@@ -99,7 +109,7 @@ export function startScreenFormFlow(deps: ScreenFormFlowDeps): () => void {
             const p = pointToScreen(option.target, capture.logicalWidth, capture.logicalHeight);
             await deps.bridge.clickScreen(p.x, p.y);
             filled += 1;
-            await new Promise((resolve) => setTimeout(resolve, 90));
+            await sleep(90);
             continue;
           }
 
@@ -112,14 +122,16 @@ export function startScreenFormFlow(deps: ScreenFormFlowDeps): () => void {
             const p = pointToScreen(q.inputTarget, capture.logicalWidth, capture.logicalHeight);
             await deps.bridge.pasteScreenText(p.x, p.y, answer.trim());
             filled += 1;
-            await new Promise((resolve) => setTimeout(resolve, 90));
+            await sleep(90);
           }
         }
-        await deps.bridge.flashShowText(`${filled}/${parsed.questions.length} preenchidas`);
+        await transientFeedback(deps.bridge, `✓ pronto · ${filled}/${parsed.questions.length}`, 1300);
       } catch (error) {
         deps.onError?.(error);
-        await deps.bridge.flashShowText(
-          error instanceof Error ? `Screen Solve: ${error.message}` : 'Screen Solve falhou.',
+        await transientFeedback(
+          deps.bridge,
+          error instanceof Error ? '× não consegui concluir' : '× screen solve falhou',
+          1800,
         ).catch(() => {});
       }
     })();

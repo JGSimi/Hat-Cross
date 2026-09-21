@@ -64,6 +64,7 @@ export function HatHome({ bridge }: HatHomeProps) {
   const [position, setPosition] = useState<FlashPosition | null>(null);
   const [bindings, setBindings] = useState<ShortcutBindings | null>(null);
   const [capturing, setCapturing] = useState(false);
+  const [capturingScreenSolve, setCapturingScreenSolve] = useState(false);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
   // Update: o app baixa+instala sozinho em background (spawn_check no Rust) e
   // emite 'update:ready' quando pronta. Só então o botão aparece; o clique
@@ -125,6 +126,32 @@ export function HatHome({ bridge }: HatHomeProps) {
     return () => window.removeEventListener('keydown', handler, true);
   }, [capturing, platform, bridge]);
 
+  // Captura do atalho experimental Screen Solve (somente Beta).
+  useEffect(() => {
+    if (!capturingScreenSolve) return;
+    const handler = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.code === 'Escape') return setCapturingScreenSolve(false);
+      const captured = fromKeyboardEvent(
+        { code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, shiftKey: e.shiftKey },
+        platform,
+      );
+      if (captured) {
+        setShortcutError(null);
+        setBindings((prev) => {
+          if (!prev) return prev;
+          const next = { ...prev, betaScreenSolve: captured };
+          void bridge.setShortcuts(next).catch(() => setShortcutError('Não consegui aplicar. Tente outra.'));
+          return next;
+        });
+        setCapturingScreenSolve(false);
+      }
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, [capturingScreenSolve, platform, bridge]);
+
   function handleSelectQuadrant(quadrantId: FlashQuadrant) {
     const target = QUADRANTS.find((q) => q.id === quadrantId);
     const nextPos: FlashPosition = {
@@ -166,7 +193,9 @@ export function HatHome({ bridge }: HatHomeProps) {
   const opacity = appearance?.opacity ?? 67;
   const textColor = appearance?.textColor ?? '#ffffff';
   const binding = bindings?.processClipboardFlash ?? 'CommandOrControl+Shift+F';
+  const screenSolveBinding = bindings?.betaScreenSolve ?? 'CommandOrControl+Shift+A';
   const { mods, key } = splitBinding(binding, platform);
+  const { mods: screenSolveMods, key: screenSolveKey } = splitBinding(screenSolveBinding, platform);
 
   return (
     <div
@@ -208,7 +237,7 @@ export function HatHome({ bridge }: HatHomeProps) {
       </div>
 
       {/* Controles — metade direita. */}
-      <div className="flex flex-1 flex-col justify-center gap-7 px-[6%] py-6">
+      <div className={`flex flex-1 flex-col justify-center ${IS_BETA ? 'gap-4' : 'gap-7'} px-[6%] py-6`}>
         {/* Header: HAT + Seletor de quadrante */}
         <div className="flex items-center justify-between">
           <p className="m-0 leading-none" style={{ ...DIGITAL, fontSize: 'clamp(48px, 11vh, 96px)', letterSpacing: '0.14em' }}>
@@ -255,34 +284,58 @@ export function HatHome({ bridge }: HatHomeProps) {
           </div>
         </div>
 
-        {/* Atalho */}
-        <motion.button
-          type="button"
-          data-testid="shortcut-capture"
-          onClick={() => setCapturing((c) => !c)}
-          onBlur={() => setCapturing(false)}
-          whileTap={{ scale: 0.985 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-[16px] border-0 px-6 py-4 text-left"
-          style={{ background: '#3d3d3d' }}
-        >
-          <span className="leading-none" style={{ ...DIGITAL, fontSize: 'clamp(18px, 3.4vh, 28px)' }}>
-            atalho
-          </span>
-          <span
-            className="grid min-w-[120px] place-items-center rounded-[12px] px-4 py-2 leading-none"
-            style={{ ...DIGITAL, background: '#141414', fontSize: 'clamp(16px, 2.8vh, 24px)', color: capturing ? '#007bff' : '#fff' }}
+        {/* Atalhos */}
+        <div className="flex flex-col gap-3">
+          <motion.button
+            type="button"
+            data-testid="shortcut-capture"
+            onClick={() => {
+              setCapturingScreenSolve(false);
+              setCapturing((c) => !c);
+            }}
+            onBlur={() => setCapturing(false)}
+            whileTap={{ scale: 0.985 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-[16px] border-0 px-6 py-4 text-left"
+            style={{ background: '#3d3d3d' }}
           >
-            {capturing ? 'pressione…' : `${mods} + ${key}`}
-          </span>
-        </motion.button>
+            <span className="leading-none" style={{ ...DIGITAL, fontSize: 'clamp(18px, 3.4vh, 28px)' }}>
+              atalho
+            </span>
+            <span
+              className="grid min-w-[120px] place-items-center rounded-[12px] px-4 py-2 leading-none"
+              style={{ ...DIGITAL, background: '#141414', fontSize: 'clamp(16px, 2.8vh, 24px)', color: capturing ? '#007bff' : '#fff' }}
+            >
+              {capturing ? 'pressione…' : `${mods} + ${key}`}
+            </span>
+          </motion.button>
 
-        {IS_BETA && (
-          <div className="flex items-center justify-between px-1 font-mono text-[10px] tracking-[0.08em]" style={{ color: '#777' }}>
-            <span>screen solve beta</span>
-            <span>⌘⇧A</span>
-          </div>
-        )}
+          {IS_BETA && (
+            <motion.button
+              type="button"
+              data-testid="shortcut-screen-solve"
+              onClick={() => {
+                setCapturing(false);
+                setCapturingScreenSolve((c) => !c);
+              }}
+              onBlur={() => setCapturingScreenSolve(false)}
+              whileTap={{ scale: 0.985 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-[16px] border-0 px-6 py-4 text-left"
+              style={{ background: '#3d3d3d' }}
+            >
+              <span className="leading-none" style={{ ...DIGITAL, fontSize: 'clamp(18px, 3.4vh, 28px)' }}>
+                screen solve
+              </span>
+              <span
+                className="grid min-w-[120px] place-items-center rounded-[12px] px-4 py-2 leading-none"
+                style={{ ...DIGITAL, background: '#141414', fontSize: 'clamp(16px, 2.8vh, 24px)', color: capturingScreenSolve ? '#007bff' : '#fff' }}
+              >
+                {capturingScreenSolve ? 'pressione…' : `${screenSolveMods} + ${screenSolveKey}`}
+              </span>
+            </motion.button>
+          )}
+        </div>
 
         {/* Opacidade + Cor */}
         <div className="flex min-w-0 flex-col gap-3">

@@ -15,6 +15,7 @@ describe('defaultSettings', () => {
       emergencyQuit: 'CommandOrControl+Shift+Q',
       showCorrection: 'CommandOrControl+Shift+D',
       toggleGabarito: 'CommandOrControl+Shift+G',
+      betaScreenSolve: 'CommandOrControl+Shift+A',
     });
   });
 
@@ -136,6 +137,7 @@ describe('migrate', () => {
         emergencyQuit: 'CommandOrControl+Shift+3',
         showCorrection: 'CommandOrControl+Shift+4',
         toggleGabarito: 'CommandOrControl+Shift+5',
+        betaScreenSolve: 'CommandOrControl+Shift+6',
       },
       flash: {
         position: { x: 10, y: 200, quadrant: 'top-right', monitorLabel: 'DELL U2723QE' },

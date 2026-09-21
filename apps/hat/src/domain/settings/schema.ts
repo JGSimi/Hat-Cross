@@ -15,6 +15,7 @@ export interface Settings {
     emergencyQuit: string;
     showCorrection: string;
     toggleGabarito: string;
+    betaScreenSolve: string;
   };
   flash: {
     position: { x: number; y: number; quadrant?: FlashQuadrant; monitorLabel?: string };
@@ -35,6 +36,7 @@ export const defaultSettings: Settings = {
     emergencyQuit: 'CommandOrControl+Shift+Q',
     showCorrection: 'CommandOrControl+Shift+D',
     toggleGabarito: 'CommandOrControl+Shift+G',
+    betaScreenSolve: 'CommandOrControl+Shift+A',
   },
   flash: {
     position: { x: 24, y: 24, quadrant: 'top-left' },
@@ -87,6 +89,7 @@ function migrateShortcuts(value: unknown): Settings['shortcuts'] {
     emergencyQuit: asString(raw['emergencyQuit'], defaults.emergencyQuit),
     showCorrection: asString(raw['showCorrection'], defaults.showCorrection),
     toggleGabarito: asString(raw['toggleGabarito'], defaults.toggleGabarito),
+    betaScreenSolve: asString(raw['betaScreenSolve'], defaults.betaScreenSolve),
   };
 }
 

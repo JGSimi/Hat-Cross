@@ -37,6 +37,8 @@ pub struct ShortcutBindings {
     pub show_correction: String,
     #[serde(default = "default_toggle_gabarito")]
     pub toggle_gabarito: String,
+    #[serde(default = "default_beta_screen_solve")]
+    pub beta_screen_solve: String,
 }
 
 fn default_show_correction() -> String {
@@ -47,6 +49,10 @@ fn default_toggle_gabarito() -> String {
     "CommandOrControl+Shift+G".into()
 }
 
+fn default_beta_screen_solve() -> String {
+    "CommandOrControl+Shift+A".into()
+}
+
 impl Default for ShortcutBindings {
     fn default() -> Self {
         Self {
@@ -55,6 +61,7 @@ impl Default for ShortcutBindings {
             emergency_quit: "CommandOrControl+Shift+Q".into(),
             show_correction: default_show_correction(),
             toggle_gabarito: default_toggle_gabarito(),
+            beta_screen_solve: default_beta_screen_solve(),
         }
     }
 }
@@ -176,7 +183,7 @@ fn apply_bindings(app: &AppHandle, bindings: &ShortcutBindings) {
     }
     let mut entries: Vec<(&str, Action)> = bindings.entries().into_iter().collect();
     if option_env!("HAT_APP_VARIANT") == Some("beta-jev") {
-        entries.push(("CommandOrControl+Shift+A", Action::BetaScreenSolve));
+        entries.push((bindings.beta_screen_solve.as_str(), Action::BetaScreenSolve));
     }
     for (binding, action) in entries {
         let Some(normalized) = hat_core::accelerator::normalize(binding) else {

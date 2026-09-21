@@ -26,6 +26,7 @@ const DEFAULT_BINDINGS: ShortcutBindings = {
   emergencyQuit: 'CommandOrControl+Shift+Q',
   showCorrection: 'CommandOrControl+Shift+D',
   toggleGabarito: 'CommandOrControl+Shift+G',
+  betaScreenSolve: 'CommandOrControl+Shift+A',
 };
 
 export interface MockBridge extends NativeBridge {
