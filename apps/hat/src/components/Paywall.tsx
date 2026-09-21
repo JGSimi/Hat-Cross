@@ -45,7 +45,7 @@ export function Paywall({ trialEndsAt, onSubscribe }: PaywallProps) {
         <div className="flex flex-col gap-1">
           <div className="flex items-baseline gap-3">
             <span className="leading-none tabular-nums text-[#007bff]" style={{ ...DIGITAL, fontSize: 'clamp(40px, 9vh, 72px)' }}>
-              R$50
+              R$30
             </span>
             <span className="text-[12px]" style={{ color: 'rgb(255 255 255 / 0.5)' }}>
               /mês

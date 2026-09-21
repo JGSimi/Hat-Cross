@@ -19,7 +19,7 @@ export interface AccountClientDeps {
 
 export interface AccountClient {
   fetchStatus: () => Promise<AccountStatus>;
-  /** Cria a sessão de checkout (R$50/mês) e devolve a URL para abrir no browser. */
+  /** Cria a sessão de checkout (R$30/mês) e devolve a URL para abrir no browser. */
   checkoutUrl: () => Promise<string>;
   /** URL do portal de gestão da assinatura. */
   portalUrl: () => Promise<string>;
