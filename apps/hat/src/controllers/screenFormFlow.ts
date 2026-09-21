@@ -95,8 +95,7 @@ export function startScreenFormFlow(deps: ScreenFormFlowDeps): () => void {
 
         await deps.bridge.flashShowText(`• ${parsed.questions.length} questões`);
         let filled = 0;
-        for (let index = 0; index < parsed.questions.length; index += 1) {
-          const q = parsed.questions[index];
+        for (const [index, q] of parsed.questions.entries()) {
           await deps.bridge.flashShowText(`• resolvendo ${index + 1}/${parsed.questions.length}`);
           if (q.type === 'multiple_choice' && q.options?.length) {
             const answer = await deps.bridge.completeStream(request(
