@@ -6,7 +6,7 @@ on:
     tags:
       - 'hat-beta-v*'
     branches:
-      - 'release/hat-beta-2.2.0-beta.6'
+      - 'release/hat-beta-2.2.0-beta.7'
 
 permissions:
   contents: write
@@ -60,20 +60,57 @@ jobs:
         working-directory: apps/hat
         run: npm test
 
-      - name: Build beta prerelease
+      - name: Build beta prerelease + updater
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/hat
           args: --config src-tauri/tauri.beta.conf.json --target ${{ matrix.target }}
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.6' }}
-          releaseName: 'Hat Beta 2.2.0-beta.6'
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.7' }}
+          releaseName: 'Hat Beta 2.2.0-beta.7'
           releaseBody: |
-            Beta experimental do Hat com Jev System One para decisões rápidas
-            e Gemini 3.8 Flash para verbalização.
+            Beta experimental do Hat.
 
             Esta versão é instalada separadamente e não substitui o Hat estável.
+            A partir desta versão, atualizações Beta são baixadas automaticamente
+            pelo canal Beta e nunca pelo canal Stable.
           releaseDraft: false
           prerelease: true
-          includeUpdaterJson: false
+          includeUpdaterJson: true
+
+  publish-beta-channel:
+    name: Publicar canal Beta
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BETA_TAG: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.7' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: beta-channel
+          fetch-depth: 0
+
+      - name: Baixar latest.json da prerelease
+        run: |
+          rm -rf /tmp/hat-beta-channel
+          mkdir -p /tmp/hat-beta-channel
+          gh release download "$BETA_TAG" \
+            --repo "${{ github.repository }}" \
+            --pattern latest.json \
+            --dir /tmp/hat-beta-channel
+          cp /tmp/hat-beta-channel/latest.json ./latest.json
+
+      - name: Publicar latest.json no beta-channel
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add latest.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "channel(beta): $BETA_TAG"
+          git push origin HEAD:beta-channel
