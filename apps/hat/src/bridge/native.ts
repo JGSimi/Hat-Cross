@@ -34,6 +34,8 @@ export interface NativeBridge {
   getShortcuts(): Promise<ShortcutBindings>;
   getFlashAppearance(): Promise<FlashAppearance>;
   setFlashAppearance(appearance: FlashAppearance): Promise<void>;
+  /** Versão já baixada/instalada e aguardando restart, se houver. */
+  getUpdateReady(): Promise<string | null>;
   /** Verifica/instala atualização sob demanda (aplica no próximo start). */
   checkForUpdate(): Promise<UpdateCheck>;
   /** Reinicia o app para aplicar a atualização já baixada (não retorna). */

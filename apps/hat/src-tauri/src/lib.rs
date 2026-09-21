@@ -13,6 +13,7 @@ use tauri_plugin_autostart::MacosLauncher;
 
 pub fn run() {
     tauri::Builder::default()
+        .manage(updates::UpdateState::default())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
@@ -89,6 +90,7 @@ pub fn run() {
             clipboard::write_clipboard,
             oauth::oauth_run_loopback_flow,
             oauth::open_external,
+            updates::get_update_ready,
             updates::check_for_update,
             updates::relaunch_app,
         ])

@@ -15,6 +15,16 @@ describe('HatHome — Flash location selector', () => {
     await act(() => Promise.resolve());
   }
 
+  it('mostra atualização pronta mesmo se o evento update:ready foi perdido', async () => {
+    bridge.getUpdateReady = async () => '2.2.0-beta.9';
+    render(<HatHome bridge={bridge} />);
+    await flush();
+
+    const button = screen.getByTestId('apply-update');
+    expect(button).toBeInTheDocument();
+    expect(button).toHaveAttribute('title', expect.stringContaining('2.2.0-beta.9'));
+  });
+
   it('permite desligar e religar a proteção de captura', async () => {
     render(<HatHome bridge={bridge} />);
     await flush();

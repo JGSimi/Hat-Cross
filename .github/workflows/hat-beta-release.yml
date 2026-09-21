@@ -6,7 +6,7 @@ on:
     tags:
       - 'hat-beta-v*'
     branches:
-      - 'release/hat-beta-2.2.0-beta.8'
+      - 'release/hat-beta-2.2.0-beta.9'
 
 permissions:
   contents: write
@@ -69,8 +69,8 @@ jobs:
         with:
           projectPath: apps/hat
           args: --config src-tauri/tauri.beta.conf.json --target ${{ matrix.target }}
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.8' }}
-          releaseName: 'Hat Beta 2.2.0-beta.8'
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.9' }}
+          releaseName: 'Hat Beta 2.2.0-beta.9'
           releaseBody: |
             Beta experimental do Hat.
 
@@ -162,7 +162,7 @@ jobs:
               }
 
           manifest = {
-              "version": "2.2.0-beta.8",
+              "version": "2.2.0-beta.9",
               "notes": "Hat Beta: Screen Solve com permissões nativas e canal Beta automático.",
               "pub_date": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
               "platforms": platforms,

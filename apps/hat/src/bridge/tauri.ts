@@ -24,6 +24,7 @@ export function createTauriBridge(): NativeBridge {
     getCaptureProtection: () => invoke('get_capture_protection'),
     setCaptureProtection: (enabled) => invoke('set_capture_protection', { enabled }),
     setFlashAppearance: (appearance) => invoke('set_flash_appearance', { appearance }),
+    getUpdateReady: () => invoke('get_update_ready'),
     checkForUpdate: () => invoke('check_for_update'),
     relaunchApp: () => invoke('relaunch_app'),
     getAppVersion: () => getVersion(),

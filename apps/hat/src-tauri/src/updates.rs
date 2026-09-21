@@ -1,9 +1,30 @@
-//! Auto-update sem licença de dev: o tauri-plugin-updater verifica artefatos
-//! assinados com minisign. Stable e Beta usam endpoints separados definidos
-//! nas respectivas configs Tauri, então um canal nunca consome o outro.
+//! Auto-update sem licença de dev: artefatos assinados com minisign.
+//! Stable e Beta usam endpoints separados nas respectivas configs Tauri.
 
-use tauri::{AppHandle, Emitter};
+use std::sync::Mutex;
+
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_updater::UpdaterExt;
+
+#[derive(Default)]
+pub struct UpdateState {
+    ready_version: Mutex<Option<String>>,
+}
+
+fn set_ready(app: &AppHandle, version: String) {
+    if let Ok(mut ready) = app.state::<UpdateState>().ready_version.lock() {
+        *ready = Some(version);
+    }
+}
+
+#[tauri::command]
+pub fn get_update_ready(app: AppHandle) -> Option<String> {
+    app.state::<UpdateState>()
+        .ready_version
+        .lock()
+        .ok()
+        .and_then(|ready| ready.clone())
+}
 
 pub fn spawn_check(app: &AppHandle) {
     let handle = app.clone();
@@ -20,9 +41,8 @@ async fn try_update(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     };
     let version = update.version.clone();
-    update
-        .download_and_install(|_chunk, _total| {}, || {})
-        .await?;
+    update.download_and_install(|_chunk, _total| {}, || {}).await?;
+    set_ready(app, version.clone());
     let _ = app.emit("update:ready", serde_json::json!({ "version": version }));
     Ok(())
 }
@@ -56,11 +76,15 @@ pub async fn check_for_update(app: AppHandle) -> UpdateCheck {
         Ok(Some(update)) => {
             let version = update.version.clone();
             match update.download_and_install(|_, _| {}, || {}).await {
-                Ok(()) => UpdateCheck {
-                    status: "updated".into(),
-                    version: Some(version),
-                    message: None,
-                },
+                Ok(()) => {
+                    set_ready(&app, version.clone());
+                    let _ = app.emit("update:ready", serde_json::json!({ "version": version.clone() }));
+                    UpdateCheck {
+                        status: "updated".into(),
+                        version: Some(version),
+                        message: None,
+                    }
+                }
                 Err(e) => UpdateCheck {
                     status: "error".into(),
                     version: Some(version),

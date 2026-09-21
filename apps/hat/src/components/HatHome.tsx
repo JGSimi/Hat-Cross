@@ -69,7 +69,7 @@ export function HatHome({ bridge }: HatHomeProps) {
   // Update: o app baixa+instala sozinho em background (spawn_check no Rust) e
   // emite 'update:ready' quando pronta. Só então o botão aparece; o clique
   // reinicia o app já atualizado. Zero verificação manual.
-  const [updateReady, setUpdateReady] = useState(false);
+  const [updateReady, setUpdateReady] = useState<string | null>(null);
   const [relaunching, setRelaunching] = useState(false);
   const [dragging, setDragging] = useState(false);
 
@@ -80,25 +80,47 @@ export function HatHome({ bridge }: HatHomeProps) {
       bridge.getShortcuts(),
       bridge.getFlashPosition(),
       bridge.getCaptureProtection(),
-    ]).then(([a, s, p, c]) => {
+      bridge.getUpdateReady(),
+    ]).then(([a, s, p, c, u]) => {
       if (!alive) return;
       if (a.status === 'fulfilled') setAppearance(a.value);
       if (s.status === 'fulfilled') setBindings(s.value);
       if (p.status === 'fulfilled') setPosition(p.value);
       if (c.status === 'fulfilled') setCaptureProtection(c.value);
       else setCaptureError('Não foi possível carregar a proteção de captura. Reabra o Hat.');
+      if (u.status === 'fulfilled' && u.value) setUpdateReady(u.value);
     });
     const offFail = bridge.on('shortcut:registration-failed', ({ binding, code }) => {
       setShortcutError(code === 'conflict' ? `${binding} já está em uso.` : `Não registrei ${binding}.`);
     });
     // Update instalada em background → revela o botão.
-    const offUpdate = bridge.on('update:ready', () => setUpdateReady(true));
+    const offUpdate = bridge.on('update:ready', ({ version }) => setUpdateReady(version));
     return () => {
       alive = false;
       offFail();
       offUpdate();
     };
   }, [bridge]);
+
+  // O listener nativo pode ser registrado depois de o updater terminar.
+  // Enquanto não houver versão pronta, consulta o estado persistente do Rust.
+  useEffect(() => {
+    if (updateReady) return;
+    let alive = true;
+    const sync = () => {
+      void bridge.getUpdateReady()
+        .then((version) => {
+          if (alive && version) setUpdateReady(version);
+        })
+        .catch(() => {});
+    };
+    sync();
+    const timer = window.setInterval(sync, 1500);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
+  }, [bridge, updateReady]);
 
   // Captura do atalho principal (processar clipboard + Flash).
   useEffect(() => {
@@ -210,7 +232,7 @@ export function HatHome({ bridge }: HatHomeProps) {
           data-testid="apply-update"
           onClick={applyUpdate}
           disabled={relaunching}
-          title="Atualização pronta — reiniciar agora"
+          title={`Atualização ${updateReady} pronta — reiniciar agora`}
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 500, damping: 20 }}
