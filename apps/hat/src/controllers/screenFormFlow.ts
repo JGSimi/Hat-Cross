@@ -73,12 +73,26 @@ async function transientFeedback(bridge: NativeBridge, text: string, duration = 
   await bridge.flashHide().catch(() => {});
 }
 
+function feedbackForError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+  if (/gravação de tela|screen recording|captur.*tela|capture.*screen/i.test(raw)) {
+    return '⚙ permita Gravação de Tela e reabra o Hat';
+  }
+  if (/acessibilidade|accessibility|system events|osascript/i.test(raw)) {
+    return '⚙ permita Acessibilidade ao Hat e tente de novo';
+  }
+  if (/auth:not-configured|not-signed-in/i.test(raw)) {
+    return '• entre na sua conta no Hat';
+  }
+  return '× não consegui concluir';
+}
+
 export function startScreenFormFlow(deps: ScreenFormFlowDeps): () => void {
   return deps.bridge.on('beta:screen-solve', () => {
     void (async () => {
       try {
+        await deps.bridge.flashShowProgress('• lendo tela');
         const [capture, idToken] = await Promise.all([deps.bridge.captureScreen(), deps.getIdToken()]);
-        await deps.bridge.flashShowText('• lendo tela');
         const base = {
           streamId: deps.newStreamId(),
           mode: 'hat' as const,
@@ -93,10 +107,10 @@ export function startScreenFormFlow(deps: ScreenFormFlowDeps): () => void {
           return;
         }
 
-        await deps.bridge.flashShowText(`• ${parsed.questions.length} questões`);
+        await deps.bridge.flashShowProgress(`• ${parsed.questions.length} questões`);
         let filled = 0;
         for (const [index, q] of parsed.questions.entries()) {
-          await deps.bridge.flashShowText(`• resolvendo ${index + 1}/${parsed.questions.length}`);
+          await deps.bridge.flashShowProgress(`• resolvendo ${index + 1}/${parsed.questions.length}`);
           if (q.type === 'multiple_choice' && q.options?.length) {
             const answer = await deps.bridge.completeStream(request(
               { ...base, streamId: deps.newStreamId(), idempotencyKey: deps.newIdempotencyKey() },
@@ -129,8 +143,8 @@ export function startScreenFormFlow(deps: ScreenFormFlowDeps): () => void {
         deps.onError?.(error);
         await transientFeedback(
           deps.bridge,
-          error instanceof Error ? '× não consegui concluir' : '× screen solve falhou',
-          1800,
+          feedbackForError(error),
+          2600,
         ).catch(() => {});
       }
     })();

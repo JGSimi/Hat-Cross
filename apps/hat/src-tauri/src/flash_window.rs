@@ -261,6 +261,12 @@ pub fn flash_show_text(app: AppHandle, text: String) {
     show(&app, "answer", &text);
 }
 
+/// Feedback persistente de progresso: não entra no auto-hide da resposta.
+#[tauri::command]
+pub fn flash_show_progress(app: AppHandle, text: String) {
+    show(&app, "processing", &text);
+}
+
 // ───────────────────────────── Gabarito ──────────────────────────────────
 // Overlay PERSISTENTE abaixo do flash, mesma config visual. Mostra as
 // respostas corrigidas (consenso da IA) da sala. Toggle por atalho.

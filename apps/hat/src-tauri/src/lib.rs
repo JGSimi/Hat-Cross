@@ -67,6 +67,7 @@ pub fn run() {
             capture_protection::set_capture_protection,
             flash_window::flash_hide,
             flash_window::flash_show_text,
+            flash_window::flash_show_progress,
             flash_window::flash_resize,
             flash_window::flash_enter_adjust_mode,
             flash_window::flash_save_position,

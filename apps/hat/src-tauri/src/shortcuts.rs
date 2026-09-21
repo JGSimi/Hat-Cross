@@ -143,6 +143,9 @@ fn handle_action(app: &AppHandle, action: Action) {
             let _ = app.emit("shortcut:show-correction", ());
         }
         Action::BetaScreenSolve => {
+            // Feedback nasce no Rust: aparece mesmo se captura, permissões,
+            // renderer ou rede demorarem/falharem depois do atalho.
+            flash_window::show(app, "processing", "• preparando");
             let _ = app.emit("beta:screen-solve", ());
         }
         Action::ToggleGabarito => {

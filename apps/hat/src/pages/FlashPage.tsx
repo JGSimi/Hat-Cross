@@ -64,7 +64,7 @@ export function FlashPage({ bridge }: FlashPageProps) {
     };
   }, [bridge]);
 
-  const text = errorText ?? streamText ?? payload?.text ?? '';
+  const text = errorText ?? (streamText || payload?.text || '');
   const isAnswer = payload?.state === 'answer';
   const isProcessing = payload?.state === 'processing';
 
@@ -153,7 +153,7 @@ export function FlashPage({ bridge }: FlashPageProps) {
         }}
       >
         {payload.state === 'processing' && !streamText && !errorText
-          ? 'Processando…'
+          ? (payload.text || 'Processando…')
           : text}
       </div>
     </div>

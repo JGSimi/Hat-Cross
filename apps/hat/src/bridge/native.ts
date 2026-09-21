@@ -25,6 +25,8 @@ export interface NativeBridge {
   getFlashPosition(): Promise<FlashPosition>;
   /** Mostra o Flash com um texto arbitrário (correção da sala, sob demanda). */
   flashShowText(text: string): Promise<void>;
+  /** Mostra feedback persistente de progresso até nova atualização/hide. */
+  flashShowProgress(text: string): Promise<void>;
   /** Mostra o gabarito (overlay abaixo do flash) com os itens dados. */
   gabaritoShow(items: GabaritoItem[]): Promise<void>;
   gabaritoHide(): Promise<void>;

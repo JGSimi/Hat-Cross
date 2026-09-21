@@ -60,6 +60,7 @@ export function createMockBridge(): MockBridge {
       return Promise.resolve({ ...DEFAULT_POSITION });
     },
     flashShowText: record('flashShowText'),
+    flashShowProgress: record('flashShowProgress'),
     gabaritoShow: record('gabaritoShow'),
     gabaritoHide: record('gabaritoHide'),
     setShortcuts: record('setShortcuts'),

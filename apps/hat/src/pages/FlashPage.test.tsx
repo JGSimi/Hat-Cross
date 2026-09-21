@@ -30,6 +30,22 @@ describe('FlashPage', () => {
     expect(screen.getByTestId('flash-card')).toHaveTextContent('Processando');
   });
 
+  it('mostra texto direto do payload quando não há stream', () => {
+    render(<FlashPage bridge={bridge} />);
+    act(() => {
+      bridge.emit('flash:show', { state: 'answer', text: '• lendo tela', position: POS });
+    });
+    expect(screen.getByTestId('flash-card')).toHaveTextContent('• lendo tela');
+  });
+
+  it('mostra texto de progresso recebido no payload', () => {
+    render(<FlashPage bridge={bridge} />);
+    act(() => {
+      bridge.emit('flash:show', { state: 'processing', text: '• preparando', position: POS });
+    });
+    expect(screen.getByTestId('flash-card')).toHaveTextContent('• preparando');
+  });
+
   it('acumula chunks de texto e ignora os de thinking', () => {
     render(<FlashPage bridge={bridge} />);
     act(() => {
