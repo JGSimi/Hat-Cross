@@ -4,6 +4,7 @@ import type { NativeBridge } from '../bridge/native';
 import type { AuthPort } from '../bridge/auth';
 import { startAccountWatch } from '../controllers/accountWatch';
 import { startClipboardFlow } from '../controllers/clipboardFlow';
+import { startScreenFormFlow } from '../controllers/screenFormFlow';
 import { createTokenManager, type TokenManager } from '../domain/auth/tokenManager';
 import { createAccountClient, trialDaysLeft, type AccountStatus } from '../services/account';
 import { hatProxyBaseUrl } from '../services/auth/config';
@@ -64,6 +65,19 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
   useEffect(() => {
     if (!session) setShowProfile(false);
   }, [session]);
+
+  // Screen Solve experimental: existe apenas no build beta-jev. Usa o mesmo
+  // backend de produção de forma read-only/additive, sem alterar /v1/chat.
+  useEffect(() => {
+    if (CLIENT_VARIANT !== 'beta-jev') return;
+    return startScreenFormFlow({
+      bridge,
+      getIdToken,
+      newStreamId: () => (streamSeq.current += 1),
+      newIdempotencyKey: () => crypto.randomUUID(),
+      onError: (e) => console.warn('screenFormFlow:', e),
+    });
+  }, [bridge, getIdToken]);
 
   // Status da conta (assinatura/trial): watch contínuo — corta o Flash no
   // instante em que um cancelamento entra. Erros de rede mantêm o último status.

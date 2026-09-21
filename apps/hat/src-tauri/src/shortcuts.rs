@@ -24,6 +24,7 @@ pub enum Action {
     EmergencyQuit,
     ShowCorrection,
     ToggleGabarito,
+    BetaScreenSolve,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -134,6 +135,9 @@ fn handle_action(app: &AppHandle, action: Action) {
             // escolhe e chama flash_show_text. Aqui só sinalizamos.
             let _ = app.emit("shortcut:show-correction", ());
         }
+        Action::BetaScreenSolve => {
+            let _ = app.emit("beta:screen-solve", ());
+        }
         Action::ToggleGabarito => {
             // A main monta o gabarito da sala ativa e chama gabarito_show/hide.
             let _ = app.emit("shortcut:toggle-gabarito", ());
@@ -170,7 +174,11 @@ fn apply_bindings(app: &AppHandle, bindings: &ShortcutBindings) {
             let _ = gs.unregister(shortcut);
         }
     }
-    for (binding, action) in bindings.entries() {
+    let mut entries: Vec<(&str, Action)> = bindings.entries().into_iter().collect();
+    if option_env!("HAT_APP_VARIANT") == Some("beta-jev") {
+        entries.push(("CommandOrControl+Shift+A", Action::BetaScreenSolve));
+    }
+    for (binding, action) in entries {
         let Some(normalized) = hat_core::accelerator::normalize(binding) else {
             emit_registration_failure(app, binding, "invalid");
             continue;

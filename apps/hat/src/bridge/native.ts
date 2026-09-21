@@ -7,6 +7,7 @@ import type {
   NativeEventName,
   ShortcutBindings,
   StreamRequest,
+  ScreenCapture,
   UpdateCheck,
 } from './types';
 
@@ -38,6 +39,11 @@ export interface NativeBridge {
   /** Versão do app (ex.: "2.0.0"). */
   getAppVersion(): Promise<string>;
   startStream(request: StreamRequest): Promise<void>;
+  /** Executa o mesmo stream do backend sem emitir chunks para o Flash. Beta only. */
+  completeStream(request: StreamRequest): Promise<string>;
+  captureScreen(): Promise<ScreenCapture>;
+  clickScreen(x: number, y: number): Promise<void>;
+  pasteScreenText(x: number, y: number, text: string): Promise<void>;
   cancelStream(streamId: number): Promise<void>;
   readClipboard(): Promise<ClipboardContent>;
   /** Escreve texto no clipboard (resposta da IA, para colar). */

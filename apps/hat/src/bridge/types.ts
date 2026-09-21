@@ -19,6 +19,13 @@ export interface ConversationTurn {
   images?: string[];
 }
 
+export interface ScreenCapture {
+  base64Png: string;
+  logicalWidth: number;
+  logicalHeight: number;
+  scaleFactor: number;
+}
+
 export interface StreamRequest {
   streamId: number;
   messages: ConversationTurn[];
@@ -106,6 +113,8 @@ export type NativeEventMap = {
   /** Conteúdo lido pelo atalho global; a janela main dispara o stream. */
   'clipboard:captured': ClipboardContent;
   'clipboard:failed': { reason: string };
+  /** Atalho experimental do Hat Beta para resolver a tela atual. */
+  'beta:screen-solve': void;
   /** Atalho global pediu a próxima correção da sala no Flash. */
   'shortcut:show-correction': void;
   /** Atalho global pediu mostrar/esconder o gabarito. */

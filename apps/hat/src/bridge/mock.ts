@@ -83,6 +83,10 @@ export function createMockBridge(): MockBridge {
       return Promise.resolve('0.0.0-test');
     },
     startStream: record('startStream'),
+    completeStream: async (...args: unknown[]) => { calls.push({ method: 'completeStream', args }); return '{"questions":[]}'; },
+    captureScreen: async () => ({ base64Png: '', logicalWidth: 1440, logicalHeight: 900, scaleFactor: 2 }),
+    clickScreen: record('clickScreen'),
+    pasteScreenText: record('pasteScreenText'),
     cancelStream: record('cancelStream'),
     readClipboard: () => {
       calls.push({ method: 'readClipboard', args: [] });

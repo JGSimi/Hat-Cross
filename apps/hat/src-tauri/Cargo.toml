@@ -29,6 +29,7 @@ futures = "0.3"
 once_cell = "1"
 base64 = "0.22"
 clipboard-rs = "0.3"
+xcap = "0.9.8"
 
 # macOS — NSWindowCollectionBehavior::FullScreenAuxiliary não é exposto pela
 # API pública da Tauri; aplicamos direto no NSWindow (porte do app legado).

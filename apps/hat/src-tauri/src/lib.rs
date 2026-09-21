@@ -3,6 +3,7 @@ mod capture_protection;
 mod flash_window;
 mod macos_overlay;
 mod oauth;
+mod screen_form;
 mod shortcuts;
 mod stream;
 mod tray;
@@ -77,7 +78,11 @@ pub fn run() {
             shortcuts::set_shortcuts,
             shortcuts::get_shortcuts,
             stream::start_stream,
+            stream::complete_stream,
             stream::cancel_stream,
+            screen_form::capture_screen,
+            screen_form::click_screen,
+            screen_form::paste_screen_text,
             clipboard::read_clipboard,
             clipboard::write_clipboard,
             oauth::oauth_run_loopback_flow,

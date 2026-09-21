@@ -119,6 +119,16 @@ pub async fn start_stream(app: AppHandle, request: StreamRequest) -> Result<(), 
     Ok(())
 }
 
+/// Beta Screen Solve: usa o mesmo /v1/chat e autenticação, mas coleta o SSE
+/// silenciosamente para não contaminar o Flash nem alterar o backend compartilhado.
+#[tauri::command]
+pub async fn complete_stream(request: StreamRequest) -> Result<String, String> {
+    if request.client_variant.as_deref() != Some("beta-jev") {
+        return Err("Screen Solve disponível apenas no Hat Beta.".into());
+    }
+    run_stream_collect(&request).await
+}
+
 fn build_body(request: &StreamRequest) -> serde_json::Value {
     // Formato OpenAI: content vira array com image_url quando há imagens no
     // último turno; o Worker traduz para o formato nativo do modelo.
@@ -176,6 +186,44 @@ fn build_body(request: &StreamRequest) -> serde_json::Value {
         body["sourceMessageId"] = serde_json::json!(source_message_id);
     }
     body
+}
+
+async fn run_stream_collect(request: &StreamRequest) -> Result<String, String> {
+    let mut headers = HeaderMap::new();
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    headers.insert(
+        AUTHORIZATION,
+        HeaderValue::from_str(&format!("Bearer {}", request.id_token))
+            .map_err(|e| format!("Token inválido: {e}"))?,
+    );
+    if !request.idempotency_key.is_empty() {
+        if let Ok(v) = HeaderValue::from_str(&request.idempotency_key) {
+            headers.insert("Idempotency-Key", v);
+        }
+    }
+
+    let response = reqwest::Client::new()
+        .post(hat_proxy_url()).headers(headers).json(&build_body(request))
+        .send().await.map_err(|e| format!("Erro ao conectar ao Hat: {e}"))?;
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        return Err(map_hat_proxy_error(status.as_u16(), &body));
+    }
+
+    let mut parser = SseParser::new();
+    let mut bytes = response.bytes_stream();
+    let mut answer = String::new();
+    while let Some(chunk) = bytes.next().await {
+        let chunk = chunk.map_err(|e| format!("Erro no stream: {e}"))?;
+        parser.push(&chunk, |event| {
+            if let SseEvent::Delta { text, content_type: ContentType::Text } = event {
+                answer.push_str(&text);
+            }
+        });
+        if parser.is_finished() { break; }
+    }
+    Ok(answer)
 }
 
 async fn run_stream(

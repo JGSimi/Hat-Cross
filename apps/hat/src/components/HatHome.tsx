@@ -37,6 +37,7 @@ function detectPlatform(): Platform {
 }
 
 const DIGITAL: React.CSSProperties = { fontFamily: 'var(--font-digital)', textTransform: 'uppercase' };
+const IS_BETA = import.meta.env.VITE_HAT_VARIANT === 'beta-jev';
 
 /** Separa modificadores da tecla p/ render "⌘⇧ + F" do design. */
 function splitBinding(binding: string, platform: Platform): { mods: string; key: string } {
@@ -275,6 +276,13 @@ export function HatHome({ bridge }: HatHomeProps) {
             {capturing ? 'pressione…' : `${mods} + ${key}`}
           </span>
         </motion.button>
+
+        {IS_BETA && (
+          <div className="flex items-center justify-between px-1 font-mono text-[10px] tracking-[0.08em]" style={{ color: '#777' }}>
+            <span>screen solve beta</span>
+            <span>⌘⇧A</span>
+          </div>
+        )}
 
         {/* Opacidade + Cor */}
         <div className="flex min-w-0 flex-col gap-3">
