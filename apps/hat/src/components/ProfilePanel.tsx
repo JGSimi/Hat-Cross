@@ -184,7 +184,7 @@ export function ProfilePanel({
                 <div className="mt-2 flex flex-col gap-1">
                   <div className="flex items-baseline gap-2">
                     <span className="leading-none tabular-nums text-[#007bff]" style={{ ...DIGITAL, fontSize: 'clamp(34px, 8vh, 48px)' }}>
-                      R$30
+                      R$50
                     </span>
                     <span className="text-[12px]" style={{ color: MUTED }}>
                       /mês
