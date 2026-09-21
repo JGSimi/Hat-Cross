@@ -81,6 +81,7 @@ pub fn run() {
             stream::start_stream,
             stream::complete_stream,
             stream::cancel_stream,
+            screen_form::request_accessibility,
             screen_form::capture_screen,
             screen_form::click_screen,
             screen_form::paste_screen_text,

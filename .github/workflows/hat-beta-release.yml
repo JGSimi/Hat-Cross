@@ -6,7 +6,7 @@ on:
     tags:
       - 'hat-beta-v*'
     branches:
-      - 'release/hat-beta-2.2.0-beta.7'
+      - 'release/hat-beta-2.2.0-beta.8'
 
 permissions:
   contents: write
@@ -69,17 +69,17 @@ jobs:
         with:
           projectPath: apps/hat
           args: --config src-tauri/tauri.beta.conf.json --target ${{ matrix.target }}
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.7' }}
-          releaseName: 'Hat Beta 2.2.0-beta.7'
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.8' }}
+          releaseName: 'Hat Beta 2.2.0-beta.8'
           releaseBody: |
             Beta experimental do Hat.
 
-            Esta versão é instalada separadamente e não substitui o Hat estável.
-            A partir desta versão, atualizações Beta são baixadas automaticamente
-            pelo canal Beta e nunca pelo canal Stable.
+            - Screen Solve solicita Acessibilidade nativamente no macOS.
+            - Cliques e Cmd+V usam Core Graphics, sem System Events/osascript.
+            - Canal Beta de atualização automática separado do Stable.
           releaseDraft: false
           prerelease: true
-          includeUpdaterJson: true
+          includeUpdaterJson: false
 
   publish-beta-channel:
     name: Publicar canal Beta
@@ -87,22 +87,88 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      BETA_TAG: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.7' }}
+      BETA_TAG: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.8' }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: beta-channel
           fetch-depth: 0
 
-      - name: Baixar latest.json da prerelease
+      - name: Baixar assinaturas da prerelease
         run: |
-          rm -rf /tmp/hat-beta-channel
-          mkdir -p /tmp/hat-beta-channel
+          rm -rf /tmp/hat-beta-assets
+          mkdir -p /tmp/hat-beta-assets
           gh release download "$BETA_TAG" \
             --repo "${{ github.repository }}" \
-            --pattern latest.json \
-            --dir /tmp/hat-beta-channel
-          cp /tmp/hat-beta-channel/latest.json ./latest.json
+            --pattern '*.sig' \
+            --dir /tmp/hat-beta-assets
+          gh api "repos/${{ github.repository }}/releases/tags/$BETA_TAG" > /tmp/release.json
+
+      - name: Montar latest.json multiplataforma
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          from urllib.parse import quote
+          from datetime import datetime, timezone
+
+          tag = os.environ["BETA_TAG"]
+          repo = os.environ["REPOSITORY"]
+          release = json.load(open("/tmp/release.json"))
+          names = [a["name"] for a in release["assets"]]
+          sig_dir = Path("/tmp/hat-beta-assets")
+
+          def signature_for(asset):
+              p = sig_dir / f"{asset}.sig"
+              if not p.exists():
+                  raise SystemExit(f"assinatura ausente para {asset}")
+              return p.read_text().strip()
+
+          def url_for(asset):
+              return f"https://github.com/{repo}/releases/download/{tag}/{quote(asset)}"
+
+          def find_one(predicate, label):
+              matches = [n for n in names if predicate(n)]
+              if len(matches) != 1:
+                  raise SystemExit(f"{label}: esperado 1 asset, encontrei {matches}")
+              return matches[0]
+
+          win = find_one(
+              lambda n: n.endswith("_x64-setup.exe"),
+              "windows-x86_64",
+          )
+          mac_arm = find_one(
+              lambda n: n.endswith(".app.tar.gz")
+              and ("aarch64" in n.lower() or "arm64" in n.lower()),
+              "darwin-aarch64",
+          )
+          mac_intel = find_one(
+              lambda n: n.endswith(".app.tar.gz")
+              and ("x86_64" in n.lower() or "x64" in n.lower()),
+              "darwin-x86_64",
+          )
+
+          platforms = {}
+          for key, asset in [
+              ("windows-x86_64", win),
+              ("darwin-aarch64", mac_arm),
+              ("darwin-x86_64", mac_intel),
+          ]:
+              platforms[key] = {
+                  "signature": signature_for(asset),
+                  "url": url_for(asset),
+              }
+
+          manifest = {
+              "version": "2.2.0-beta.8",
+              "notes": "Hat Beta: Screen Solve com permissões nativas e canal Beta automático.",
+              "pub_date": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+              "platforms": platforms,
+          }
+          Path("latest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          PY
 
       - name: Publicar latest.json no beta-channel
         run: |

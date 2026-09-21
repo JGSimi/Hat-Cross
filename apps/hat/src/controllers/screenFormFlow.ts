@@ -78,7 +78,7 @@ function feedbackForError(error: unknown): string {
   if (/gravação de tela|screen recording|captur.*tela|capture.*screen/i.test(raw)) {
     return '⚙ permita Gravação de Tela e reabra o Hat';
   }
-  if (/acessibilidade|accessibility|system events|osascript/i.test(raw)) {
+  if (/acessibilidade|accessibility/i.test(raw)) {
     return '⚙ permita Acessibilidade ao Hat e tente de novo';
   }
   if (/auth:not-configured|not-signed-in/i.test(raw)) {
@@ -91,6 +91,17 @@ export function startScreenFormFlow(deps: ScreenFormFlowDeps): () => void {
   return deps.bridge.on('beta:screen-solve', () => {
     void (async () => {
       try {
+        await deps.bridge.flashShowProgress('• verificando acesso');
+        const accessibility = await deps.bridge.requestAccessibility();
+        if (!accessibility) {
+          await transientFeedback(
+            deps.bridge,
+            '⚙ autorize Acessibilidade para o Hat e use o atalho novamente',
+            3200,
+          );
+          return;
+        }
+
         await deps.bridge.flashShowProgress('• lendo tela');
         const [capture, idToken] = await Promise.all([deps.bridge.captureScreen(), deps.getIdToken()]);
         const base = {

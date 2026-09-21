@@ -43,6 +43,7 @@ export interface NativeBridge {
   startStream(request: StreamRequest): Promise<void>;
   /** Executa o mesmo stream do backend sem emitir chunks para o Flash. Beta only. */
   completeStream(request: StreamRequest): Promise<string>;
+  requestAccessibility(): Promise<boolean>;
   captureScreen(): Promise<ScreenCapture>;
   clickScreen(x: number, y: number): Promise<void>;
   pasteScreenText(x: number, y: number, text: string): Promise<void>;

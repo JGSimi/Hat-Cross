@@ -86,6 +86,10 @@ export function createMockBridge(): MockBridge {
     },
     startStream: record('startStream'),
     completeStream: async (...args: unknown[]) => { calls.push({ method: 'completeStream', args }); return '{"questions":[]}'; },
+    requestAccessibility: async () => {
+      calls.push({ method: 'requestAccessibility', args: [] });
+      return true;
+    },
     captureScreen: async () => ({ base64Png: '', logicalWidth: 1440, logicalHeight: 900, scaleFactor: 2 }),
     clickScreen: record('clickScreen'),
     pasteScreenText: record('pasteScreenText'),

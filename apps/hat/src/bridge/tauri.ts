@@ -29,6 +29,7 @@ export function createTauriBridge(): NativeBridge {
     getAppVersion: () => getVersion(),
     startStream: (request) => invoke('start_stream', { request }),
     completeStream: (request) => invoke('complete_stream', { request }),
+    requestAccessibility: () => invoke('request_accessibility'),
     captureScreen: () => invoke('capture_screen'),
     clickScreen: (x, y) => invoke('click_screen', { x, y }),
     pasteScreenText: (x, y, text) => invoke('paste_screen_text', { x, y, text }),
