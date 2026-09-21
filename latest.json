@@ -1,0 +1,15 @@
+{
+  "version": "2.2.0-beta.7",
+  "notes": "Beta experimental do Hat.\n\nEsta versão é instalada separadamente e não substitui o Hat estável.\nA partir desta versão, atualizações Beta são baixadas automaticamente\npelo canal Beta e nunca pelo canal Stable.",
+  "pub_date": "2026-09-21T23:18:21.382Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTak1MVmNud0toMnpEcTVDd0VXTGFQczJVYUwyU3o4K0t3ZnpYM2loQzJUYzZ3S2tRR2VFdXcyVGRPelc2OWRmd1J2TWlXUG15QWpWNnNzQXY1VUUwcmNQcjIvZ2prZndzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDMyNjk5CWZpbGU6SGF0IEJldGFfMi4yLjAtYmV0YS43X3g2NC1zZXR1cC5leGUKT1hOb1ZVdTlvT3pjbWRZalZnU0lLanhWbVhoY0d1TkxNQU9nak1qR0grTlp5UmY0NzNXaUx3YUU0bzlBUUtWakxrZzBRZmVaYWRKZzhkY2RjWnlpREE9PQo=",
+      "url": "https://github.com/JGSimi/Hat-Cross/releases/download/hat-beta-v2.2.0-beta.7/Hat.Beta_2.2.0-beta.7_x64-setup.exe"
+    },
+    "windows-x86_64-nsis": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTak1MVmNud0toMnpEcTVDd0VXTGFQczJVYUwyU3o4K0t3ZnpYM2loQzJUYzZ3S2tRR2VFdXcyVGRPelc2OWRmd1J2TWlXUG15QWpWNnNzQXY1VUUwcmNQcjIvZ2prZndzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDMyNjk5CWZpbGU6SGF0IEJldGFfMi4yLjAtYmV0YS43X3g2NC1zZXR1cC5leGUKT1hOb1ZVdTlvT3pjbWRZalZnU0lLanhWbVhoY0d1TkxNQU9nak1qR0grTlp5UmY0NzNXaUx3YUU0bzlBUUtWakxrZzBRZmVaYWRKZzhkY2RjWnlpREE9PQo=",
+      "url": "https://github.com/JGSimi/Hat-Cross/releases/download/hat-beta-v2.2.0-beta.7/Hat.Beta_2.2.0-beta.7_x64-setup.exe"
+    }
+  }
+}
