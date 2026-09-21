@@ -1,0 +1,87 @@
+name: Sync Beta 8 Channel
+
+on:
+  push:
+    branches:
+      - 'channel-sync/beta8'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BETA_TAG: hat-beta-v2.2.0-beta.8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: beta-channel
+          fetch-depth: 0
+
+      - name: Baixar assets e assinaturas
+        run: |
+          rm -rf /tmp/hat-beta-assets
+          mkdir -p /tmp/hat-beta-assets
+          gh release download "$BETA_TAG" \
+            --repo "${{ github.repository }}" \
+            --pattern '*.sig' \
+            --dir /tmp/hat-beta-assets
+          gh api "repos/${{ github.repository }}/releases/tags/$BETA_TAG" > /tmp/release.json
+
+      - name: Montar latest.json
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          from urllib.parse import quote
+          from datetime import datetime, timezone
+
+          tag = os.environ["BETA_TAG"]
+          repo = os.environ["REPOSITORY"]
+          release = json.load(open("/tmp/release.json"))
+          names = [a["name"] for a in release["assets"]]
+          sig_dir = Path("/tmp/hat-beta-assets")
+
+          def sig(asset):
+              p = sig_dir / f"{asset}.sig"
+              if not p.exists():
+                  raise SystemExit(f"assinatura ausente: {asset}")
+              return p.read_text().strip()
+
+          def url(asset):
+              return f"https://github.com/{repo}/releases/download/{tag}/{quote(asset)}"
+
+          def one(pred, label):
+              m = [n for n in names if pred(n)]
+              if len(m) != 1:
+                  raise SystemExit(f"{label}: {m}")
+              return m[0]
+
+          win = one(lambda n: n.endswith("_x64-setup.exe"), "windows-x86_64")
+          arm = one(lambda n: n.endswith(".app.tar.gz") and "aarch64" in n.lower(), "darwin-aarch64")
+          intel = one(lambda n: n.endswith(".app.tar.gz") and "x64" in n.lower(), "darwin-x86_64")
+
+          manifest = {
+              "version": "2.2.0-beta.8",
+              "notes": "Hat Beta: Acessibilidade nativa, Core Graphics e canal Beta automático.",
+              "pub_date": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+              "platforms": {
+                  "windows-x86_64": {"signature": sig(win), "url": url(win)},
+                  "darwin-aarch64": {"signature": sig(arm), "url": url(arm)},
+                  "darwin-x86_64": {"signature": sig(intel), "url": url(intel)},
+              },
+          }
+          Path("latest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          PY
+
+      - name: Publicar canal
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add latest.json
+          git commit -m "channel(beta): $BETA_TAG"
+          git push origin HEAD:beta-channel
