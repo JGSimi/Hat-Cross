@@ -1,0 +1,77 @@
+name: Hat Beta (Jev)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'hat-beta-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      VITE_HAT_VARIANT: beta-jev
+      HAT_APP_VARIANT: beta-jev
+      VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+      VITE_GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.VITE_GOOGLE_OAUTH_CLIENT_ID }}
+      VITE_GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.VITE_GOOGLE_OAUTH_CLIENT_SECRET }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: apps/hat/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/hat/src-tauri
+
+      - name: Install frontend dependencies
+        working-directory: apps/hat
+        run: npm ci
+
+      - name: Test frontend
+        working-directory: apps/hat
+        run: npm test
+
+      - name: Build beta prerelease
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/hat
+          args: --config src-tauri/tauri.beta.conf.json --target ${{ matrix.target }}
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-vnext' }}
+          releaseName: 'Hat Beta ${{ github.ref_name }}'
+          releaseBody: |
+            Beta experimental do Hat com Jev System One para decisões rápidas
+            e Gemini 3.8 Flash para verbalização.
+
+            Esta versão é instalada separadamente e não substitui o Hat estável.
+          releaseDraft: false
+          prerelease: true
+          includeUpdaterJson: false

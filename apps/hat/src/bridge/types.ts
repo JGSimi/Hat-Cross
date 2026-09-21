@@ -24,6 +24,7 @@ export interface StreamRequest {
   messages: ConversationTurn[];
   systemPrompt: string;
   mode: 'hat' | 'hat-pro';
+  clientVariant?: 'stable' | 'beta-jev';
   temperature: number;
   maxTokens: number;
   images: string[];

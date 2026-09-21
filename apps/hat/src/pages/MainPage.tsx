@@ -13,6 +13,10 @@ import { ProfilePanel } from '../components/ProfilePanel';
 import { Paywall } from '../components/Paywall';
 import { Farewell } from '../components/Farewell';
 
+const CLIENT_VARIANT = import.meta.env.VITE_HAT_VARIANT === 'beta-jev'
+  ? 'beta-jev'
+  : 'stable';
+
 interface MainPageProps {
   bridge: NativeBridge;
   authPort?: AuthPort;
@@ -82,6 +86,7 @@ export function MainPage({ bridge, authPort }: MainPageProps) {
       getIdToken,
       newStreamId: () => (streamSeq.current += 1),
       newIdempotencyKey: () => crypto.randomUUID(),
+      clientVariant: CLIENT_VARIANT,
       getBlockedMessage: () => blockedFlashMsg.current,
       onError: (e) => {
         console.warn('clipboardFlow:', e);

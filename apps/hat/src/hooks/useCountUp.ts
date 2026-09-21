@@ -23,9 +23,13 @@ export function useCountUp(target: number, durationMs = 900): number {
       return;
     }
     let raf = 0;
-    const start = performance.now();
+    // Use o mesmo relógio fornecido pelo rAF. Em WebViews/jsdom, o timestamp
+    // do callback pode ter uma origem diferente de `performance.now()`;
+    // misturá-los produz progresso negativo e números absurdos.
+    let start: number | null = null;
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / durationMs);
+      start ??= now;
+      const t = Math.max(0, Math.min(1, (now - start) / durationMs));
       const eased = 1 - Math.pow(1 - t, 4); // casa com --ease-out-expo
       setValue(Math.round(target * eased));
       if (t < 1) raf = requestAnimationFrame(tick);

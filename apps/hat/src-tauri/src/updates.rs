@@ -10,7 +10,16 @@
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_updater::UpdaterExt;
 
+fn is_beta_build() -> bool {
+    option_env!("HAT_APP_VARIANT") == Some("beta-jev")
+}
+
 pub fn spawn_check(app: &AppHandle) {
+    // A beta tem identidade/release próprios e nunca deve consumir o canal
+    // `latest.json` da versão estável.
+    if is_beta_build() {
+        return;
+    }
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
         if let Err(err) = try_update(&handle).await {
@@ -54,6 +63,13 @@ pub struct UpdateCheck {
 /// Aplica no próximo start. Best-effort, com status legível para a UI.
 #[tauri::command]
 pub async fn check_for_update(app: AppHandle) -> UpdateCheck {
+    if is_beta_build() {
+        return UpdateCheck {
+            status: "uptodate".into(),
+            version: None,
+            message: Some("Atualizações da beta são instaladas pelo site do Hat.".into()),
+        };
+    }
     let updater = match app.updater() {
         Ok(u) => u,
         Err(e) => {
@@ -90,5 +106,15 @@ pub async fn check_for_update(app: AppHandle) -> UpdateCheck {
             version: None,
             message: Some(e.to_string()),
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn regular_test_build_is_not_beta() {
+        assert!(!is_beta_build());
     }
 }

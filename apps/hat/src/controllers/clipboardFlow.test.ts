@@ -218,4 +218,11 @@ describe('startClipboardFlow', () => {
     expect(req.systemPrompt).toBe('SP');
     expect(req.messages[0]?.textContent).toBe('IP');
   });
+
+  it('marca requisições do build beta para ativar o Jev no backend', async () => {
+    wire({ clientVariant: 'beta-jev' });
+    bridge.emit('clipboard:captured', { kind: 'text', text: 'pergunta' });
+    await vi.waitFor(() => expect(lastStartStream).not.toThrow());
+    expect(lastStartStream().clientVariant).toBe('beta-jev');
+  });
 });

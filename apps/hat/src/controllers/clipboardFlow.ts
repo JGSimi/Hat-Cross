@@ -27,6 +27,7 @@ export interface ClipboardFlowDeps {
   newIdempotencyKey: () => string;
   systemPrompt?: string;
   mode?: 'hat' | 'hat-pro';
+  clientVariant?: 'stable' | 'beta-jev';
   temperature?: number;
   maxTokens?: number;
   /** Instrução usada quando o clipboard é uma imagem (sem texto). */
@@ -133,6 +134,7 @@ export function startClipboardFlow(deps: ClipboardFlowDeps): () => void {
           messages: built.messages,
           systemPrompt: deps.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
           mode: deps.mode ?? 'hat',
+          clientVariant: deps.clientVariant ?? 'stable',
           temperature: deps.temperature ?? 0.7,
           maxTokens: deps.maxTokens ?? 2048,
           images: built.images,

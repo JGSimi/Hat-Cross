@@ -59,6 +59,7 @@ pub struct StreamRequest {
     pub messages: Vec<ConversationTurn>,
     pub system_prompt: String,
     pub mode: String,
+    pub client_variant: Option<String>,
     pub temperature: f64,
     pub max_tokens: u32,
     #[serde(default)]
@@ -159,6 +160,7 @@ fn build_body(request: &StreamRequest) -> serde_json::Value {
 
     let mut body = serde_json::json!({
         "mode": request.mode,
+        "clientVariant": request.client_variant,
         "messages": api_messages,
         "systemPrompt": request.system_prompt,
         "temperature": request.temperature,
@@ -256,4 +258,34 @@ async fn run_stream(
 
     emit_chunk(app, finished_chunk(stream_id, String::new()));
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn beta_variant_is_forwarded_to_proxy() {
+        let request = StreamRequest {
+            stream_id: 1,
+            messages: vec![ConversationTurn {
+                role: "user".into(),
+                text_content: "pergunta".into(),
+                images: None,
+            }],
+            system_prompt: "responda".into(),
+            mode: "hat".into(),
+            client_variant: Some("beta-jev".into()),
+            temperature: 0.7,
+            max_tokens: 128,
+            images: vec![],
+            room_id: None,
+            room_share: false,
+            source_message_id: None,
+            id_token: "token".into(),
+            idempotency_key: "key".into(),
+        };
+
+        assert_eq!(build_body(&request)["clientVariant"], "beta-jev");
+    }
 }
