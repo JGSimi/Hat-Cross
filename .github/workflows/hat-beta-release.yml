@@ -6,7 +6,7 @@ on:
     tags:
       - 'hat-beta-v*'
     branches:
-      - 'release/hat-beta-2.2.0-beta.4'
+      - 'release/hat-beta-2.2.0-beta.5'
 
 permissions:
   contents: write
@@ -67,8 +67,8 @@ jobs:
         with:
           projectPath: apps/hat
           args: --config src-tauri/tauri.beta.conf.json --target ${{ matrix.target }}
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.4' }}
-          releaseName: 'Hat Beta 2.2.0-beta.4'
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.5' }}
+          releaseName: 'Hat Beta 2.2.0-beta.5'
           releaseBody: |
             Beta experimental do Hat com Jev System One para decisões rápidas
             e Gemini 3.8 Flash para verbalização.
