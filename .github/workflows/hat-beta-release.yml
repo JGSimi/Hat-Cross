@@ -6,7 +6,7 @@ on:
     tags:
       - 'hat-beta-v*'
     branches:
-      - 'release/hat-beta-2.2.0-beta.11'
+      - 'release/hat-beta-2.2.0-beta.12'
 
 permissions:
   contents: write
@@ -69,13 +69,13 @@ jobs:
         with:
           projectPath: apps/hat
           args: --config src-tauri/tauri.beta.conf.json --target ${{ matrix.target }}
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.11' }}
-          releaseName: 'Hat Beta 2.2.0-beta.11'
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.12' }}
+          releaseName: 'Hat Beta 2.2.0-beta.12'
           releaseBody: |
             Beta experimental do Hat.
 
-            - Screen Solve usa um Hat Input Helper imutável para preservar a permissão de Acessibilidade entre updates.
-            - O helper é Universal (Apple Silicon + Intel) e nunca é substituído pelas atualizações do Hat.
+            - Hat Input Helper agora é instalado como app real em ~/Applications/Hat Input Helper.app.
+            - O executável interno continua imutável e Universal (Apple Silicon + Intel), preservando a permissão entre updates.
             - Cliques e Cmd+V usam Core Graphics, sem System Events/osascript.
             - Canal Beta de atualização automática separado do Stable.
           releaseDraft: false
@@ -88,7 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      BETA_TAG: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.11' }}
+      BETA_TAG: ${{ github.ref_type == 'tag' && github.ref_name || 'hat-beta-v2.2.0-beta.12' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -163,7 +163,7 @@ jobs:
               }
 
           manifest = {
-              "version": "2.2.0-beta.11",
+              "version": "2.2.0-beta.12",
               "notes": "Hat Beta: Screen Solve com permissões nativas e canal Beta automático.",
               "pub_date": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
               "platforms": platforms,

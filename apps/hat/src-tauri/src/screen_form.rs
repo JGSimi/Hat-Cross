@@ -30,22 +30,29 @@ mod macos_helper {
         time::Duration,
     };
 
-    use tauri::{AppHandle, Manager};
+    use tauri::AppHandle;
 
     const HELPER_BYTES: &[u8] = include_bytes!("../resources/hat-input-helper");
-    const HELPER_DIR: &str = "input-helper-v1";
-    const HELPER_NAME: &str = "Hat Input Helper";
+    const HELPER_APP_NAME: &str = "Hat Input Helper.app";
+    const HELPER_EXECUTABLE: &str = "Hat Input Helper";
+    const HELPER_BUNDLE_ID: &str = "com.hatcross.inputhelper";
+    const HELPER_VERSION: &str = "1.0.0";
 
-    fn helper_dir(app: &AppHandle) -> Result<PathBuf, String> {
-        Ok(app
-            .path()
-            .app_data_dir()
-            .map_err(|e| format!("Falha ao resolver pasta do helper: {e}"))?
-            .join(HELPER_DIR))
+    fn helper_bundle() -> Result<PathBuf, String> {
+        let home = std::env::var_os("HOME")
+            .ok_or_else(|| "HOME indisponível para o helper.".to_string())?;
+        Ok(PathBuf::from(home).join("Applications").join(HELPER_APP_NAME))
     }
 
-    fn helper_path(app: &AppHandle) -> Result<PathBuf, String> {
-        Ok(helper_dir(app)?.join(HELPER_NAME))
+    fn helper_path() -> Result<PathBuf, String> {
+        Ok(helper_bundle()?
+            .join("Contents")
+            .join("MacOS")
+            .join(HELPER_EXECUTABLE))
+    }
+
+    fn helper_plist() -> Result<PathBuf, String> {
+        Ok(helper_bundle()?.join("Contents").join("Info.plist"))
     }
 
     fn socket_path() -> Result<PathBuf, String> {
@@ -54,30 +61,79 @@ mod macos_helper {
         let uid = fs::metadata(home)
             .map_err(|e| format!("Falha ao identificar usuário: {e}"))?
             .uid();
-        Ok(std::env::temp_dir().join(format!("hat-input-helper-{uid}.sock")))
+        Ok(std::env::temp_dir().join(format!("hat-input-helper-app-v1-{uid}.sock")))
     }
 
-    fn install_once(app: &AppHandle) -> Result<PathBuf, String> {
-        let dir = helper_dir(app)?;
-        let path = helper_path(app)?;
-        fs::create_dir_all(&dir)
-            .map_err(|e| format!("Falha ao criar pasta do helper: {e}"))?;
+    fn info_plist() -> String {
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>Hat Input Helper</string>
+  <key>CFBundleDisplayName</key>
+  <string>Hat Input Helper</string>
+  <key>CFBundleIdentifier</key>
+  <string>{HELPER_BUNDLE_ID}</string>
+  <key>CFBundleExecutable</key>
+  <string>{HELPER_EXECUTABLE}</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>{HELPER_VERSION}</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>LSUIElement</key>
+  <true/>
+</dict>
+</plist>
+"#
+        )
+    }
 
-        // Deliberadamente nunca substitui um helper existente. A permissão TCC
-        // fica vinculada a este binário imutável, cujo cdhash não muda quando
-        // o Hat principal recebe atualização.
-        if path.exists() {
-            return Ok(path);
+    fn install_once(_app: &AppHandle) -> Result<PathBuf, String> {
+        let bundle = helper_bundle()?;
+        let path = helper_path()?;
+        let plist = helper_plist()?;
+        let contents = bundle.join("Contents");
+        let macos = contents.join("MacOS");
+
+        fs::create_dir_all(&macos)
+            .map_err(|e| format!("Falha ao criar Hat Input Helper.app: {e}"))?;
+
+        // Nunca substituímos o executável depois da primeira instalação.
+        // O binário congelado mantém o mesmo cdhash entre todas as versões Beta.
+        if !path.exists() {
+            let temp = macos.join(".hat-input-helper.installing");
+            fs::write(&temp, HELPER_BYTES)
+                .map_err(|e| format!("Falha ao instalar Hat Input Helper: {e}"))?;
+            fs::set_permissions(&temp, fs::Permissions::from_mode(0o700))
+                .map_err(|e| format!("Falha ao preparar Hat Input Helper: {e}"))?;
+            fs::rename(&temp, &path)
+                .map_err(|e| format!("Falha ao ativar Hat Input Helper: {e}"))?;
         }
 
-        let temp = dir.join(".hat-input-helper.installing");
-        fs::write(&temp, HELPER_BYTES)
-            .map_err(|e| format!("Falha ao instalar helper: {e}"))?;
-        fs::set_permissions(&temp, fs::Permissions::from_mode(0o700))
-            .map_err(|e| format!("Falha ao preparar helper: {e}"))?;
-        fs::rename(&temp, &path)
-            .map_err(|e| format!("Falha ao ativar helper: {e}"))?;
+        // O Info.plist só serve para o macOS/Finder reconhecer o helper como app.
+        // Ele não altera nem re-assina o executável congelado.
+        if !plist.exists() {
+            fs::write(&plist, info_plist())
+                .map_err(|e| format!("Falha ao criar Info.plist do helper: {e}"))?;
+        }
+
         Ok(path)
+    }
+
+    fn reveal_helper() {
+        if let Ok(bundle) = helper_bundle() {
+            let _ = Command::new("/usr/bin/open")
+                .arg("-R")
+                .arg(bundle)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn();
+        }
     }
 
     fn open_accessibility_settings() {
@@ -89,9 +145,14 @@ mod macos_helper {
             .spawn();
     }
 
+    fn guide_to_accessibility() {
+        reveal_helper();
+        open_accessibility_settings();
+    }
+
     fn connect_and_send(socket: &Path, command: &str) -> Result<String, String> {
         let mut stream = UnixStream::connect(socket)
-            .map_err(|e| format!("Helper indisponível: {e}"))?;
+            .map_err(|e| format!("Hat Input Helper indisponível: {e}"))?;
         stream
             .set_read_timeout(Some(Duration::from_secs(2)))
             .map_err(|e| e.to_string())?;
@@ -117,6 +178,8 @@ mod macos_helper {
         }
 
         let helper = install_once(app)?;
+        let _ = fs::remove_file(&socket);
+
         Command::new(&helper)
             .arg("--socket")
             .arg(&socket)
@@ -153,7 +216,7 @@ mod macos_helper {
             return Ok(true);
         }
 
-        open_accessibility_settings();
+        guide_to_accessibility();
         Ok(false)
     }
 
@@ -162,8 +225,8 @@ mod macos_helper {
             return Ok(());
         }
 
-        open_accessibility_settings();
-        Err("Permissão de Acessibilidade necessária para o Hat Input Helper.".into())
+        guide_to_accessibility();
+        Err("Autorize Hat Input Helper em Ajustes > Privacidade e Segurança > Acessibilidade.".into())
     }
 
     pub fn paste(app: &AppHandle) -> Result<(), String> {
@@ -171,8 +234,8 @@ mod macos_helper {
             return Ok(());
         }
 
-        open_accessibility_settings();
-        Err("Permissão de Acessibilidade necessária para o Hat Input Helper.".into())
+        guide_to_accessibility();
+        Err("Autorize Hat Input Helper em Ajustes > Privacidade e Segurança > Acessibilidade.".into())
     }
 }
 
