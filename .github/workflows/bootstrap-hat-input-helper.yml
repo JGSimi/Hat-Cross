@@ -1,0 +1,38 @@
+name: Bootstrap Hat Input Helper
+
+on:
+  push:
+    branches:
+      - helper-bootstrap
+
+permissions:
+  contents: write
+
+jobs:
+  build-once:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build immutable helper
+        run: |
+          mkdir -p apps/hat/src-tauri/resources
+          clang -O2 -Wall -Wextra -Werror -Wl,-no_uuid \
+            -framework ApplicationServices -framework CoreFoundation \
+            tools/hat-input-helper/hat-input-helper.c \
+            -o apps/hat/src-tauri/resources/hat-input-helper
+          codesign --force --sign - apps/hat/src-tauri/resources/hat-input-helper
+          chmod 755 apps/hat/src-tauri/resources/hat-input-helper
+          echo "SHA256:"
+          shasum -a 256 apps/hat/src-tauri/resources/hat-input-helper
+          echo "DESIGNATED REQUIREMENT:"
+          codesign -d -r- apps/hat/src-tauri/resources/hat-input-helper 2>&1 || true
+
+      - name: Commit frozen helper binary
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/hat/src-tauri/resources/hat-input-helper
+          git commit -m "build(beta): freeze immutable macOS input helper"
+          git push origin HEAD:helper-bootstrap
