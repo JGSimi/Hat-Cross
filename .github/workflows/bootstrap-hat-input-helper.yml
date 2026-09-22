@@ -19,11 +19,13 @@ jobs:
         run: |
           mkdir -p apps/hat/src-tauri/resources
           clang -O2 -Wall -Wextra -Werror -Wl,-no_uuid \
+            -arch arm64 -arch x86_64 \
             -framework ApplicationServices -framework CoreFoundation \
             tools/hat-input-helper/hat-input-helper.c \
             -o apps/hat/src-tauri/resources/hat-input-helper
           codesign --force --sign - apps/hat/src-tauri/resources/hat-input-helper
           chmod 755 apps/hat/src-tauri/resources/hat-input-helper
+          lipo -info apps/hat/src-tauri/resources/hat-input-helper
           echo "SHA256:"
           shasum -a 256 apps/hat/src-tauri/resources/hat-input-helper
           echo "DESIGNATED REQUIREMENT:"
