@@ -1,19 +1,19 @@
 {
-  "version": "2.2.0-beta.10",
+  "version": "2.2.0-beta.11",
   "notes": "Hat Beta: Screen Solve com permiss\u00f5es nativas e canal Beta autom\u00e1tico.",
-  "pub_date": "2026-09-22T00:31:04.992489Z",
+  "pub_date": "2026-09-22T00:48:22.854579Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTak1MVmNud0toMnhmUnNzQ2lSTXU2MG0vWkZ2SU12bGlxZUc4K1gwREZJeW9VSzJHdmd0ZDhlUHlLM0dEKzAydGdwQjVTMHNiN2w2VisyR2dYemZFTVNDbXcvYzlmVGd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDM2OTYzCWZpbGU6SGF0IEJldGFfMi4yLjAtYmV0YS4xMF94NjQtc2V0dXAuZXhlClhrNEVQMWZoYTkxaHhwYis5RXludENDcW5MNXh3OHVGcFhKc1BCcStxSkNBZXlPaTNLK0QzM1NFMzdLOXZNTDZXbDVMTFVlKzZIUHl1YjE2NGFDbUJBPT0K",
-      "url": "https://github.com/JGSimi/Hat-Cross/releases/download/hat-beta-v2.2.0-beta.10/Hat.Beta_2.2.0-beta.10_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTak1MVmNud0toMjhsUWsrSUJCUTdwZjlsS2ljWkQ5VGU5TjhhMjdWMDY0ZWdtbWhPWFlqeVJSeTBNdnZuMExDWDdEcGg5eGxRNW9KUmoyR2N4YndQNE9oS3FLa1VHNEFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDM3Mzg0CWZpbGU6SGF0IEJldGFfMi4yLjAtYmV0YS4xMV94NjQtc2V0dXAuZXhlCnNFRlpKUEZkMmZnMkIyVFFhRmN2UXltUVpCdzlpSEIxcEdUQlZsNWpZMTFRQ3JoY1YyR0EzcmwwN0UzT1hvNkpFZGtZa2pZL0RqeFZtS1F4UzNpdUJRPT0K",
+      "url": "https://github.com/JGSimi/Hat-Cross/releases/download/hat-beta-v2.2.0-beta.11/Hat.Beta_2.2.0-beta.11_x64-setup.exe"
     },
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTak1MVmNud0toMjZLRGFsejdHRmQ0S0xidnBLS3NhMG1Vek9xS0FxL2haNGZ5SlVQTXRtZXI1V0VLU08yODl6YWM2UmZ3Ym1HY0J6WC9pWVRsd0orRDBFc0x2Y2Z5VVFzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDM2NjU3CWZpbGU6SGF0IEJldGEuYXBwLnRhci5nego0NTE3dnVzVlFuQzdVUE9NczE3NllCd0tRNGlqN05laExPdWJCdExnaklvaXFIdVRsR0dkNVlCWitqckFrMkVsakJhWHF0c1lLeUFHRC8zNHk1dUpBZz09Cg==",
-      "url": "https://github.com/JGSimi/Hat-Cross/releases/download/hat-beta-v2.2.0-beta.10/Hat.Beta_aarch64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTak1MVmNud0toMjlIQU1XK2VoblV1eDNkSWRKcmdmUGtjWGZPM29xMkljd1NscjBPc0V0bGJjRkE4NVBLc1J1YnRFei8yUm91RS9RWk45V1RaNnhqVTVnWjgzQTdQUUFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDM3MzA3CWZpbGU6SGF0IEJldGEuYXBwLnRhci5negptVlBsS2t2NUlWTkdKMXVoVHRNaE5USThDV1RuUVZGS1hkYk9QUDZDRmhUNGI5MWRSMzBDWlc3ZEFaN2QwRzIreklkMzBYS21HaDZEWEdqTWVRWHNCZz09Cg==",
+      "url": "https://github.com/JGSimi/Hat-Cross/releases/download/hat-beta-v2.2.0-beta.11/Hat.Beta_aarch64.app.tar.gz"
     },
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTak1MVmNud0toMnc5dWNFVlZPRnJEVmFSakFjeVNtSXFxWjZXSnVsSWtIMVFVcklZTnFiZC8xeTJOeWRIMlJZSE0rTXU2NVUyczIzM0FaamovbjhQTy9yQUtiZmppVVFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDM2OTg3CWZpbGU6SGF0IEJldGEuYXBwLnRhci5negplVnJXOXpyN3dUekZUMDQ4eW85TC9jM1M0RzlyeFFiWkp1dGk3L2hDTlliUUszcHRNQWVRM3BHRXBSS053WE9Yc2k2MUZxVUQ3WVkyaExRbU4yQXZCZz09Cg==",
-      "url": "https://github.com/JGSimi/Hat-Cross/releases/download/hat-beta-v2.2.0-beta.10/Hat.Beta_x64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTak1MVmNud0toMjBQSk5vbGtrd1JOSmIvOGp1WWYzWGFlOEs4d3ZXNjd3NnJxK3ZWNG12UWNrVXl2UHh3U2NadVY5U0M2Q0pDcm5maWt4ZTZQY2orK3dMd2orUHhzZnc4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDM3OTk5CWZpbGU6SGF0IEJldGEuYXBwLnRhci5negpGL0E0UlRjOTk2Zk02Q1JHdDZod1ZlUm5CKzBHcXBlRWs0N0JlSCt5ZmkzVEtqRHR2eXpEMFpZRkJvNmxvU0NGeVlGRVJaU1lVaUd5Q2pYWU5PektBdz09Cg==",
+      "url": "https://github.com/JGSimi/Hat-Cross/releases/download/hat-beta-v2.2.0-beta.11/Hat.Beta_x64.app.tar.gz"
     }
   }
 }
