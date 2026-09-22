@@ -1,6 +1,7 @@
 use std::{
     ffi::c_void,
     fs,
+    process::Command,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -18,7 +19,7 @@ pub struct ScreenCapture {
 
 #[cfg(target_os = "macos")]
 mod macos_input {
-    use super::c_void;
+    use super::{c_void, Command};
 
     #[repr(C)]
     #[derive(Clone, Copy)]
@@ -28,6 +29,8 @@ mod macos_input {
     }
 
     type CGEventRef = *mut c_void;
+    type CFTypeRef = *const c_void;
+    type CFDictionaryRef = *const c_void;
 
     const HID_EVENT_TAP: u32 = 0;
     const LEFT_MOUSE_DOWN: u32 = 1;
@@ -36,10 +39,15 @@ mod macos_input {
     const KEY_V: u16 = 9;
     const FLAG_COMMAND: u64 = 1 << 20;
 
+    #[link(name = "ApplicationServices", kind = "framework")]
+    extern "C" {
+        fn AXIsProcessTrusted() -> u8;
+        fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> u8;
+        static kAXTrustedCheckOptionPrompt: CFTypeRef;
+    }
+
     #[link(name = "CoreGraphics", kind = "framework")]
     extern "C" {
-        fn CGPreflightPostEventAccess() -> bool;
-        fn CGRequestPostEventAccess() -> bool;
         fn CGEventCreateMouseEvent(
             source: *mut c_void,
             mouse_type: u32,
@@ -57,30 +65,72 @@ mod macos_input {
 
     #[link(name = "CoreFoundation", kind = "framework")]
     extern "C" {
-        fn CFRelease(value: *const c_void);
+        static kCFBooleanTrue: CFTypeRef;
+        fn CFDictionaryCreate(
+            allocator: CFTypeRef,
+            keys: *const CFTypeRef,
+            values: *const CFTypeRef,
+            num_values: isize,
+            key_callbacks: *const c_void,
+            value_callbacks: *const c_void,
+        ) -> CFDictionaryRef;
+        fn CFRelease(value: CFTypeRef);
     }
 
-    fn trusted() -> bool {
-        unsafe { CGPreflightPostEventAccess() }
+    pub fn trusted() -> bool {
+        unsafe { AXIsProcessTrusted() != 0 }
+    }
+
+    fn prompt_accessibility() {
+        unsafe {
+            let key = kAXTrustedCheckOptionPrompt;
+            let value = kCFBooleanTrue;
+            let options = CFDictionaryCreate(
+                std::ptr::null(),
+                &key,
+                &value,
+                1,
+                std::ptr::null(),
+                std::ptr::null(),
+            );
+            if options.is_null() {
+                return;
+            }
+            let _ = AXIsProcessTrustedWithOptions(options);
+            CFRelease(options);
+        }
+    }
+
+    fn open_accessibility_settings() {
+        let _ = Command::new("/usr/bin/open")
+            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+            .spawn();
     }
 
     pub fn request_accessibility() -> bool {
         if trusted() {
             return true;
         }
-        unsafe {
-            let _ = CGRequestPostEventAccess();
+
+        // API canônica do Accessibility framework. O alerta é assíncrono.
+        prompt_accessibility();
+
+        // Builds ad-hoc podem não receber o alerta TCC de forma confiável.
+        // O painel correto é aberto como fallback para nunca deixar o usuário
+        // preso apenas em uma mensagem do Hat.
+        if !trusted() {
+            open_accessibility_settings();
         }
-        false
+
+        trusted()
     }
 
     fn ensure_accessibility() -> Result<(), String> {
         if trusted() {
             Ok(())
         } else {
-            unsafe {
-                let _ = CGRequestPostEventAccess();
-            }
+            prompt_accessibility();
+            open_accessibility_settings();
             Err("Permissão de Acessibilidade necessária.".into())
         }
     }

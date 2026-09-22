@@ -96,7 +96,7 @@ export function startScreenFormFlow(deps: ScreenFormFlowDeps): () => void {
         if (!accessibility) {
           await transientFeedback(
             deps.bridge,
-            '⚙ autorize Acessibilidade para o Hat e use o atalho novamente',
+            '⚙ autorize Acessibilidade nos Ajustes e use o atalho novamente',
             3200,
           );
           return;
