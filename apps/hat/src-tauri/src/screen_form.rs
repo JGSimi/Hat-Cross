@@ -1,7 +1,5 @@
 use std::{
-    ffi::c_void,
     fs,
-    process::Command,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -18,185 +16,175 @@ pub struct ScreenCapture {
 }
 
 #[cfg(target_os = "macos")]
-mod macos_input {
-    use super::{c_void, Command};
+mod macos_helper {
+    use std::{
+        fs,
+        io::{Read, Write},
+        os::unix::{
+            fs::{MetadataExt, PermissionsExt},
+            net::UnixStream,
+        },
+        path::{Path, PathBuf},
+        process::{Command, Stdio},
+        thread,
+        time::Duration,
+    };
 
-    #[repr(C)]
-    #[derive(Clone, Copy)]
-    struct CGPoint {
-        x: f64,
-        y: f64,
+    use tauri::{AppHandle, Manager};
+
+    const HELPER_BYTES: &[u8] = include_bytes!("../resources/hat-input-helper");
+    const HELPER_DIR: &str = "input-helper-v1";
+    const HELPER_NAME: &str = "Hat Input Helper";
+
+    fn helper_dir(app: &AppHandle) -> Result<PathBuf, String> {
+        Ok(app
+            .path()
+            .app_data_dir()
+            .map_err(|e| format!("Falha ao resolver pasta do helper: {e}"))?
+            .join(HELPER_DIR))
     }
 
-    type CGEventRef = *mut c_void;
-    type CFTypeRef = *const c_void;
-    type CFDictionaryRef = *const c_void;
-
-    const HID_EVENT_TAP: u32 = 0;
-    const LEFT_MOUSE_DOWN: u32 = 1;
-    const LEFT_MOUSE_UP: u32 = 2;
-    const LEFT_MOUSE_BUTTON: u32 = 0;
-    const KEY_V: u16 = 9;
-    const FLAG_COMMAND: u64 = 1 << 20;
-
-    #[link(name = "ApplicationServices", kind = "framework")]
-    extern "C" {
-        fn AXIsProcessTrusted() -> u8;
-        fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> u8;
-        static kAXTrustedCheckOptionPrompt: CFTypeRef;
+    fn helper_path(app: &AppHandle) -> Result<PathBuf, String> {
+        Ok(helper_dir(app)?.join(HELPER_NAME))
     }
 
-    #[link(name = "CoreGraphics", kind = "framework")]
-    extern "C" {
-        fn CGEventCreateMouseEvent(
-            source: *mut c_void,
-            mouse_type: u32,
-            mouse_cursor_position: CGPoint,
-            mouse_button: u32,
-        ) -> CGEventRef;
-        fn CGEventCreateKeyboardEvent(
-            source: *mut c_void,
-            virtual_key: u16,
-            key_down: bool,
-        ) -> CGEventRef;
-        fn CGEventSetFlags(event: CGEventRef, flags: u64);
-        fn CGEventPost(tap: u32, event: CGEventRef);
+    fn socket_path() -> Result<PathBuf, String> {
+        let home = std::env::var_os("HOME")
+            .ok_or_else(|| "HOME indisponível para o helper.".to_string())?;
+        let uid = fs::metadata(home)
+            .map_err(|e| format!("Falha ao identificar usuário: {e}"))?
+            .uid();
+        Ok(std::env::temp_dir().join(format!("hat-input-helper-{uid}.sock")))
     }
 
-    #[link(name = "CoreFoundation", kind = "framework")]
-    extern "C" {
-        static kCFBooleanTrue: CFTypeRef;
-        fn CFDictionaryCreate(
-            allocator: CFTypeRef,
-            keys: *const CFTypeRef,
-            values: *const CFTypeRef,
-            num_values: isize,
-            key_callbacks: *const c_void,
-            value_callbacks: *const c_void,
-        ) -> CFDictionaryRef;
-        fn CFRelease(value: CFTypeRef);
-    }
+    fn install_once(app: &AppHandle) -> Result<PathBuf, String> {
+        let dir = helper_dir(app)?;
+        let path = helper_path(app)?;
+        fs::create_dir_all(&dir)
+            .map_err(|e| format!("Falha ao criar pasta do helper: {e}"))?;
 
-    pub fn trusted() -> bool {
-        unsafe { AXIsProcessTrusted() != 0 }
-    }
-
-    fn prompt_accessibility() {
-        unsafe {
-            let key = kAXTrustedCheckOptionPrompt;
-            let value = kCFBooleanTrue;
-            let options = CFDictionaryCreate(
-                std::ptr::null(),
-                &key,
-                &value,
-                1,
-                std::ptr::null(),
-                std::ptr::null(),
-            );
-            if options.is_null() {
-                return;
-            }
-            let _ = AXIsProcessTrustedWithOptions(options);
-            CFRelease(options);
+        // Deliberadamente nunca substitui um helper existente. A permissão TCC
+        // fica vinculada a este binário imutável, cujo cdhash não muda quando
+        // o Hat principal recebe atualização.
+        if path.exists() {
+            return Ok(path);
         }
+
+        let temp = dir.join(".hat-input-helper.installing");
+        fs::write(&temp, HELPER_BYTES)
+            .map_err(|e| format!("Falha ao instalar helper: {e}"))?;
+        fs::set_permissions(&temp, fs::Permissions::from_mode(0o700))
+            .map_err(|e| format!("Falha ao preparar helper: {e}"))?;
+        fs::rename(&temp, &path)
+            .map_err(|e| format!("Falha ao ativar helper: {e}"))?;
+        Ok(path)
     }
 
     fn open_accessibility_settings() {
         let _ = Command::new("/usr/bin/open")
             .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .spawn();
     }
 
-    pub fn request_accessibility() -> bool {
-        if trusted() {
-            return true;
-        }
+    fn connect_and_send(socket: &Path, command: &str) -> Result<String, String> {
+        let mut stream = UnixStream::connect(socket)
+            .map_err(|e| format!("Helper indisponível: {e}"))?;
+        stream
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .map_err(|e| e.to_string())?;
+        stream
+            .set_write_timeout(Some(Duration::from_secs(2)))
+            .map_err(|e| e.to_string())?;
+        stream
+            .write_all(format!("{command}\n").as_bytes())
+            .map_err(|e| format!("Falha ao enviar comando ao helper: {e}"))?;
 
-        // API canônica do Accessibility framework. O alerta é assíncrono.
-        prompt_accessibility();
-
-        // Builds ad-hoc podem não receber o alerta TCC de forma confiável.
-        // O painel correto é aberto como fallback para nunca deixar o usuário
-        // preso apenas em uma mensagem do Hat.
-        if !trusted() {
-            open_accessibility_settings();
-        }
-
-        trusted()
+        let mut response = String::new();
+        stream
+            .read_to_string(&mut response)
+            .map_err(|e| format!("Falha ao ler helper: {e}"))?;
+        Ok(response.trim().to_string())
     }
 
-    fn ensure_accessibility() -> Result<(), String> {
-        if trusted() {
-            Ok(())
-        } else {
-            prompt_accessibility();
-            open_accessibility_settings();
-            Err("Permissão de Acessibilidade necessária.".into())
-        }
-    }
+    fn ensure_running(app: &AppHandle) -> Result<PathBuf, String> {
+        let socket = socket_path()?;
 
-    unsafe fn post_and_release(event: CGEventRef) -> Result<(), String> {
-        if event.is_null() {
-            return Err("Falha ao criar evento nativo do macOS.".into());
+        if UnixStream::connect(&socket).is_ok() {
+            return Ok(socket);
         }
-        unsafe {
-            CGEventPost(HID_EVENT_TAP, event);
-            CFRelease(event.cast_const());
-        }
-        Ok(())
-    }
 
-    pub fn click(x: f64, y: f64) -> Result<(), String> {
-        ensure_accessibility()?;
-        let point = CGPoint { x, y };
-        unsafe {
-            let down = CGEventCreateMouseEvent(
-                std::ptr::null_mut(),
-                LEFT_MOUSE_DOWN,
-                point,
-                LEFT_MOUSE_BUTTON,
-            );
-            post_and_release(down)?;
-            let up = CGEventCreateMouseEvent(
-                std::ptr::null_mut(),
-                LEFT_MOUSE_UP,
-                point,
-                LEFT_MOUSE_BUTTON,
-            );
-            post_and_release(up)?;
-        }
-        Ok(())
-    }
+        let helper = install_once(app)?;
+        Command::new(&helper)
+            .arg("--socket")
+            .arg(&socket)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .map_err(|e| format!("Falha ao iniciar Hat Input Helper: {e}"))?;
 
-    pub fn paste_command() -> Result<(), String> {
-        ensure_accessibility()?;
-        unsafe {
-            let down = CGEventCreateKeyboardEvent(std::ptr::null_mut(), KEY_V, true);
-            if down.is_null() {
-                return Err("Falha ao criar Cmd+V nativo.".into());
+        for _ in 0..30 {
+            if UnixStream::connect(&socket).is_ok() {
+                return Ok(socket);
             }
-            CGEventSetFlags(down, FLAG_COMMAND);
-            post_and_release(down)?;
-
-            let up = CGEventCreateKeyboardEvent(std::ptr::null_mut(), KEY_V, false);
-            if up.is_null() {
-                return Err("Falha ao criar Cmd+V nativo.".into());
-            }
-            CGEventSetFlags(up, FLAG_COMMAND);
-            post_and_release(up)?;
+            thread::sleep(Duration::from_millis(50));
         }
-        Ok(())
+
+        Err("Hat Input Helper não iniciou a tempo.".into())
+    }
+
+    fn command(app: &AppHandle, value: &str) -> Result<String, String> {
+        let socket = ensure_running(app)?;
+        connect_and_send(&socket, value)
+    }
+
+    pub fn request_accessibility(app: &AppHandle) -> Result<bool, String> {
+        if command(app, "TRUST")? == "1" {
+            return Ok(true);
+        }
+
+        let _ = command(app, "PROMPT")?;
+        thread::sleep(Duration::from_millis(180));
+
+        if command(app, "TRUST")? == "1" {
+            return Ok(true);
+        }
+
+        open_accessibility_settings();
+        Ok(false)
+    }
+
+    pub fn click(app: &AppHandle, x: f64, y: f64) -> Result<(), String> {
+        if command(app, &format!("CLICK {x:.3} {y:.3}"))? == "OK" {
+            return Ok(());
+        }
+
+        open_accessibility_settings();
+        Err("Permissão de Acessibilidade necessária para o Hat Input Helper.".into())
+    }
+
+    pub fn paste(app: &AppHandle) -> Result<(), String> {
+        if command(app, "PASTE")? == "OK" {
+            return Ok(());
+        }
+
+        open_accessibility_settings();
+        Err("Permissão de Acessibilidade necessária para o Hat Input Helper.".into())
     }
 }
 
 #[tauri::command]
-pub fn request_accessibility() -> Result<bool, String> {
+pub fn request_accessibility(app: tauri::AppHandle) -> Result<bool, String> {
     #[cfg(target_os = "macos")]
     {
-        return Ok(macos_input::request_accessibility());
+        return macos_helper::request_accessibility(&app);
     }
     #[cfg(not(target_os = "macos"))]
     {
+        let _ = app;
         Err("Screen Solve beta ainda está disponível apenas no macOS.".into())
     }
 }
@@ -235,30 +223,35 @@ pub fn capture_screen() -> Result<ScreenCapture, String> {
 }
 
 #[tauri::command]
-pub fn paste_screen_text(x: f64, y: f64, text: String) -> Result<(), String> {
+pub fn paste_screen_text(
+    app: tauri::AppHandle,
+    x: f64,
+    y: f64,
+    text: String,
+) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         crate::clipboard::write_clipboard(text)?;
-        macos_input::click(x, y)?;
+        macos_helper::click(&app, x, y)?;
         std::thread::sleep(std::time::Duration::from_millis(80));
-        return macos_input::paste_command();
+        return macos_helper::paste(&app);
     }
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (x, y, text);
+        let _ = (app, x, y, text);
         Err("Screen Solve beta ainda está disponível apenas no macOS.".into())
     }
 }
 
 #[tauri::command]
-pub fn click_screen(x: f64, y: f64) -> Result<(), String> {
+pub fn click_screen(app: tauri::AppHandle, x: f64, y: f64) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        return macos_input::click(x, y);
+        return macos_helper::click(&app, x, y);
     }
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (x, y);
+        let _ = (app, x, y);
         Err("Screen Solve beta ainda está disponível apenas no macOS.".into())
     }
 }
