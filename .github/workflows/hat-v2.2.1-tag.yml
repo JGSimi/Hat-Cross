@@ -3,19 +3,27 @@ name: Tag Hat v2.2.1
 on:
   push:
     branches: [main]
+    paths:
+      - '.github/workflows/hat-v2.2.1-tag.yml'
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
-  tag:
-    if: startsWith(github.event.head_commit.message, 'release: Hat v2.2.1')
+  tag-and-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Create stable release tag
         run: |
           git tag hat-app-v2.2.1
           git push origin hat-app-v2.2.1
+
+      - name: Dispatch stable release build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run hat-app-release.yml --ref hat-app-v2.2.1
