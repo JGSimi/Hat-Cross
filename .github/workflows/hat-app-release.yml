@@ -91,6 +91,6 @@ jobs:
             Executar mesmo assim**.
 
             As **atualizações** depois disso são automáticas (assinatura minisign).
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
