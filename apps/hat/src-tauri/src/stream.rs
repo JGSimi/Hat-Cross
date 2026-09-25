@@ -14,8 +14,10 @@ use once_cell::sync::Lazy;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
+use tokio::time::{sleep, Duration};
 
 const DEFAULT_HAT_PROXY_URL: &str = "https://hat-proxy.joao02simi.workers.dev/v1/chat";
+const CONNECT_RETRY_DELAYS_MS: [u64; 3] = [500, 1_500, 3_000];
 
 fn hat_proxy_url() -> String {
     std::env::var("HAT_PROXY_URL").unwrap_or_else(|_| DEFAULT_HAT_PROXY_URL.to_string())
@@ -196,14 +198,44 @@ async fn run_stream(
         }
     }
 
-    let response = reqwest::Client::new()
-        .post(hat_proxy_url())
-        .headers(headers)
-        .json(&build_body(request))
-        .send()
-        .await
-        .map_err(|e| format!("Erro ao conectar ao Hat: {}", e))?;
+    // Queda de rede não deve "envenenar" o app até reiniciar. Cada tentativa
+    // usa um Client novo (sem conexão/DNS/pool anterior) e a mesma
+    // Idempotency-Key, então repetir a abertura do stream é seguro contra
+    // double-debit no Worker.
+    let body = build_body(request);
+    let url = hat_proxy_url();
+    let mut response = None;
 
+    for attempt in 0..=CONNECT_RETRY_DELAYS_MS.len() {
+        if cancel_flag.load(Ordering::SeqCst) {
+            emit_chunk(app, finished_chunk(request.stream_id, String::new()));
+            return Ok(());
+        }
+
+        let client = reqwest::Client::builder()
+            .connect_timeout(Duration::from_secs(6))
+            .build()
+            .map_err(|_| "error:networkError".to_string())?;
+
+        match client
+            .post(&url)
+            .headers(headers.clone())
+            .json(&body)
+            .send()
+            .await
+        {
+            Ok(r) => {
+                response = Some(r);
+                break;
+            }
+            Err(_) if attempt < CONNECT_RETRY_DELAYS_MS.len() => {
+                sleep(Duration::from_millis(CONNECT_RETRY_DELAYS_MS[attempt])).await;
+            }
+            Err(_) => return Err("error:networkError".to_string()),
+        }
+    }
+
+    let response = response.ok_or_else(|| "error:networkError".to_string())?;
     let status = response.status();
     if !status.is_success() {
         let body_text = response.text().await.unwrap_or_default();
@@ -219,7 +251,7 @@ async fn run_stream(
             emit_chunk(app, finished_chunk(stream_id, String::new()));
             return Ok(());
         }
-        let chunk = chunk.map_err(|e| format!("Erro no stream: {}", e))?;
+        let chunk = chunk.map_err(|_| "error:networkError".to_string())?;
         parser.push(&chunk, |event| match event {
             SseEvent::Delta { text, content_type } => emit_chunk(
                 app,

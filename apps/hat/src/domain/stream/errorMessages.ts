@@ -8,6 +8,7 @@ const MESSAGES: Record<string, string> = {
   sessionExpired: 'Sua sessão expirou. Entre de novo para continuar.',
   insufficientCredits: 'Assine um plano para continuar usando o Hat.',
   rateLimited: 'Muitas perguntas em sequência. Espere alguns segundos e tente de novo.',
+  networkError: 'A conexão caiu. O Hat tentou reconectar; tente novamente quando a internet voltar.',
   serverError: 'O serviço de IA está indisponível no momento. Tente de novo em instantes.',
   unknownError: 'Algo deu errado. Tente de novo.',
 };

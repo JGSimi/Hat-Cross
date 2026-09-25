@@ -11,6 +11,7 @@ describe('friendlyErrorMessage', () => {
     expect(friendlyErrorMessage('error:sessionExpired')).toMatch(/sessão expirou/i);
     expect(friendlyErrorMessage('error:insufficientCredits')).toMatch(/assine um plano/i);
     expect(friendlyErrorMessage('error:rateLimited')).toMatch(/muitas perguntas/i);
+    expect(friendlyErrorMessage('error:networkError')).toMatch(/conexão caiu/i);
   });
 
   it('serverError com Gemini 429 cru vira mensagem limpa (sem JSON)', () => {
