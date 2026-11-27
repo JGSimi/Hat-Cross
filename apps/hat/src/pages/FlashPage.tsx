@@ -4,6 +4,10 @@ import type { FlashShowPayload } from '../bridge/types';
 import { anchorOf, scrollPlan, type ScrollPlan } from '../domain/flash/area';
 import { friendlyErrorMessage } from '../domain/stream/errorMessages';
 
+function samePlan(a: ScrollPlan, b: ScrollPlan): boolean {
+  return a.scroll === b.scroll && a.distancePx === b.distancePx && a.holdMs === b.holdMs;
+}
+
 /** Quanto tempo o contorno da área fica na tela na prévia. */
 const PREVIEW_MS = 2500;
 
@@ -71,7 +75,8 @@ export function FlashPage({ bridge }: FlashPageProps) {
     };
   }, [bridge]);
 
-  const text = errorText ?? streamText ?? payload?.text ?? '';
+  // Stream tem prioridade; sem stream (correção da sala) vale o texto pronto.
+  const text = errorText ?? (streamText || payload?.text || '');
   const isAnswer = payload?.state === 'answer';
   const isProcessing = payload?.state === 'processing';
   const isPreview = payload?.state === 'preview';
@@ -88,11 +93,25 @@ export function FlashPage({ bridge }: FlashPageProps) {
   // Tamanho FIXO: a janela é a área que o usuário escolheu. Quando a
   // resposta termina e não cabe, ela rola sozinha (a janela é click-through,
   // ninguém rola com o mouse) e o tempo na tela cresce para dar para ler.
+  // `payload` nas dependências: um novo show reinicia o plano mesmo com o
+  // mesmo texto (senão o timer de esconder nunca volta). Mede de novo no
+  // próximo frame e quando a janela muda de tamanho (o nativo faz set_size
+  // logo antes de emitir o show).
   useEffect(() => {
     if (!isAnswer) return;
-    const overflow = (contentRef.current?.scrollHeight ?? 0) - (cardRef.current?.clientHeight ?? 0);
-    setPlan(scrollPlan(overflow, text.length));
-  }, [isAnswer, text]);
+    const measure = () => {
+      const overflow = (contentRef.current?.scrollHeight ?? 0) - (cardRef.current?.clientHeight ?? 0);
+      const next = scrollPlan(overflow, text.length);
+      setPlan((prev) => (prev && samePlan(prev, next) ? prev : next));
+    };
+    measure();
+    const frame = requestAnimationFrame(measure);
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', measure);
+    };
+  }, [isAnswer, text, payload]);
 
   // Watchdog: o Flash NUNCA pode ficar preso em "Processando…". Se nada chegar
   // (token falhou, rede caiu, backend travou) em PROCESSING_TIMEOUT_MS, mostra

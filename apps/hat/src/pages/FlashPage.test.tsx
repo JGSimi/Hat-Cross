@@ -241,4 +241,29 @@ describe('FlashPage', () => {
       expect(bridge.calls.some((c) => c.method === 'writeClipboard')).toBe(false);
     });
   });
+
+  describe('correções da sala (texto pronto, sem stream)', () => {
+    it('mostra o texto do flash_show_text', () => {
+      render(<FlashPage bridge={bridge} />);
+      act(() => {
+        bridge.emit('flash:show', { state: 'answer', text: 'Q1: B', position: POS });
+      });
+      expect(screen.getByTestId('flash-card')).toHaveTextContent('Q1: B');
+    });
+
+    it('duas correções seguidas com o mesmo texto ainda somem sozinhas', () => {
+      render(<FlashPage bridge={bridge} />);
+      act(() => {
+        bridge.emit('flash:show', { state: 'answer', text: 'Q1: B', position: POS });
+      });
+      act(() => {
+        bridge.emit('flash:show', { state: 'answer', text: 'Q1: B', position: POS });
+      });
+      act(() => {
+        vi.advanceTimersByTime(7000);
+      });
+      expect(screen.queryByTestId('flash-card')).toBeNull();
+      expect(bridge.calls.some((c) => c.method === 'flashHide')).toBe(true);
+    });
+  });
 });

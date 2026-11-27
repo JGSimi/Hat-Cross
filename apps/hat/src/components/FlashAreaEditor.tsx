@@ -29,6 +29,25 @@ const HANDLES: { id: Exclude<AreaHandle, 'move'>; style: React.CSSProperties; cu
   { id: 'se', style: { right: -6, bottom: -6 }, cursor: 'nwse-resize' },
 ];
 
+/** Mantém o Tab dentro do diálogo (aria-modal). */
+function trapTab(e: React.KeyboardEvent, root: HTMLElement | null) {
+  if (!root) return;
+  const items = Array.from(
+    root.querySelectorAll<HTMLElement>('button:not([disabled]), [tabindex]:not([tabindex="-1"])'),
+  );
+  if (items.length === 0) return;
+  const first = items[0]!;
+  const last = items[items.length - 1]!;
+  const current = document.activeElement;
+  if (e.shiftKey && (current === first || !root.contains(current))) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && (current === last || !root.contains(current))) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
 /** Proporção da tela de verdade, para a miniatura não enganar. */
 function screenRatio(): number {
   if (typeof window !== 'undefined' && window.screen?.width > 0 && window.screen?.height > 0) {
@@ -88,6 +107,7 @@ export function FlashAreaEditor({ area, onCommit, onClose }: FlashAreaEditorProp
   const screenRef = useRef<HTMLDivElement>(null);
   const areaRef = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setDraft(area), [area]);
   useEffect(() => areaRef.current?.focus(), []);
@@ -149,8 +169,10 @@ export function FlashAreaEditor({ area, onCommit, onClose }: FlashAreaEditorProp
       role="dialog"
       aria-modal="true"
       aria-labelledby="flash-area-title"
+      ref={dialogRef}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
+        if (e.key === 'Tab') trapTab(e, dialogRef.current);
       }}
       className="absolute inset-0 z-20 flex flex-col gap-4 px-8 py-6"
       style={{ background: '#141414', color: '#fff', fontFamily: 'var(--font-body)' }}

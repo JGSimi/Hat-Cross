@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { NativeBridge } from '../bridge/native';
 import type { FlashAppearance, ShortcutBindings } from '../bridge/types';
@@ -17,6 +17,9 @@ function detectPlatform(): Platform {
   }
   return 'win32';
 }
+
+/** Espera as mudanças pararem antes de mostrar a prévia na tela. */
+const AREA_PREVIEW_DEBOUNCE_MS = 350;
 
 const DIGITAL: React.CSSProperties = { fontFamily: 'var(--font-digital)', textTransform: 'uppercase' };
 
@@ -44,6 +47,9 @@ export function HatHome({ bridge }: HatHomeProps) {
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [area, setArea] = useState<FlashArea>({ ...DEFAULT_FLASH_AREA });
   const [editingArea, setEditingArea] = useState(false);
+  const areaSeq = useRef(0);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openAreaRef = useRef<HTMLButtonElement>(null);
   const [bindings, setBindings] = useState<ShortcutBindings | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
@@ -107,16 +113,39 @@ export function HatHome({ bridge }: HatHomeProps) {
     return () => window.removeEventListener('keydown', handler, true);
   }, [capturing, platform, bridge]);
 
-  /** Salva a área e mostra o contorno dela na tela de verdade. */
+  /**
+   * Salva a área e mostra o contorno dela na tela de verdade. Só a resposta
+   * da ÚLTIMA mudança vale (setas rápidas não voltam a área para trás) e a
+   * prévia espera as mudanças pararem para aparecer uma vez só.
+   */
   function saveArea(next: FlashArea) {
+    const seq = ++areaSeq.current;
     setArea(next);
     void bridge
       .setFlashArea(next)
       .then((saved) => {
+        if (seq !== areaSeq.current) return;
         setArea(normalizeArea(saved));
-        return bridge.flashPreviewArea();
+        if (previewTimer.current) clearTimeout(previewTimer.current);
+        previewTimer.current = setTimeout(() => {
+          void bridge.flashPreviewArea().catch(() => {});
+        }, AREA_PREVIEW_DEBOUNCE_MS);
       })
       .catch(() => {});
+  }
+
+  useEffect(
+    () => () => {
+      if (previewTimer.current) clearTimeout(previewTimer.current);
+    },
+    [],
+  );
+
+  function closeAreaEditor() {
+    setEditingArea(false);
+    // Foco volta para quem abriu (teclado e leitor de tela).
+    requestAnimationFrame(() => openAreaRef.current?.focus());
+    openAreaRef.current?.focus();
   }
 
   function patchOpacity(opacity: number) {
@@ -182,7 +211,7 @@ export function HatHome({ bridge }: HatHomeProps) {
       )}
 
       {editingArea && (
-        <FlashAreaEditor area={area} onCommit={saveArea} onClose={() => setEditingArea(false)} />
+        <FlashAreaEditor area={area} onCommit={saveArea} onClose={closeAreaEditor} />
       )}
 
       {/* Mascote — metade esquerda. */}
@@ -200,6 +229,7 @@ export function HatHome({ bridge }: HatHomeProps) {
 
           <motion.button
             type="button"
+            ref={openAreaRef}
             data-testid="flash-area-open"
             onClick={() => setEditingArea(true)}
             aria-label="Ajustar onde a resposta aparece"

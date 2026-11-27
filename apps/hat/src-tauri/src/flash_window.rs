@@ -8,7 +8,10 @@ use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_store::StoreExt;
 
 use crate::macos_overlay::{apply_fullscreen_overlay, OverlayLevel};
-use hat_core::flash::{area_from_quadrant, area_to_rect, clamp_area, FlashArea, PixelRect};
+use hat_core::flash::{
+    area_from_quadrant, area_to_rect, clamp_area, quadrant_from_legacy_position, FlashArea,
+    PixelRect,
+};
 
 pub const FLASH_LABEL: &str = "flash";
 pub const GABARITO_LABEL: &str = "gabarito";
@@ -182,7 +185,10 @@ fn saved_area(app: &AppHandle) -> FlashArea {
     match stored {
         Some(area) => clamp_area(&area),
         None => {
-            let quadrant = saved_position(app).quadrant.unwrap_or_default();
+            let legacy = saved_position(app);
+            let quadrant = legacy.quadrant.unwrap_or_else(|| {
+                quadrant_from_legacy_position(legacy.x, legacy.y).to_string()
+            });
             area_from_quadrant(&quadrant)
         }
     }
@@ -204,20 +210,27 @@ pub fn set_flash_area(app: AppHandle, area: FlashArea) -> Result<FlashArea, Stri
     Ok(area)
 }
 
-/// Retângulo (px lógicos, coordenadas globais) da área no monitor da janela.
-fn area_rect_on_monitor(window: &tauri::WebviewWindow, area: &FlashArea) -> Option<PixelRect> {
+/// Monitor da janela em px lógicos e coordenadas globais (origem + tamanho).
+fn monitor_bounds(window: &tauri::WebviewWindow) -> Option<PixelRect> {
     let monitor = window.current_monitor().ok().flatten()?;
     let scale = monitor.scale_factor();
     let size = monitor.size();
     let origin = monitor.position().to_logical::<f64>(scale);
-    let rect = area_to_rect(
-        area,
-        size.width as f64 / scale,
-        size.height as f64 / scale,
-    );
     Some(PixelRect {
-        x: rect.x + origin.x,
-        y: rect.y + origin.y,
+        x: origin.x,
+        y: origin.y,
+        width: size.width as f64 / scale,
+        height: size.height as f64 / scale,
+    })
+}
+
+/// Retângulo (px lógicos, coordenadas globais) da área no monitor da janela.
+fn area_rect_on_monitor(window: &tauri::WebviewWindow, area: &FlashArea) -> Option<PixelRect> {
+    let bounds = monitor_bounds(window)?;
+    let rect = area_to_rect(area, bounds.width, bounds.height);
+    Some(PixelRect {
+        x: rect.x + bounds.x,
+        y: rect.y + bounds.y,
         ..rect
     })
 }
@@ -308,28 +321,31 @@ pub fn gabarito_show(app: AppHandle, items: Vec<GabaritoItem>) {
     let Some(window) = app.get_webview_window(GABARITO_LABEL) else {
         return;
     };
-    // Logo abaixo da área do flash.
-    let (mut x, mut y) = match area_rect_on_monitor(&window, &saved_area(&app)) {
-        Some(rect) => (rect.x, rect.y + rect.height + GABARITO_GAP),
+    // Logo abaixo da área do flash, medida no monitor da janela do FLASH e
+    // limitada a esse mesmo monitor (coordenadas globais, multi-monitor).
+    let flash = app.get_webview_window(FLASH_LABEL);
+    let bounds = flash
+        .as_ref()
+        .and_then(monitor_bounds)
+        .or_else(|| monitor_bounds(&window));
+    let (x, y) = match bounds {
+        Some(b) => {
+            let rect = area_to_rect(&saved_area(&app), b.width, b.height);
+            let (cx, cy) = hat_core::flash::clamp_position(
+                rect.x,
+                rect.y + rect.height + GABARITO_GAP,
+                CARD_W,
+                GABARITO_H,
+                b.width,
+                b.height,
+            );
+            (cx + b.x, cy + b.y)
+        }
         None => {
             let pos = saved_position(&app);
             (pos.x, pos.y + CARD_H + GABARITO_GAP)
         }
     };
-    if let Ok(Some(monitor)) = window.current_monitor() {
-        let size = monitor.size();
-        let scale = monitor.scale_factor();
-        let (cx, cy) = hat_core::flash::clamp_position(
-            x,
-            y,
-            CARD_W,
-            GABARITO_H,
-            size.width as f64 / scale,
-            size.height as f64 / scale,
-        );
-        x = cx;
-        y = cy;
-    }
     let _ = window.set_position(tauri::LogicalPosition::new(x, y));
     let _ = window.set_always_on_top(true);
     let _ = window.set_content_protected(crate::capture_protection::enabled(&app));

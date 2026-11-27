@@ -79,6 +79,17 @@ pub fn area_from_quadrant(quadrant: &str) -> FlashArea {
     }
 }
 
+/// Posição livre antiga (sem quadrante) → canto mais próximo. Mesma regra
+/// que a UI antiga usava para destacar o quadrante (x/y > 300).
+pub fn quadrant_from_legacy_position(x: f64, y: f64) -> &'static str {
+    match (x > 300.0, y > 300.0) {
+        (true, true) => "bottom-right",
+        (true, false) => "top-right",
+        (false, true) => "bottom-left",
+        (false, false) => "top-left",
+    }
+}
+
 pub fn default_area() -> FlashArea {
     area_from_quadrant("top-left")
 }
@@ -171,6 +182,16 @@ mod tests {
         assert!(a.y + a.h <= 1.0);
         let nan = clamp_area(&FlashArea { x: f64::NAN, y: f64::INFINITY, w: 0.4, h: 0.3 });
         assert_eq!(nan, FlashArea { x: 0.02, y: 0.02, w: 0.4, h: 0.3 });
+    }
+
+    #[test]
+    fn legacy_free_position_maps_to_nearest_corner() {
+        // Mesma regra da UI antiga: x > 300 é direita, y > 300 é embaixo.
+        assert_eq!(quadrant_from_legacy_position(24.0, 24.0), "top-left");
+        assert_eq!(quadrant_from_legacy_position(1456.0, 24.0), "top-right");
+        assert_eq!(quadrant_from_legacy_position(24.0, 856.0), "bottom-left");
+        assert_eq!(quadrant_from_legacy_position(1456.0, 856.0), "bottom-right");
+        assert_eq!(quadrant_from_legacy_position(300.0, 300.0), "top-left");
     }
 
     #[test]

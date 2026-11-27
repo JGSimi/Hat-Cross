@@ -1,5 +1,5 @@
-import { render, screen, fireEvent, act, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockBridge, type MockBridge } from '../bridge/mock';
 import { HatHome } from './HatHome';
 
@@ -96,7 +96,8 @@ describe('HatHome — Flash location selector', () => {
       await flush();
       expect(lastSaved()).toEqual({ x: 0.68, y: 0.76, w: 0.3, h: 0.22 });
       expect(screen.getByTestId('quadrant-bottom-right')).toHaveAttribute('aria-pressed', 'true');
-      expect(bridge.calls.some((c) => c.method === 'flashPreviewArea')).toBe(true);
+      // A prévia espera as mudanças pararem (debounce curto).
+      await waitFor(() => expect(bridge.calls.some((c) => c.method === 'flashPreviewArea')).toBe(true));
     });
 
     it('arrastar a área verde muda o lugar', async () => {
@@ -166,6 +167,63 @@ describe('HatHome — Flash location selector', () => {
       render(<HatHome bridge={bridge} />);
       await flush();
       expect(screen.getByText('Canto inferior direito · ocupa 6% da tela')).toBeInTheDocument();
+    });
+      describe('setas seguidas com o nativo lento', () => {
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it('não perde passos nem volta para trás quando as respostas chegam atrasadas', async () => {
+        const pending: (() => void)[] = [];
+        bridge.setFlashArea = (area) => {
+          bridge.calls.push({ method: 'setFlashArea', args: [area] });
+          return new Promise((resolve) => pending.push(() => resolve(area)));
+        };
+        await openEditor();
+        const area = screen.getByTestId('flash-area');
+        fireEvent.keyDown(area, { key: 'ArrowRight' });
+        fireEvent.keyDown(area, { key: 'ArrowRight' });
+        fireEvent.keyDown(area, { key: 'ArrowRight' });
+        // Resposta da 1ª seta chega por último.
+        await act(async () => {
+          pending[1]?.();
+          pending[2]?.();
+          pending[0]?.();
+        });
+        await flush();
+        expect(lastSaved()).toEqual({ x: 0.08, y: 0.02, w: 0.3, h: 0.22 });
+        expect(area.style.left).toBe('8%');
+      });
+
+      it('várias mudanças seguidas mostram a prévia na tela uma vez só', async () => {
+        await openEditor();
+        vi.useFakeTimers();
+        const area = screen.getByTestId('flash-area');
+        fireEvent.keyDown(area, { key: 'ArrowRight' });
+        fireEvent.keyDown(area, { key: 'ArrowRight' });
+        fireEvent.keyDown(area, { key: 'ArrowRight' });
+        await act(async () => {
+          await Promise.resolve();
+          vi.advanceTimersByTime(1000);
+          await Promise.resolve();
+        });
+        expect(bridge.calls.filter((c) => c.method === 'flashPreviewArea')).toHaveLength(1);
+      });
+    });
+
+    it('ao fechar, o foco volta para o botão que abriu o ajuste', async () => {
+      await openEditor();
+      fireEvent.click(screen.getByRole('button', { name: 'Pronto' }));
+      await flush();
+      expect(screen.getByTestId('flash-area-open')).toHaveFocus();
+    });
+
+    it('Tab não sai do ajuste enquanto ele está aberto', async () => {
+      await openEditor();
+      const pronto = screen.getByRole('button', { name: 'Pronto' });
+      pronto.focus();
+      fireEvent.keyDown(pronto, { key: 'Tab' });
+      expect(screen.getByRole('dialog')).toContainElement(document.activeElement as HTMLElement);
     });
   });
 });
