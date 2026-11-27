@@ -1,6 +1,7 @@
 import type {
   ClipboardContent,
   FlashAppearance,
+  FlashArea,
   FlashPosition,
   GabaritoItem,
   NativeEventMap,
@@ -22,6 +23,12 @@ export interface NativeBridge {
   flashEnterAdjustMode(): Promise<void>;
   flashSavePosition(position: FlashPosition): Promise<void>;
   getFlashPosition(): Promise<FlashPosition>;
+  /** Área da tela liberada para o Flash (frações 0–1). */
+  getFlashArea(): Promise<FlashArea>;
+  /** Salva a área; o nativo devolve a área já limitada. */
+  setFlashArea(area: FlashArea): Promise<FlashArea>;
+  /** Mostra o contorno da área na tela de verdade, por alguns segundos. */
+  flashPreviewArea(): Promise<void>;
   /** Mostra o Flash com um texto arbitrário (correção da sala, sob demanda). */
   flashShowText(text: string): Promise<void>;
   /** Mostra o gabarito (overlay abaixo do flash) com os itens dados. */
@@ -42,8 +49,6 @@ export interface NativeBridge {
   readClipboard(): Promise<ClipboardContent>;
   /** Escreve texto no clipboard (resposta da IA, para colar). */
   writeClipboard(text: string): Promise<void>;
-  /** Ajusta a altura da janela do flash ao conteúdo. */
-  flashResize(height: number): Promise<void>;
   /** Abre uma URL no navegador do sistema (checkout, assinatura). */
   openExternal(url: string): Promise<void>;
   /** Registra listener; retorna função de unsubscribe. */
