@@ -1,3 +1,4 @@
+import { DEFAULT_FLASH_AREA, normalizeArea } from '../domain/flash/area';
 import type { NativeBridge } from './native';
 import type {
   ClipboardContent,
@@ -58,6 +59,15 @@ export function createMockBridge(): MockBridge {
       calls.push({ method: 'getFlashPosition', args: [] });
       return Promise.resolve({ ...DEFAULT_POSITION });
     },
+    getFlashArea: () => {
+      calls.push({ method: 'getFlashArea', args: [] });
+      return Promise.resolve({ ...DEFAULT_FLASH_AREA });
+    },
+    setFlashArea: (area) => {
+      calls.push({ method: 'setFlashArea', args: [area] });
+      return Promise.resolve(normalizeArea(area));
+    },
+    flashPreviewArea: record('flashPreviewArea'),
     flashShowText: record('flashShowText'),
     gabaritoShow: record('gabaritoShow'),
     gabaritoHide: record('gabaritoHide'),
@@ -93,7 +103,6 @@ export function createMockBridge(): MockBridge {
       clipboard = content;
     },
     writeClipboard: record('writeClipboard'),
-    flashResize: record('flashResize'),
     on: (event, handler) => {
       const set = listeners.get(event) ?? new Set();
       set.add(handler as (payload: never) => void);

@@ -14,6 +14,9 @@ export function createTauriBridge(): NativeBridge {
     flashEnterAdjustMode: () => invoke('flash_enter_adjust_mode'),
     flashSavePosition: (position) => invoke('flash_save_position', { position }),
     getFlashPosition: () => invoke('get_flash_position'),
+    getFlashArea: () => invoke('get_flash_area'),
+    setFlashArea: (area) => invoke('set_flash_area', { area }),
+    flashPreviewArea: () => invoke('flash_preview_area'),
     flashShowText: (text) => invoke('flash_show_text', { text }),
     gabaritoShow: (items) => invoke('gabarito_show', { items }),
     gabaritoHide: () => invoke('gabarito_hide'),
@@ -30,7 +33,6 @@ export function createTauriBridge(): NativeBridge {
     cancelStream: (streamId) => invoke('cancel_stream', { streamId }),
     readClipboard: () => invoke('read_clipboard'),
     writeClipboard: (text) => invoke('write_clipboard', { text }),
-    flashResize: (height) => invoke('flash_resize', { height }),
     openExternal: (url) => invoke('open_external', { url }),
     on: <E extends NativeEventName>(
       event: E,

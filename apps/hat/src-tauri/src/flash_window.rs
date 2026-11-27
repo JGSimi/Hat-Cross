@@ -8,6 +8,7 @@ use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_store::StoreExt;
 
 use crate::macos_overlay::{apply_fullscreen_overlay, OverlayLevel};
+use hat_core::flash::{area_from_quadrant, area_to_rect, clamp_area, FlashArea, PixelRect};
 
 pub const FLASH_LABEL: &str = "flash";
 pub const GABARITO_LABEL: &str = "gabarito";
@@ -17,6 +18,8 @@ const GABARITO_H: f64 = 300.0;
 const GABARITO_GAP: f64 = 10.0;
 const SETTINGS_STORE: &str = "settings.json";
 const POSITION_KEY: &str = "flash.position";
+/// Área que o usuário liberou para o Flash (frações da tela, 0–1).
+const AREA_KEY: &str = "flash.area";
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -59,6 +62,8 @@ pub struct FlashShowPayload {
     pub state: String, // "processing" | "answer" | "error"
     pub text: String,
     pub position: FlashPosition,
+    /// Área escolhida pelo usuário: a resposta nunca passa dela.
+    pub area: FlashArea,
     #[serde(flatten)]
     pub appearance: FlashAppearance,
 }
@@ -167,50 +172,70 @@ pub fn get_flash_position(app: AppHandle) -> FlashPosition {
     saved_position(&app)
 }
 
+/// Área salva; sem ela, migra o quadrante antigo para uma área no mesmo canto.
+fn saved_area(app: &AppHandle) -> FlashArea {
+    let stored = app
+        .store(SETTINGS_STORE)
+        .ok()
+        .and_then(|store| store.get(AREA_KEY))
+        .and_then(|v| serde_json::from_value::<FlashArea>(v).ok());
+    match stored {
+        Some(area) => clamp_area(&area),
+        None => {
+            let quadrant = saved_position(app).quadrant.unwrap_or_default();
+            area_from_quadrant(&quadrant)
+        }
+    }
+}
+
+#[tauri::command]
+pub fn get_flash_area(app: AppHandle) -> FlashArea {
+    saved_area(&app)
+}
+
+#[tauri::command]
+pub fn set_flash_area(app: AppHandle, area: FlashArea) -> Result<FlashArea, String> {
+    let area = clamp_area(&area);
+    let store = app.store(SETTINGS_STORE).map_err(|e| e.to_string())?;
+    store.set(
+        AREA_KEY,
+        serde_json::to_value(area).map_err(|e| e.to_string())?,
+    );
+    Ok(area)
+}
+
+/// Retângulo (px lógicos, coordenadas globais) da área no monitor da janela.
+fn area_rect_on_monitor(window: &tauri::WebviewWindow, area: &FlashArea) -> Option<PixelRect> {
+    let monitor = window.current_monitor().ok().flatten()?;
+    let scale = monitor.scale_factor();
+    let size = monitor.size();
+    let origin = monitor.position().to_logical::<f64>(scale);
+    let rect = area_to_rect(
+        area,
+        size.width as f64 / scale,
+        size.height as f64 / scale,
+    );
+    Some(PixelRect {
+        x: rect.x + origin.x,
+        y: rect.y + origin.y,
+        ..rect
+    })
+}
+
 /// Caminho quente: posiciona, reaplica flags topmost/protected (idempotente),
 /// mostra SEM foco e emite o payload para o webview já vivo.
 pub fn show(app: &AppHandle, state: &str, text: &str) {
     let Some(window) = app.get_webview_window(FLASH_LABEL) else {
         return;
     };
+    let area = saved_area(app);
     let mut position = saved_position(app);
-    if let Ok(Some(monitor)) = window.current_monitor() {
-        let size = monitor.size();
-        let scale = monitor.scale_factor();
-        let monitor_w = size.width as f64 / scale;
-        let monitor_h = size.height as f64 / scale;
-
-        if let Some(ref q) = position.quadrant {
-            match q.as_str() {
-                "top-right" => {
-                    position.x = (monitor_w - CARD_W - 24.0).max(0.0);
-                    position.y = 24.0;
-                }
-                "bottom-left" => {
-                    position.x = 24.0;
-                    position.y = (monitor_h - CARD_H - 24.0).max(0.0);
-                }
-                "bottom-right" => {
-                    position.x = (monitor_w - CARD_W - 24.0).max(0.0);
-                    position.y = (monitor_h - CARD_H - 24.0).max(0.0);
-                }
-                _ => {
-                    position.x = 24.0;
-                    position.y = 24.0;
-                }
-            }
-        } else {
-            let (x, y) = hat_core::flash::clamp_position(
-                position.x,
-                position.y,
-                CARD_W,
-                CARD_H,
-                monitor_w,
-                monitor_h,
-            );
-            position.x = x;
-            position.y = y;
-        }
+    // Tamanho FIXO: a janela é a área escolhida. Resposta longa rola
+    // dentro dela (FlashPage) em vez de esticar a janela.
+    if let Some(rect) = area_rect_on_monitor(&window, &area) {
+        position.x = rect.x;
+        position.y = rect.y;
+        let _ = window.set_size(tauri::LogicalSize::new(rect.width, rect.height));
     }
 
     let _ = window.set_position(tauri::LogicalPosition::new(position.x, position.y));
@@ -227,6 +252,7 @@ pub fn show(app: &AppHandle, state: &str, text: &str) {
             state: state.to_string(),
             text: text.to_string(),
             position,
+            area,
             appearance: saved_appearance(app),
         },
     );
@@ -244,14 +270,11 @@ pub fn flash_hide(app: AppHandle) {
     hide(&app);
 }
 
-/// Ajusta a altura da janela do flash ao conteúdo (a resposta sempre cabe).
-/// Largura fixa; altura limitada para não virar um painel gigante.
+/// Prévia da área escolhida: mostra o contorno dela na tela de verdade.
+/// Estado "preview" → a FlashPage desenha a área e esconde sozinha.
 #[tauri::command]
-pub fn flash_resize(app: AppHandle, height: f64) {
-    if let Some(window) = app.get_webview_window(FLASH_LABEL) {
-        let h = height.clamp(56.0, 520.0);
-        let _ = window.set_size(tauri::LogicalSize::new(CARD_W, h));
-    }
+pub fn flash_preview_area(app: AppHandle) {
+    show(&app, "preview", "");
 }
 
 /// Mostra o Flash com um texto pronto (correção da sala, sob demanda).
@@ -285,10 +308,14 @@ pub fn gabarito_show(app: AppHandle, items: Vec<GabaritoItem>) {
     let Some(window) = app.get_webview_window(GABARITO_LABEL) else {
         return;
     };
-    let pos = saved_position(&app);
-    let mut x = pos.x;
-    // Abaixo do flash.
-    let mut y = pos.y + CARD_H + GABARITO_GAP;
+    // Logo abaixo da área do flash.
+    let (mut x, mut y) = match area_rect_on_monitor(&window, &saved_area(&app)) {
+        Some(rect) => (rect.x, rect.y + rect.height + GABARITO_GAP),
+        None => {
+            let pos = saved_position(&app);
+            (pos.x, pos.y + CARD_H + GABARITO_GAP)
+        }
+    };
     if let Ok(Some(monitor)) = window.current_monitor() {
         let size = monitor.size();
         let scale = monitor.scale_factor();

@@ -1,6 +1,10 @@
 // Contratos de IPC entre o shell nativo (Rust) e o renderer.
 // Espelham os payloads emitidos/aceitos em src-tauri/src/*.rs.
 
+import type { FlashArea } from '../domain/flash/area';
+
+export type { FlashArea };
+
 export type StreamContentType = 'text' | 'thinking';
 
 export interface StreamChunkPayload {
@@ -44,7 +48,8 @@ export interface FlashPosition {
   monitorLabel?: string;
 }
 
-export type FlashState = 'processing' | 'answer' | 'error';
+/** 'preview' = mostra o contorno da área escolhida, só para o usuário ver onde fica. */
+export type FlashState = 'processing' | 'answer' | 'error' | 'preview';
 
 export interface FlashAppearance {
   /** 0–100. Opacidade do card (stealth: baixíssima por padrão). */
@@ -61,6 +66,8 @@ export interface FlashShowPayload extends Partial<FlashAppearance> {
   state: FlashState;
   text: string;
   position: FlashPosition;
+  /** Área escolhida pelo usuário (a janela já tem esse tamanho). */
+  area?: FlashArea;
 }
 
 export interface UpdateCheck {

@@ -12,3 +12,16 @@ MotionGlobalConfig.skipAnimations = true;
 afterEach(() => {
   cleanup();
 });
+
+// jsdom não implementa PointerEvent: sem isto, fireEvent.pointer* perde
+// clientX/clientY e os arrastes (área do Flash) não dão para testar.
+if (typeof window !== 'undefined' && typeof window.PointerEvent === 'undefined') {
+  class PointerEventPolyfill extends MouseEvent {
+    pointerId: number;
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 0;
+    }
+  }
+  (window as unknown as { PointerEvent: unknown }).PointerEvent = PointerEventPolyfill;
+}

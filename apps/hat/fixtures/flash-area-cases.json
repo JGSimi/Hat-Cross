@@ -1,0 +1,54 @@
+{
+  "description": "Área do Flash (frações da tela) -> retângulo em pixels lógicos, e quadrante legado -> área. Consumido por src/domain/flash/area.test.ts e crates/hat-core/src/flash.rs. Regras: largura/altura mínimas de 0.15/0.10 da tela, área sempre dentro da tela, retângulo com no mínimo 240x72 px (limitado ao monitor) e sempre dentro do monitor.",
+  "rectCases": [
+    {
+      "name": "padrão em 1440x900",
+      "area": { "x": 0.02, "y": 0.02, "w": 0.3, "h": 0.22 },
+      "monitor": { "w": 1440, "h": 900 },
+      "rect": { "x": 29, "y": 18, "width": 432, "height": 198 }
+    },
+    {
+      "name": "canto inferior direito em 1920x1080",
+      "area": { "x": 0.68, "y": 0.76, "w": 0.3, "h": 0.22 },
+      "monitor": { "w": 1920, "h": 1080 },
+      "rect": { "x": 1306, "y": 821, "width": 576, "height": 238 }
+    },
+    {
+      "name": "área minúscula sobe para o mínimo",
+      "area": { "x": 0.5, "y": 0.5, "w": 0.01, "h": 0.01 },
+      "monitor": { "w": 1440, "h": 900 },
+      "rect": { "x": 720, "y": 450, "width": 240, "height": 90 }
+    },
+    {
+      "name": "área vazando a tela volta para dentro",
+      "area": { "x": 0.95, "y": 0.95, "w": 0.3, "h": 0.3 },
+      "monitor": { "w": 1440, "h": 900 },
+      "rect": { "x": 1008, "y": 630, "width": 432, "height": 270 }
+    },
+    {
+      "name": "área maior que a tela vira a tela inteira",
+      "area": { "x": -1, "y": -1, "w": 5, "h": 5 },
+      "monitor": { "w": 1440, "h": 900 },
+      "rect": { "x": 0, "y": 0, "width": 1440, "height": 900 }
+    },
+    {
+      "name": "mínimo em pixels empurra para dentro do monitor",
+      "area": { "x": 0.85, "y": 0.9, "w": 0.15, "h": 0.1 },
+      "monitor": { "w": 800, "h": 600 },
+      "rect": { "x": 560, "y": 528, "width": 240, "height": 72 }
+    },
+    {
+      "name": "monitor menor que o mínimo em pixels",
+      "area": { "x": 0.02, "y": 0.02, "w": 0.3, "h": 0.22 },
+      "monitor": { "w": 200, "h": 50 },
+      "rect": { "x": 0, "y": 0, "width": 200, "height": 50 }
+    }
+  ],
+  "quadrantCases": [
+    { "quadrant": "top-left", "area": { "x": 0.02, "y": 0.02, "w": 0.3, "h": 0.22 } },
+    { "quadrant": "top-right", "area": { "x": 0.68, "y": 0.02, "w": 0.3, "h": 0.22 } },
+    { "quadrant": "bottom-left", "area": { "x": 0.02, "y": 0.76, "w": 0.3, "h": 0.22 } },
+    { "quadrant": "bottom-right", "area": { "x": 0.68, "y": 0.76, "w": 0.3, "h": 0.22 } },
+    { "quadrant": "qualquer-outro", "area": { "x": 0.02, "y": 0.02, "w": 0.3, "h": 0.22 } }
+  ]
+}
